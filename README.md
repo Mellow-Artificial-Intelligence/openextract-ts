@@ -1,585 +1,165 @@
-<div align="center">
-
 # openextract
 
 **Extract structured data from documents, images, audio, and video using LLMs.**
 
-[![PyPI version](https://img.shields.io/pypi/v/openextract.svg?logo=pypi&logoColor=white&color=4B8BBE)](https://pypi.org/project/openextract/)
-[![Python versions](https://img.shields.io/pypi/pyversions/openextract.svg?logo=python&logoColor=white)](https://pypi.org/project/openextract/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![CI](https://github.com/Mellow-Artificial-Intelligence/openextract/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Mellow-Artificial-Intelligence/openextract/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/Mellow-Artificial-Intelligence/openextract/actions/workflows/ci.yml)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Downloads](https://img.shields.io/pypi/dm/openextract.svg?color=blue)](https://pypi.org/project/openextract/)
-
-[Documentation](https://mellow-artificial-intelligence.github.io/openextract/) &middot; [PyPI](https://pypi.org/project/openextract/) &middot; [Changelog](CHANGELOG.md) &middot; [Issues](https://github.com/Mellow-Artificial-Intelligence/openextract/issues)
-
-</div>
-
----
-
-`openextract` turns any document, image, audio, or video file into a typed Pydantic model in a single function call. Point it at a local path or a URL, pass a schema, and get back a validated object you can use directly in your code.
-
-## Features
-
-- **Type-safe output.** Define your shape with Pydantic; get back a validated instance.
-- **One function, many modalities.** Documents (PDF, DOCX), images, audio, and video.
-- **Extraction styles.** Pass the document directly, search it with file tools, or write Python against the text via [Pydantic AI Harness](https://pydantic.dev/docs/ai/harness/).
-- **Local files or URLs.** Pass a path or an `https://` URL &mdash; `openextract` handles fetching.
-- **Bring your own model.** OpenAI, Anthropic, Google, AWS Bedrock, xAI, Cohere, Hugging Face, Groq, Cerebras, Mistral, and Ollama supported out of the box via [`pydantic-ai`](https://github.com/pydantic/pydantic-ai).
-- **Explicit error handling.** Distinct exceptions for URL fetch, schema validation, and model errors.
-- **100% test coverage**, enforced in CI.
+`openextract` turns any document, image, audio, or video file into a typed Zod object in a single call. Point it at a local path or a URL, pass a schema, and get back validated data. Model calls go through the [Vercel AI SDK](https://ai-sdk.dev) and [AI Gateway](https://vercel.com/ai-gateway).
 
 ## Installation
 
 ```bash
-uv add openextract
+npm install openextract zod
 ```
 
-Or with pip:
-
-```bash
-pip install openextract
-```
-
-Model calls require a provider SDK. Install the extra for the provider you use, for example `openextract[openai]`, `openextract[anthropic]`, or `openextract[all]` for every supported provider. Agentic `search` and `code` styles need [`pydantic-ai-harness`](https://pydantic.dev/docs/ai/harness/) (`pip install pydantic-ai-harness` / `pip install 'pydantic-ai-harness[codemode]'`). The base package ships `pydantic-ai-slim` without provider SDKs pre-installed. If the requested provider SDK is missing, `openextract` raises `ProviderNotInstalledError` with a provider-specific `pip install 'openextract[...]'` command when the model prefix is known.
-
-Requires Python 3.12+.
+Requires Node.js 20+. Set `AI_GATEWAY_API_KEY` (or deploy on Vercel with OIDC).
 
 ## Quick start
 
-```python
-from pydantic import BaseModel
-from openextract import extract
+```ts
+import { z } from "zod";
+import { extract } from "openextract";
 
+const PdfInfo = z.object({
+  summary: z.string(),
+  language: z.string(),
+});
 
-class PdfInfo(BaseModel):
-    summary: str
-    language: str
+const result = await extract(PdfInfo, "xai/grok-4.6", "https://example.com/document.pdf", {
+  instructions: "Return a two-sentence summary and the document's primary language.",
+});
 
-
-result = extract(
-    schema=PdfInfo,
-    model="xai:grok-4.3",
-    input_file="https://example.com/document.pdf",
-    instructions="Return a two-sentence summary and the document's primary language.",
-)
-
-print(result.summary)
-print(result.language)
+console.log(result.summary, result.language);
 ```
 
-`result` is a fully-validated `PdfInfo` instance &mdash; not a dict, not a string.
+`result` is a validated `{ summary, language }` object — not a raw string.
+
+Pydantic-AI style ids such as `openai:gpt-5.5` are accepted and routed to AI Gateway (`openai/gpt-5.5`).
 
 ## Extraction styles
 
-`style` selects how the model inspects the input. The default, `direct`, is the
-current behavior: the resolved media is passed to the LLM in one shot. For
-**text** documents you can instead use agentic search or code execution, both
-powered by [Pydantic AI Harness](https://pydantic.dev/docs/ai/harness/).
+`style` selects how the model inspects the input. The default, `direct`, sends the resolved media in one shot. For **text** documents you can search with file tools or run JavaScript against the text.
 
-```python
-from openextract import extract, ExtractionStyle
+```ts
+import { extract, ExtractionStyle } from "openextract";
 
-# Default: send the document bytes to the model.
-extract(schema=PdfInfo, model="openai:gpt-5", input_file="notes.txt")
+await extract(PdfInfo, "openai/gpt-5.5", "notes.txt");
 
-# Grep/read the text with sandboxed file tools (needs pydantic-ai-harness).
-extract(
-    schema=PdfInfo,
-    model="openai:gpt-5",
-    input_file="notes.txt",
-    style="search",  # or ExtractionStyle.SEARCH
-)
-
-# Write Python against a workspace copy of the document (needs pydantic-ai-harness[codemode]).
-extract(
-    schema=PdfInfo,
-    model="openai:gpt-5",
-    input_file="notes.txt",
-    style="code",
-)
+await extract(PdfInfo, "openai/gpt-5.5", "notes.txt", { style: "search" });
+await extract(PdfInfo, "openai/gpt-5.5", "notes.txt", { style: ExtractionStyle.CODE });
 ```
 
-`search` and `code` require UTF-8 text (`text/*`, JSON, XML, YAML, and similar).
-PDFs, Office documents, images, audio, and video stay on `direct`. Missing
-packages raise `ProviderNotInstalledError` with a `pip install pydantic-ai-harness`
-or `pip install 'pydantic-ai-harness[codemode]'` hint. The integration was
-written against `pydantic-ai-harness` 0.18.x. The CLI flag is `--style`.
+`search` and `code` require UTF-8 text (`text/*`, JSON, XML, YAML, and similar). PDFs, Office documents, images, audio, and video stay on `direct`.
 
 ## Reusable sessions
 
-For repeated extractions with the same schema and model, use `Extractor` or
-`AsyncExtractor`. A session constructs one Pydantic AI agent, reuses its
-provider and input-fetch HTTP clients, and closes them deterministically.
+```ts
+import { Extractor, RetryPolicy } from "openextract";
 
-```python
-from openextract import Extractor, RetryPolicy
+const extractor = new Extractor(PdfInfo, "openai/gpt-5.5", {
+  instructions: "Extract the summary and primary language.",
+  timeout: 30,
+  retryPolicy: new RetryPolicy({ maxRetries: 3 }),
+});
 
-with Extractor(
-    schema=PdfInfo,
-    model="openai:gpt-5",
-    instructions="Extract the summary and primary language.",
-    model_settings={"temperature": 0},
-    timeout=30,
-    retry_policy=RetryPolicy(max_retries=3),
-) as extractor:
-    first = extractor.extract("./reports/q3.pdf")
-    second, usage = extractor.extract_with_usage("./reports/q4.pdf")
+const first = await extractor.extract("./reports/q3.pdf");
+const { output, usage } = await extractor.extractWithUsage("./reports/q4.pdf");
+extractor.close();
 ```
 
-The async session is bound to the event loop that enters it and supports
-concurrent calls on that loop:
+## Inputs
 
-```python
-import asyncio
-from openextract import AsyncExtractor
+Local paths, `http(s)` URLs, `Uint8Array` / `Buffer`, and readable streams are accepted. Bytes and streams require `mediaType`.
 
-async def main() -> None:
-    async with AsyncExtractor(PdfInfo, "openai:gpt-5") as extractor:
-        q3, q4 = await asyncio.gather(
-            extractor.extract("./reports/q3.pdf"),
-            extractor.extract("./reports/q4.pdf"),
-        )
-
-asyncio.run(main())
+```ts
+await extract(PdfInfo, "xai/grok-4.6", "./reports/q4.pdf");
+await extract(PdfInfo, "xai/grok-4.6", pdfBytes, { mediaType: "application/pdf" });
 ```
 
-`model` may also be a configured `pydantic_ai.models.Model`, preserving custom
-providers, endpoints, credentials, and model defaults without string-prefix
-routing. For advanced dependency injection, pass a fully configured
-`pydantic_ai.Agent` as `agent=` instead of `model=`. Openextract revalidates the
-agent output against `schema`; agent instructions, model settings, timeout, and
-instrumentation must be configured on the injected agent itself.
+Every input is capped at 50 MiB. Override with `maxInputBytes` or `OPENEXTRACT_MAX_INPUT_BYTES`. Oversized inputs raise `InputTooLargeError` before a model request.
 
-```python
-from pydantic_ai import Agent
-from pydantic_ai.models.test import TestModel
-from openextract import Extractor
+## Retry and usage
 
-test_agent = Agent(
-    TestModel(custom_output_args={"summary": "Test", "language": "en"}),
-    output_type=PdfInfo,
-)
-with Extractor(PdfInfo, agent=test_agent) as extractor:
-    assert extractor.extract(b"fixture", media_type="text/plain").language == "en"
+```ts
+const { output, usage } = await extractWithUsage(PdfInfo, "xai/grok-4.6", "./reports/q4.pdf", {
+  maxRetries: 3,
+});
+
+console.log(usage.inputTokens, usage.outputTokens, usage.totalTokens);
 ```
 
-`Extractor` is thread-bound and not thread-safe; use one per thread.
-`AsyncExtractor` must be entered and used on one event loop, though calls may
-overlap within that loop. Both classes must be used as context managers (or
-closed explicitly with `close()` / `aclose()`). Set `instrument=True` to enable
-Pydantic AI instrumentation, or pass an `InstrumentationSettings` instance.
+Only transient `ModelError` failures (timeouts, rate limits, 5xx) are retried. Backoff is exponential with up to 25% jitter, bounded by `retryMaxBackoff` (60s). A provider `Retry-After` value takes precedence.
 
-## Usage
+## Batch extraction
 
-### Local files
+```ts
+import { extractMany, extractManyWithResults, totalUsage } from "openextract";
 
-```python
-result = extract(
-    schema=PdfInfo,
-    model="xai:grok-4.3",
-    input_file="./reports/q4.pdf",
-)
+const results = await extractMany(PdfInfo, "xai/grok-4.6", [
+  "./reports/q3.pdf",
+  { source: pdfBytes, mediaType: "application/pdf" },
+]);
+
+const rich = await extractManyWithResults(PdfInfo, "xai/grok-4.6", [
+  "./reports/q3.pdf",
+  "./reports/q4.pdf",
+]);
+console.log(totalUsage(rich.filter((item) => !(item instanceof Error))));
 ```
 
-### Bytes or file-like objects
-
-```python
-result = extract(schema=PdfInfo, model="xai:grok-4.3", input_file=pdf_bytes, media_type="application/pdf")
-# A file-like object with .read() works too; pass media_type explicitly:
-result = extract(schema=PdfInfo, model="xai:grok-4.3", input_file=open("q4.pdf", "rb"), media_type="application/pdf")
-```
-
-### Input size limits
-
-Every input is capped at 50 MiB (`52_428_800` bytes) before a model call.
-Local paths are checked before and during reading, URL bodies are streamed
-through the cap even when `Content-Length` is missing or incorrect, and binary
-streams are read in bounded chunks. Override the limit for one call with
-`max_input_bytes`, or set `OPENEXTRACT_MAX_INPUT_BYTES` for the process:
-
-```python
-result = extract(
-    schema=PdfInfo,
-    model="xai:grok-4.3",
-    input_file="./reports/large.pdf",
-    max_input_bytes=100 * 1024 * 1024,
-)
-```
-
-Oversized inputs raise `InputTooLargeError` before a model request. The CLI
-exposes the same control as `--max-input-bytes` and reports the error with exit
-code `5`.
-
-### Retry on transient model errors
-
-```python
-result = extract(
-    schema=PdfInfo,
-    model="xai:grok-4.3",
-    input_file="./reports/q4.pdf",
-    max_retries=3,
-)
-```
-
-`max_retries` defaults to `0` (single attempt) and must be a non-negative integer.
-Only transient `ModelError` failures—timeouts, rate limits, and supported 5xx
-responses—are retried; authentication, permission, and invalid-request failures
-fail immediately. Delays use exponential backoff with up to 25% additive jitter,
-bounded by `retry_max_backoff` (60 seconds by default). A valid provider
-`Retry-After` value takes precedence but is still bounded. Both backoff values
-must be finite and non-negative.
-
-The input is resolved once before the first model attempt. Retries reuse the same
-media bytes, prompt, and agent, so URLs and non-seekable streams are not fetched
-or read again.
-
-### Inspecting token usage
-
-Use `extract_with_usage` when you want token counts alongside the extracted output (for cost tracking, logging, etc.).
-
-```python
-from openextract import extract_with_usage
-
-result, usage = extract_with_usage(
-    schema=PdfInfo,
-    model="xai:grok-4.3",
-    input_file="./reports/q4.pdf",
-)
-
-print(result.summary)
-print(f"tokens: {usage.input_tokens} in / {usage.output_tokens} out / {usage.total_tokens} total")
-```
-
-`usage` is a frozen `Usage` dataclass with `input_tokens`, `output_tokens`, and `total_tokens` fields.
-
-### Batch extraction
-
-Every public API accepts a `pathlib.Path` (or any `os.PathLike`) directly, in
-addition to `str` paths/URLs, `bytes`, and binary file-like objects. Batch
-calls accept `ExtractionInput` items so heterogeneous inputs can carry their
-own media type in one batch:
-
-```python
-from pathlib import Path
-from openextract import ExtractionInput, extract_many
-
-results = extract_many(
-    schema=PdfInfo,
-    model="xai:grok-4.3",
-    input_files=[
-        Path("./reports/q3.pdf"),
-        ExtractionInput(source=b"...pdf bytes...", media_type="application/pdf"),
-        ExtractionInput(source=b"...png bytes...", media_type="image/png"),
-    ],
-)
-```
-
-A batch-wide `media_type` still applies to any item that does not specify one.
-`return_exceptions` is typed, so checkers infer `list[PdfInfo]` by default and
-`list[PdfInfo | Exception]` when it is `True`.
-
-For per-item token usage, attempt counts, timing, and sanitized source labels,
-use `extract_many_with_results` and aggregate with `total_usage`:
-
-```python
-from openextract import extract_many_with_results, total_usage
-
-results = extract_many_with_results(
-    schema=PdfInfo,
-    model="xai:grok-4.3",
-    input_files=[Path("./reports/q3.pdf"), Path("./reports/q4.pdf")],
-)
-
-total = total_usage(results)
-print(total.input_tokens, total.output_tokens, total.total_tokens)
-```
-
-Each `ExtractionResult` carries `output`, `usage`, `attempts`, `duration`,
-`model`, `media_type`, and a sanitized `source` (never raw media, credentials,
-or query strings). The async sibling is `extract_many_with_results_async`.
-
-### Choosing a model
-
-`model` follows the `pydantic-ai` provider prefix convention:
-
-| Provider     | Example identifier                                       | Install extra |
-| ------------ | -------------------------------------------------------- | ------------- |
-| OpenAI       | `openai:gpt-5`                                           | `openextract[openai]` |
-| Anthropic    | `anthropic:claude-sonnet-4`                              | `openextract[anthropic]` |
-| Google       | `google-gla:gemini-2.5-pro`                              | `openextract[google]` |
-| AWS Bedrock  | `bedrock:anthropic.claude-sonnet-4-20250514-v1:0`        | `openextract[bedrock]` |
-| xAI          | `xai:grok-4.3`                                           | `openextract[xai]` |
-| Cohere       | `cohere:command-r-plus`                                  | `openextract[cohere]` |
-| Hugging Face | `huggingface:meta-llama/Llama-3.3-70B-Instruct`          | `openextract[huggingface]` |
-| Groq         | `groq:llama-3.3-70b-versatile`                           | `openextract[groq]` |
-| Cerebras     | `cerebras:llama3.1-70b`                                  | `openextract[openai]` |
-| Mistral      | `mistral:mistral-large-latest`                           | `openextract[mistral]` |
-| OpenRouter   | `openrouter:anthropic/claude-sonnet-4`                   | `openextract[openrouter]` |
-| Outlines     | `outlines:transformers/meta-llama/Llama-3.2-1B-Instruct` | Install the matching `pydantic-ai-slim[outlines-*]` backend |
-| Ollama       | `ollama:llama3`                                          | `openextract[openai]` |
-
-OpenAI identifiers using the concise `openai:` prefix are routed through the
-Responses API by default. Use `openai-responses:` to select it explicitly or
-`openai-chat:` to force the legacy Chat Completions API.
-
-Ollama and Cerebras work via the `openai`-compatible code path &mdash; no dedicated extra is required for either.
-
-Set the corresponding provider credentials in your environment (e.g.
-`XAI_API_KEY` for xAI). The CLI and bundled examples load `.env` files; the
-Python library leaves environment configuration to the host application.
-
-OpenRouter and Cerebras are openai-compatible (they go through the `openai` client under the hood), so their errors are already classified via the existing openai path &mdash; no separate exception handling is needed.
-
-Outlines runs models locally (via HuggingFace transformers, llama-cpp, MLX, vLLM, or SGLang) and enforces JSON-schema-conforming output at the token level. Install it separately alongside the backend you want, for example `pip install pydantic-ai-slim[outlines-transformers]`.
-
-### Command line
-
-`openextract` ships with a CLI for one-shot extractions from the shell.
+## Command line
 
 ```bash
-openextract ./reports/q4.pdf \
-  --schema mypkg.schemas:Invoice \
-  --model xai:grok-4.3 \
-  --instructions "Pull totals and line items." \
-  --output json
+npx openextract ./reports/q4.pdf \
+  --schema ./schemas.ts:Invoice \
+  --model xai/grok-4.6 \
+  --instructions "Pull totals and line items."
 ```
 
-Batch multiple files (JSON array output):
+`--schema` is a `module:exportName` path to a Zod schema. Exit codes: `0` success, `2` URL fetch, `3` schema validation, `4` model, `5` other extraction, `6` missing credentials, `7` partial batch (`--continue-on-error`).
 
-```bash
-openextract ./invoices/a.pdf ./invoices/b.pdf \
-  --schema mypkg.schemas:Invoice \
-  --model xai:grok-4.3
+## Error handling
+
+```ts
+import {
+  extract,
+  InputTooLargeError,
+  UrlFetchError,
+  SchemaValidationError,
+  ModelError,
+  ProviderNotInstalledError,
+  ExtractionError,
+} from "openextract";
+
+try {
+  await extract(PdfInfo, "xai/grok-4.6", url);
+} catch (error) {
+  if (error instanceof UrlFetchError) { /* fetch / SSRF */ }
+  else if (error instanceof InputTooLargeError) { /* size cap */ }
+  else if (error instanceof SchemaValidationError) { /* schema mismatch */ }
+  else if (error instanceof ProviderNotInstalledError) { /* AI_GATEWAY_API_KEY */ }
+  else if (error instanceof ModelError) {
+    console.log(error.provider, error.statusCode, error.retryable, error.retryAfter);
+  } else if (error instanceof ExtractionError) { /* fallback */ }
+}
 ```
 
-Token usage (single file):
+## Environment
 
-```bash
-openextract ./reports/q4.pdf \
-  --schema mypkg.schemas:Invoice \
-  --model xai:grok-4.3 \
-  --usage
-```
-
-Read from stdin:
-
-```bash
-cat ./reports/q4.pdf | openextract - \
-  --schema mypkg.schemas:Invoice \
-  --model xai:grok-4.3 \
-  --media-type application/pdf
-```
-
-- `input_file` accepts one or more paths/URLs, or `-` for stdin (`--media-type` required for stdin).
-- `--schema` is a Python import path of the form `module:ClassName` resolving to a Pydantic model.
-- `--model` is a `pydantic-ai` model identifier.
-- `--instructions` is optional natural-language guidance.
-- `--style` is `direct` (default), `search` (file tools on text), or `code`
-  (write Python against text). `search` needs `pydantic-ai-harness`; `code`
-  needs `pydantic-ai-harness[codemode]`.
-- `--media-type` sets MIME type for stdin or overrides guessing for paths/URLs.
-- `--usage` prints a JSON object with `result` and `usage` (single input only).
-- `--output` is `json` (default) or `repr`.
-- `--max-retries`, `--retry-backoff`, and `--retry-max-backoff` match the Python
-  API retry behavior.
-- `--max-input-bytes` overrides the 50 MiB per-input cap.
-- `--continue-on-error` (batch only) keeps processing when an input fails; each
-  failure is emitted inline as `{"input", "error", "error_type"}` and the command
-  exits `7` if any input failed. Without it, a batch aborts on the first failure.
-
-Exit codes: `0` success, `2` URL fetch error, `3` schema validation error, `4` model error,
-`5` other extraction error, `6` missing provider extra, `7` partial batch failure
-(`--continue-on-error`), `1` any other failure (including bad `--schema` paths).
-
-Extraction errors are written to stderr; successful JSON, usage payloads, and
-`--continue-on-error` batch arrays are written to stdout. Missing provider extras
-exit `6` and include the same install hint as the Python API, for example
-`pip install 'openextract[xai]'`. Partial batch failures with `--continue-on-error`
-still print the full batch array to stdout, write a warning to stderr, and exit `7`.
-
-Full stdout/stderr/exit-code contracts: [docs/cli.md](docs/cli.md).
-Provider capability matrix: [docs/providers.md](docs/providers.md).
-Troubleshooting: [docs/troubleshooting.md](docs/troubleshooting.md).
-
-## Examples
-
-Runnable scripts live in [`examples/`](examples/), grouped by use case (local files, bytes, URLs, images, batch, async, retries, CLI, and more). See [examples/README.md](examples/README.md) for the full table.
-
-```bash
-# Run all fixture-based examples (uses OpenAI, Anthropic, and xAI — see examples/README.md)
-uv run python -m examples.run_all
-
-# Single example with the bundled sample image
-uv run python -m examples.basic.local_file --fixture
-```
-
-[See the examples/ directory](examples/) for the full source.
-
-### Error handling
-
-```python
-from openextract import (
-    extract,
-    InputTooLargeError,
-    UrlFetchError,
-    SchemaValidationError,
-    ModelError,
-    ProviderNotInstalledError,
-    ExtractionError,
-)
-
-try:
-    result = extract(schema=PdfInfo, model="xai:grok-4.3", input_file=url)
-except UrlFetchError:
-    ...  # The URL could not be fetched
-except InputTooLargeError:
-    ...  # The input exceeded the configured byte limit
-except SchemaValidationError:
-    ...  # The model's output did not match your schema
-except ProviderNotInstalledError:
-    ...  # The provider extra isn't installed (e.g. pip install openextract[xai])
-except ModelError as exc:
-    # Structured fields are populated when the provider exposes them.
-    print(exc.provider, exc.status_code, exc.retryable, exc.retry_after)
-except ExtractionError:
-    ...  # Any other extraction failure (base class)
-```
-
-All `openextract` exceptions inherit from `ExtractionError`, so you can catch it as a single fallback if you prefer.
-
-## API reference
-
-The canonical public API reference lives in
-[docs/api-reference.md](docs/api-reference.md). CI verifies every documented
-function signature against the installed package so signature drift fails the
-build.
-
-## Public API stability
-
-`openextract.__all__` is the public Python API surface. Modules and helpers whose
-names start with `_`, including `openextract._extract` and `openextract._cli`, are
-internal implementation details. The CLI command is also user-facing and follows
-the compatibility notes below even though it is not exported from `__all__`.
-
-| API | Status for 1.0 | Notes |
+| Variable | Default | Purpose |
 | --- | --- | --- |
-| `ExtractionStyle` | Provisional | `direct`, `search`, or `code` extraction strategy. `search`/`code` are text-only and require `pydantic-ai-harness`. |
-| `extract` | Stable | Primary synchronous API. Signature, return type, media input forms (`str`, `os.PathLike`, `bytes`, file-like, `ExtractionInput`), retry behavior, and public exception categories are intended to carry into 1.0 unchanged. `style` is additive. |
-| `extract_async` | Stable | Async sibling of `extract`; same input contract and retry behavior, with `Agent.run` instead of `run_sync`. |
-| `extract_with_usage` | Stable | Usage-returning sync API. The `(output, Usage)` tuple shape is stable; exact token values depend on provider reporting. |
-| `extract_with_usage_async` | Stable | Async sibling of `extract_with_usage`; same tuple shape and retry behavior. |
-| `extract_many` | Provisional | Batch return ordering, option validation, and `return_exceptions` semantics are intended to remain. Calling it from a running event loop raises `RuntimeError`; use `extract_many_async` in async code. Accepts `os.PathLike` and per-item `ExtractionInput` media types. |
-| `extract_many_async` | Provisional | Async batch API with the same return shape, option constraints, and per-item retry behavior as `extract_many`. |
-| `iter_extract_many_async` | Provisional | Bounded async iterator yielding `(input_index, result)` pairs in completion order. |
-| `extract_many_with_results` | Provisional | Batch API returning per-item `ExtractionResult` objects (output, usage, attempts, duration, model/media metadata, sanitized source). |
-| `extract_many_with_results_async` | Provisional | Async sibling of `extract_many_with_results`. |
-| `total_usage` | Provisional | Sum `Usage` across batch `ExtractionResult` objects. |
-| `ExtractionInput` | Provisional | Frozen input contract wrapping a media source with optional per-item `media_type` and safe `name`. |
-| `ExtractionResult` | Provisional | Frozen generic result contract; never retains raw media, credentials, or provider internals. |
-| `Usage` | Stable | Frozen dataclass with `input_tokens`, `output_tokens`, and `total_tokens`. New fields, if ever needed, should be additive. |
-| `ExtractionError` | Stable | Base class for all public `openextract` exceptions. Catch this for a broad fallback. |
-| `UrlFetchError` | Stable | Raised for URL fetch and URL safety failures. Message wording may improve, but the exception type is stable. |
-| `InputTooLargeError` | Stable | Raised before a model call when resolved media exceeds the configured per-input byte limit. |
-| `SchemaValidationError` | Stable | Raised when model output cannot be validated against the requested schema. |
-| `ModelError` | Stable | Raised for provider/model API failures, with `provider`, `status_code`, `retryable`, and `retry_after` metadata where available. |
-| `ProviderNotInstalledError` | Stable | Raised when the requested model provider extra is missing. Install hints may become more specific as providers are added. |
-| `openextract` CLI | Provisional | The command, core flags, JSON output, stderr error reporting, provider-install exit code `6`, and partial-batch exit code `7` are intended to remain. |
-
-No pre-1.0 signature changes are currently proposed for stable symbols.
-
-## Compatibility and deprecation policy
-
-`openextract` follows semantic-versioning intent, with extra care while the
-project is still pre-1.0:
-
-- **Public API:** `openextract.__all__` is the public Python API. The documented
-  CLI arguments and exit codes, supported optional extras, documented environment
-  variables, and documented input/output behavior are also user-facing
-  compatibility surfaces.
-- **Private API:** modules, functions, classes, and constants whose names start
-  with `_` are internal unless they are explicitly documented here. They may
-  change without a deprecation period.
-- **Patch releases:** should fix bugs, documentation, packaging, provider error
-  classification, or security issues without intentionally breaking public API.
-- **Minor releases before 1.0:** may make breaking public API changes when they
-  are needed for correctness, security, or a clearer long-term contract. These
-  changes must be called out in `CHANGELOG.md` as breaking changes.
-- **Major releases after 1.0:** are the normal place for breaking public API
-  removals or incompatible behavior changes.
-
-Deprecated public APIs should remain available until at least the next minor
-release before `1.0`, unless keeping them would create a security, correctness,
-or maintenance risk. After `1.0`, deprecated public APIs should remain available
-until the next major release. Deprecations should be documented in
-`CHANGELOG.md` with the replacement path and the earliest expected removal
-version when that is known.
-
-Provider behavior depends partly on `pydantic-ai` and provider SDKs. Upstream
-model availability, credential requirements, supported media types, token usage
-reporting, and provider-specific error shapes can change outside an
-`openextract` release. `openextract` aims to keep its own public contract stable,
-but provider-specific compatibility notes may be updated as upstream behavior
-changes.
-
-Python support follows `requires-python` in `pyproject.toml`; the current
-supported versions are Python 3.12 and 3.13, both exercised in CI. Python 3.10
-and 3.11 are not supported: retaining the 3.12 minimum avoids carrying syntax
-compatibility changes for versions outside the project's declared support
-window. Dropping support for a Python minor version is a breaking change and
-should be announced in `CHANGELOG.md`.
-
-## Security
-
-### URL fetching and SSRF
-
-When `input_file` is an `http://` or `https://` URL, `openextract` fetches it
-with host validation, redirect re-checks, and configurable timeout/redirect
-limits. Summary:
-
-- Supported schemes: `http://`, `https://`
-- Non-public hosts (private, loopback, link-local/metadata, multicast, reserved)
-  are refused unless `OPENEXTRACT_ALLOW_PRIVATE_URLS` is set
-- Hosts are re-validated at every redirect hop
-- `OPENEXTRACT_URL_TIMEOUT` (default `30`) and `OPENEXTRACT_MAX_REDIRECTS`
-  (default `10`) tune fetch behavior
-- `OPENEXTRACT_MAX_INPUT_BYTES` (default `52428800`) caps each resolved input,
-  including streamed URL bodies with missing or incorrect length headers
-
-Full model, remaining risk boundaries (including DNS rebinding), and reporting
-process: [SECURITY.md](SECURITY.md#url-input-security-model).
+| `AI_GATEWAY_API_KEY` | — | AI Gateway authentication |
+| `OPENEXTRACT_URL_TIMEOUT` | `30` | URL fetch timeout (seconds) |
+| `OPENEXTRACT_MAX_REDIRECTS` | `10` | Maximum redirect hops |
+| `OPENEXTRACT_ALLOW_PRIVATE_URLS` | unset | Set `1` / `true` / `yes` to allow private hosts |
+| `OPENEXTRACT_MAX_INPUT_BYTES` | `52428800` | Per-input byte cap |
 
 ## Development
 
 ```bash
-git clone https://github.com/Mellow-Artificial-Intelligence/openextract.git
-cd openextract
-uv sync --dev
-
-uv run pytest --cov=openextract            # tests + coverage
-uv run ruff check .                        # lint (Astral ruff)
-uv run ruff format --check .               # format check
-uv run ty check                            # types (Astral ty)
+npm install
+npm test
+npm run typecheck
 ```
-
-CI runs the test suite on every PR and fails if total coverage drops below 100%.
-
-To score extraction quality on [ExtractBench](https://github.com/run-llama/ExtractBench)
-with any model:
-
-```bash
-uv run python scripts/extractbench.py --model openai:gpt-5 --test
-```
-
-See [docs/extractbench.md](docs/extractbench.md).
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
-
-## Roadmap
-
-The project roadmap lives in the [GitHub Wiki](https://github.com/Mellow-Artificial-Intelligence/openextract/wiki/Roadmap).
 
 ## License
 
-[MIT](LICENSE) &copy; Cole McIntosh
+[MIT](LICENSE) © Cole McIntosh

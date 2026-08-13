@@ -16,6 +16,6 @@
 
 ## Checklist
 
-- [ ] Tests pass locally (`uv run pytest`)
-- [ ] Linting passes (`uv run ruff check .`)
+- [ ] Tests pass locally (`npm test`)
+- [ ] Typecheck passes (`npm run typecheck`)
 - [ ] Documentation updated (if applicable)

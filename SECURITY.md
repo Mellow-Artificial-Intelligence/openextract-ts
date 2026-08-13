@@ -45,8 +45,8 @@ resolution, or resolve to any non-public address, including:
 - Multicast and other reserved ranges
 - IPv4 and IPv6, including IPv4-mapped IPv6 (for example `::ffff:127.0.0.1`)
 
-Implementation and tests: `src/openextract/_media.py` (`_is_safe_host`,
-`_fetch_url`) and the SSRF section of `tests/test_extract.py`.
+Implementation and tests: `src/media.ts` (`isSafeHost`, `readUrl`) and
+`tests/media.test.ts`.
 
 ### Redirect handling
 

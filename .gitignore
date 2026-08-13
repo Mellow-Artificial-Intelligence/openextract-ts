@@ -1,21 +1,8 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
+node_modules/
 dist/
-wheels/
-*.egg-info
-
-# Virtual environments
+coverage/
 .venv
 .extractbench/
-
-# Environment files
 .env
-tests/test.pdf
-tests/test.png
-
-# Coverage
-.coverage
-htmlcov/
-coverage.xml
+.DS_Store
+*.tsbuildinfo
