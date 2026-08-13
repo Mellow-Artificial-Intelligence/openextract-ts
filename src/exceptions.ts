@@ -1,3 +1,12 @@
+export const TRANSIENT_STATUSES = new Set([408, 409, 425, 429]);
+
+export function isTransientStatus(statusCode: number | null): boolean {
+  return (
+    statusCode != null &&
+    (TRANSIENT_STATUSES.has(statusCode) || (statusCode >= 500 && statusCode <= 599))
+  );
+}
+
 export class ExtractionError extends Error {
   override name = "ExtractionError";
 }
@@ -21,11 +30,7 @@ export class ModelError extends ExtractionError {
     super(message);
     this.provider = options.provider ?? null;
     this.statusCode = options.statusCode ?? null;
-    this.retryable =
-      options.retryable ??
-      (this.statusCode == null ||
-        [408, 409, 425, 429].includes(this.statusCode) ||
-        (this.statusCode >= 500 && this.statusCode <= 599));
+    this.retryable = options.retryable ?? (this.statusCode == null || isTransientStatus(this.statusCode));
     this.retryAfter = options.retryAfter ?? null;
   }
 }

@@ -12,7 +12,11 @@ import {
   UrlFetchError,
 } from "./exceptions.js";
 
-const TRANSIENT_STATUSES = new Set([408, 409, 425, 429]);
+export { isTransientStatus } from "./exceptions.js";
+
+export function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
 
 export function parseRetryAfter(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
@@ -58,9 +62,7 @@ export function mapException(error: unknown): ExtractionError {
   if (error instanceof Error && /fetch|network|ECONN|ENOTFOUND|ETIMEDOUT/i.test(error.message)) {
     return new UrlFetchError(`Failed to fetch URL: ${error.message}`);
   }
-  return new ExtractionError(
-    `Extraction failed: ${error instanceof Error ? error.message : String(error)}`,
-  );
+  return new ExtractionError(`Extraction failed: ${toError(error).message}`);
 }
 
 export async function withExtractionErrors<T>(fn: () => Promise<T>): Promise<T> {
@@ -70,8 +72,4 @@ export async function withExtractionErrors<T>(fn: () => Promise<T>): Promise<T> 
     if (error instanceof TypeError || error instanceof ExtractionError) throw error;
     throw mapException(error);
   }
-}
-
-export function isTransientStatus(statusCode: number | null): boolean {
-  return statusCode != null && (TRANSIENT_STATUSES.has(statusCode) || (statusCode >= 500 && statusCode <= 599));
 }

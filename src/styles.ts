@@ -125,10 +125,11 @@ export async function materializeTextDocument(
   data: Uint8Array,
   mediaType: string,
   style: ExtractionStyle,
-): Promise<string> {
+): Promise<{ filename: string; text: string }> {
   const filename = documentFilename(mediaType);
-  await writeFile(join(workspace, filename), decodeTextDocument(data, mediaType, style), "utf8");
-  return filename;
+  const text = decodeTextDocument(data, mediaType, style);
+  await writeFile(join(workspace, filename), text, "utf8");
+  return { filename, text };
 }
 
 function searchTools(workspace: string) {
@@ -249,8 +250,7 @@ export async function withStyleWorkspace<T>(
   }
   const workspace = await mkdtemp(join(tmpdir(), "openextract-"));
   try {
-    const filename = await materializeTextDocument(workspace, data, mediaType, style);
-    const text = decodeTextDocument(data, mediaType, style);
+    const { filename, text } = await materializeTextDocument(workspace, data, mediaType, style);
     return await fn({
       prompt: stylePrompt(style, filename),
       tools: style === ExtractionStyle.SEARCH ? searchTools(workspace) : codeTools(text),
