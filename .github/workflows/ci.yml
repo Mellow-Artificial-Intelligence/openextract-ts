@@ -16,141 +16,23 @@ permissions:
   contents: read
 
 jobs:
-  changes:
-    name: Detect changes
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    outputs:
-      lint: ${{ steps.filter.outputs.lint }}
-      test: ${{ steps.filter.outputs.test }}
-      package: ${{ steps.filter.outputs.package }}
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Detect required jobs
-        id: filter
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-          HEAD_SHA: ${{ github.sha }}
-        run: python3 scripts/ci_needed.py
-
-  lint:
-    needs: changes
-    if: needs.changes.outputs.lint == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      UV_FROZEN: "1"
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
-        with:
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a  # v4.2.0
-        with:
-          enable-cache: true
-      - run: uv sync --dev
-      - run: uv run --no-sync ruff check .
-      - run: uv run --no-sync ruff format --check .
-      - run: uv run --no-sync ty check
-      - run: uv run --no-sync python scripts/check_api_reference.py
-
   test:
-    name: Test (Python ${{ matrix.python-version }})
-    needs: changes
-    if: needs.changes.outputs.test == 'true'
+    name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      UV_FROZEN: "1"
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - python-version: "3.12"
-            coverage: true
-          - python-version: "3.13"
-            coverage: false
+        node-version: ["20", "22"]
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a  # v4.2.0
+      - uses: actions/setup-node@49933ea5288caea186d268a547c8079a5df63d84 # v4.4.0
         with:
-          python-version: ${{ matrix.python-version }}
-          enable-cache: true
-      - run: uv sync --dev
-      - name: Run tests with coverage
-        if: matrix.coverage
-        run: uv run --no-sync pytest -v --cov=openextract --cov-report=term-missing --cov-fail-under=0
-      - name: Check coverage threshold
-        if: matrix.coverage
-        run: uv run --no-sync coverage report --fail-under=100
-      - name: Run tests
-        if: ${{ !matrix.coverage }}
-        run: uv run --no-sync pytest -v
-
-  package:
-    name: Build and install distributions
-    needs: changes
-    if: needs.changes.outputs.package == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
-        with:
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a  # v4.2.0
-        with:
-          python-version: "3.12"
-          enable-cache: true
-      - run: uv build
-      - name: Smoke-test wheel
-        run: |
-          uv venv .venv-wheel
-          uv pip install --python .venv-wheel/bin/python dist/*.whl
-          .venv-wheel/bin/python -c "import openextract; assert callable(openextract.extract)"
-          .venv-wheel/bin/openextract --help
-      - name: Smoke-test source distribution
-        run: |
-          uv venv .venv-sdist
-          uv pip install --python .venv-sdist/bin/python dist/*.tar.gz
-          .venv-sdist/bin/python -c "import openextract; assert callable(openextract.extract)"
-          .venv-sdist/bin/openextract --help
-
-  ci:
-    name: CI
-    needs: [changes, lint, test, package]
-    if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - name: Check required jobs
-        env:
-          CHANGES: ${{ needs.changes.result }}
-          LINT: ${{ needs.lint.result }}
-          TEST: ${{ needs.test.result }}
-          PACKAGE: ${{ needs.package.result }}
-        run: |
-          python3 - <<'PY'
-          import os
-          import sys
-
-          results = {
-              "changes": os.environ["CHANGES"],
-              "lint": os.environ["LINT"],
-              "test": os.environ["TEST"],
-              "package": os.environ["PACKAGE"],
-          }
-          allowed = {"success", "skipped"}
-          failed = [name for name, result in results.items() if result not in allowed]
-          print("job results:", results)
-          if results["changes"] != "success":
-              print("Change detection must succeed")
-              sys.exit(1)
-          if failed:
-              print("Failed jobs:", ", ".join(failed))
-              sys.exit(1)
-          PY
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

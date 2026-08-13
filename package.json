@@ -1,0 +1,58 @@
+{
+  "name": "openextract",
+  "version": "0.1.0",
+  "description": "Extract structured data from documents, images, audio, and video using LLMs",
+  "type": "module",
+  "license": "MIT",
+  "author": "Cole McIntosh",
+  "keywords": [
+    "llm",
+    "extraction",
+    "zod",
+    "ai",
+    "document",
+    "structured-data",
+    "vercel-ai-sdk"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mellow-Artificial-Intelligence/openextract.git"
+  },
+  "homepage": "https://github.com/Mellow-Artificial-Intelligence/openextract",
+  "bugs": {
+    "url": "https://github.com/Mellow-Artificial-Intelligence/openextract/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "openextract": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "ai": "^6.0.34",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

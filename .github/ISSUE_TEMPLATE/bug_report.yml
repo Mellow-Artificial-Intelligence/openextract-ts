@@ -22,9 +22,9 @@ body:
       label: Steps to Reproduce
       description: Minimal code example or steps to reproduce the issue
       placeholder: |
-        ```python
-        from openextract import extract
-        # your code here
+        ```ts
+        import { extract } from "openextract";
+        // your code here
         ```
     validations:
       required: true
