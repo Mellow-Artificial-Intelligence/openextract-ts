@@ -1,7 +1,7 @@
 "use client";
 
-import { ExtractOutput } from "@/components/extract-output";
 import { ExtractSettings } from "@/components/extract-settings";
+import { ExtractTable } from "@/components/extract-table";
 import {
   Attachment,
   AttachmentPreview,
@@ -45,18 +45,26 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useChat } from "@ai-sdk/react";
-import type { ChatStatus } from "ai";
-import { DefaultChatTransport } from "ai";
+import { useObject } from "@ai-sdk/react";
+import type { FileUIPart } from "ai";
 import {
   CheckIcon,
   PlusIcon,
   SlidersHorizontalIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { nanoid } from "nanoid";
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { DEFAULT_MODEL, MODELS, type ModelId } from "@/lib/models";
-import { EXAMPLES, PRESETS, presetIdForSpec, type StyleName } from "@/lib/presets";
+import { EXAMPLES, type StyleName } from "@/lib/presets";
+import {
+  extractRowsClientSchema,
+  mergeStreamedRows,
+  normalizeColumns,
+  tableSchemaObject,
+  type TableColumn,
+  type TableRow,
+} from "@/lib/table-schema";
 
 const GITHUB_URL = "https://github.com/Mellow-Artificial-Intelligence/openextract";
 
@@ -75,108 +83,182 @@ function PromptAttachments() {
   );
 }
 
-/** Lives inside PromptInput so it can disable itself when there is nothing to send. */
-function PromptSubmit({
-  text,
-  status,
-  onStop,
-}: {
-  text: string;
-  status: ChatStatus;
-  onStop: () => void;
-}) {
+function SourceFiles({ onFiles }: { onFiles: (files: FileUIPart[]) => void }) {
   const attachments = usePromptInputAttachments();
-  const busy = status === "submitted" || status === "streaming";
-  const empty = !text.trim() && attachments.files.length === 0;
+  const files = attachments.files;
+  const prev = useRef("");
+  useEffect(() => {
+    const key = files.map((file) => file.id).join(",");
+    if (key === prev.current) return;
+    prev.current = key;
+    onFiles(files);
+  }, [files, onFiles]);
+  return null;
+}
 
-  return (
-    <PromptInputSubmit
-      className="px-2.5"
-      disabled={empty && !busy}
-      onStop={onStop}
-      size="sm"
-      status={status}
-    >
-      {busy ? undefined : "Extract"}
-    </PromptInputSubmit>
+async function withDataUrls(files: FileUIPart[]): Promise<FileUIPart[]> {
+  return Promise.all(
+    files.map(async (file) => {
+      if (!file.url.startsWith("blob:")) return file;
+      const response = await fetch(file.url);
+      const blob = await response.blob();
+      const url = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+      return { ...file, url };
+    }),
   );
 }
 
 export function ExtractApp() {
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [modelOpen, setModelOpen] = useState(false);
-  const [schemaSpec, setSchemaSpec] = useState<string>(PRESETS.document.spec);
   const [style, setStyle] = useState<StyleName>("direct");
   const [instructions, setInstructions] = useState("");
-  const [text, setText] = useState("");
+  const [query, setQuery] = useState("");
+  const [source, setSource] = useState("");
+  const [sourceFiles, setSourceFiles] = useState<FileUIPart[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sourceKey, setSourceKey] = useState(0);
+  const [title, setTitle] = useState("Table");
+  const [columns, setColumns] = useState<TableColumn[]>([]);
+  const [rows, setRows] = useState<TableRow[]>([]);
+  const [tableKey, setTableKey] = useState("init");
 
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/extract",
-        prepareSendMessagesRequest: ({ messages, body }) => ({
-          body: {
-            ...body,
-            messages: messages.filter((message) => message.role === "user").slice(-1),
-          },
-        }),
-      }),
-    [],
-  );
+  const {
+    object: schemaObject,
+    submit: submitSchema,
+    isLoading: schemaLoading,
+    stop: stopSchema,
+    error: schemaError,
+    clear: clearSchema,
+  } = useObject({
+    api: "/api/schema",
+    schema: tableSchemaObject,
+    onFinish({ object }) {
+      if (!object?.columns) return;
+      setColumns(normalizeColumns(object.columns));
+      if (object.title?.trim()) setTitle(object.title.trim());
+    },
+  });
 
-  const { messages, sendMessage, setMessages, status, stop, error, regenerate } = useChat({
-    transport,
+  const {
+    object: extractObject,
+    submit: submitExtract,
+    isLoading: extracting,
+    stop: stopExtract,
+    error: extractError,
+    clear: clearExtract,
+  } = useObject({
+    api: "/api/extract",
+    schema: extractRowsClientSchema,
+    onFinish({ object }) {
+      if (!object?.rows) return;
+      setRows((prev) => mergeStreamedRows(prev, object.rows, (index) => prev[index]?.id ?? `stream-${index}`));
+    },
   });
 
   const selected = MODELS.find((item) => item.id === model) ?? MODELS[0]!;
-  const busy = status === "submitted" || status === "streaming";
-  const requestBody = useMemo(
-    () => ({ model, schemaSpec, style, instructions }),
-    [instructions, model, schemaSpec, style],
-  );
-  const last = messages.at(-1);
-  const assistant = last?.role === "assistant" ? last : undefined;
+  const busy = schemaLoading || extracting;
+  const error = schemaError ?? extractError;
+  const hasSource = Boolean(source.trim() || sourceFiles.length);
+  const streamedColumns = normalizeColumns(schemaObject?.columns);
+  const displayColumns = schemaLoading || columns.length === 0 ? streamedColumns : columns;
+  const displayTitle =
+    schemaLoading && schemaObject?.title?.trim() ? schemaObject.title.trim() : title;
+  const displayRows =
+    extracting || rows.length === 0
+      ? mergeStreamedRows(rows, extractObject?.rows, (index) => rows[index]?.id ?? `stream-${index}`)
+      : rows;
 
-  const submit = useCallback(
-    (message: PromptInputMessage) => {
-      const hasText = Boolean(message.text.trim());
-      const hasFiles = Boolean(message.files.length);
-      if (!(hasText || hasFiles) || busy) return;
-      stop();
-      setMessages([]);
-      void sendMessage(
-        {
-          text: hasText ? message.text : "Extract structured data from the attached file.",
-          files: hasFiles ? message.files : undefined,
-        },
-        { body: requestBody },
-      );
+  const setDisplayColumns: Dispatch<SetStateAction<TableColumn[]>> = (update) => {
+    setColumns((prev) => {
+      const base = schemaLoading || prev.length === 0 ? streamedColumns : prev;
+      return typeof update === "function" ? update(base) : update;
+    });
+  };
+
+  const setDisplayRows: Dispatch<SetStateAction<TableRow[]>> = (update) => {
+    setRows((prev) => {
+      const base =
+        extracting || prev.length === 0
+          ? mergeStreamedRows(prev, extractObject?.rows, (index) => prev[index]?.id ?? `stream-${index}`)
+          : prev;
+      return typeof update === "function" ? update(base) : update;
+    });
+  };
+
+  const generate = useCallback(
+    (nextQuery = query, nextSource = source) => {
+      const trimmed = nextQuery.trim();
+      if (!trimmed || busy) return;
+      stopExtract();
+      clearExtract();
+      setColumns([]);
+      setRows([]);
+      setTitle("Table");
+      setTableKey(nanoid());
+      submitSchema({ query: trimmed, source: nextSource, model });
     },
-    [busy, requestBody, sendMessage, setMessages, stop],
+    [busy, clearExtract, model, query, source, stopExtract, submitSchema],
   );
 
-  const loadExample = useCallback((example: (typeof EXAMPLES)[number]) => {
-    if (busy) return;
-    setSchemaSpec(PRESETS[example.presetId].spec);
-    setText(example.text);
-  }, [busy]);
+  const extract = useCallback(async () => {
+    if (displayColumns.length === 0 || busy) return;
+    const files = await withDataUrls(sourceFiles);
+    if (!query.trim() && !source.trim() && files.length === 0) return;
+    stopSchema();
+    submitExtract({
+      query,
+      source,
+      files,
+      columns: displayColumns,
+      model,
+      style,
+      instructions,
+    });
+  }, [busy, displayColumns, instructions, model, query, source, sourceFiles, stopSchema, style, submitExtract]);
+
+  const submitQuery = useCallback(
+    (message: PromptInputMessage) => {
+      generate(message.text, source);
+    },
+    [generate, source],
+  );
+
+  const loadExample = useCallback(
+    (example: (typeof EXAMPLES)[number]) => {
+      if (busy) return;
+      setQuery(example.query);
+      setSource(example.text);
+      generate(example.query, example.text);
+    },
+    [busy, generate],
+  );
 
   const startOver = useCallback(() => {
-    stop();
-    setMessages([]);
-    setText("");
+    stopSchema();
+    stopExtract();
+    clearSchema();
+    clearExtract();
+    setQuery("");
+    setSource("");
+    setSourceFiles([]);
+    setColumns([]);
+    setRows([]);
+    setTitle("Table");
+    setTableKey(nanoid());
     setSourceKey((key) => key + 1);
-  }, [setMessages, stop]);
+  }, [clearExtract, clearSchema, stopExtract, stopSchema]);
 
   const settings = (
     <ExtractSettings
       instructions={instructions}
       onInstructions={setInstructions}
-      onSchemaSpec={setSchemaSpec}
       onStyle={setStyle}
-      schemaSpec={schemaSpec}
       style={style}
     />
   );
@@ -193,10 +275,10 @@ export function ExtractApp() {
           </span>
         </div>
         <span className="hidden min-w-0 truncate font-mono text-muted-foreground text-xs lg:inline">
-          typed output from any media
+          describe a table, then extract into it
         </span>
         <nav className="ml-auto flex shrink-0 items-center gap-3 sm:gap-4">
-          {assistant || text ? (
+          {columns.length > 0 || query || source ? (
             <Button onClick={startOver} size="sm" type="button" variant="outline">
               <PlusIcon />
               New
@@ -211,7 +293,7 @@ export function ExtractApp() {
             variant="outline"
           >
             <SlidersHorizontalIcon />
-            {PRESETS[presetIdForSpec(schemaSpec)].label}
+            {style}
           </Button>
           <a
             className="font-mono text-muted-foreground text-xs transition-colors hover:text-foreground"
@@ -230,9 +312,9 @@ export function ExtractApp() {
             <p className="mb-1 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
               Extraction
             </p>
-            <h2 className="font-medium text-sm">Schema in, typed data out</h2>
+            <h2 className="font-medium text-sm">Describe, edit, extract</h2>
             <p className="mt-1 text-muted-foreground text-xs">
-              Schema, style, and instructions for this run.
+              Generate columns from a query, edit the table, then fill it from a source.
             </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-4">{settings}</div>
@@ -246,7 +328,7 @@ export function ExtractApp() {
             <SheetHeader>
               <SheetTitle>Extraction</SheetTitle>
               <SheetDescription>
-                Schema, style, and instructions for this run.
+                Style and instructions for this run.
               </SheetDescription>
             </SheetHeader>
             <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -258,41 +340,28 @@ export function ExtractApp() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="shrink-0 border-b border-black/5 p-3 sm:p-4">
             <div className="mx-auto grid w-full max-w-3xl gap-3">
-              <PromptInput
-                clearOnSubmit={false}
-                globalDrop
-                key={sourceKey}
-                multiple
-                onSubmit={submit}
-              >
+              <PromptInput clearOnSubmit={false} onSubmit={submitQuery}>
                 <PromptInputHeader className="border-b border-black/5">
                   <div className="flex w-full items-center justify-between gap-2">
                     <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-                      Source
+                      Query
                     </span>
                     <span className="font-mono text-[10px] text-muted-foreground">
-                      ⌘/Ctrl+Enter extracts
+                      ⌘/Ctrl+Enter generates columns
                     </span>
                   </div>
-                  <PromptAttachments />
                 </PromptInputHeader>
                 <PromptInputBody>
                   <PromptInputTextarea
-                    className="min-h-28 max-h-56 font-mono text-sm"
-                    onChange={(event) => setText(event.target.value)}
-                    placeholder="Paste text or attach a file…"
+                    className="min-h-16 max-h-32 text-sm"
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Describe the table you want… e.g. invoice line items with quantity and amount"
                     submitOnEnter={false}
-                    value={text}
+                    value={query}
                   />
                 </PromptInputBody>
                 <PromptInputFooter className="gap-2 border-t border-black/5">
                   <PromptInputTools className="min-w-0 flex-1 overflow-hidden">
-                    <PromptInputActionMenu>
-                      <PromptInputActionMenuTrigger />
-                      <PromptInputActionMenuContent>
-                        <PromptInputActionAddAttachments />
-                      </PromptInputActionMenuContent>
-                    </PromptInputActionMenu>
                     <ModelSelector onOpenChange={setModelOpen} open={modelOpen}>
                       <ModelSelectorTrigger asChild>
                         <PromptInputButton className="max-w-[min(100%,11rem)]">
@@ -326,10 +395,61 @@ export function ExtractApp() {
                       </ModelSelectorContent>
                     </ModelSelector>
                   </PromptInputTools>
-                  <PromptSubmit onStop={stop} status={status} text={text} />
+                  <PromptInputSubmit
+                    className="px-2.5"
+                    disabled={(!query.trim() && !schemaLoading) || extracting}
+                    onStop={stopSchema}
+                    size="sm"
+                    status={schemaLoading ? "streaming" : "ready"}
+                  >
+                    {schemaLoading ? undefined : "Generate"}
+                  </PromptInputSubmit>
                 </PromptInputFooter>
               </PromptInput>
-              {!assistant && !busy ? (
+
+              <PromptInput
+                clearOnSubmit={false}
+                globalDrop
+                key={sourceKey}
+                multiple
+                onSubmit={() => {
+                  void extract();
+                }}
+              >
+                <PromptInputHeader className="border-b border-black/5">
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Source
+                    </span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      used when you extract
+                    </span>
+                  </div>
+                  <PromptAttachments />
+                  <SourceFiles onFiles={setSourceFiles} />
+                </PromptInputHeader>
+                <PromptInputBody>
+                  <PromptInputTextarea
+                    className="min-h-20 max-h-40 font-mono text-sm"
+                    onChange={(event) => setSource(event.target.value)}
+                    placeholder="Paste text or attach a file to extract from…"
+                    submitOnEnter={false}
+                    value={source}
+                  />
+                </PromptInputBody>
+                <PromptInputFooter className="gap-2 border-t border-black/5">
+                  <PromptInputTools>
+                    <PromptInputActionMenu>
+                      <PromptInputActionMenuTrigger />
+                      <PromptInputActionMenuContent>
+                        <PromptInputActionAddAttachments />
+                      </PromptInputActionMenuContent>
+                    </PromptInputActionMenu>
+                  </PromptInputTools>
+                </PromptInputFooter>
+              </PromptInput>
+
+              {columns.length === 0 && !busy ? (
                 <div className="flex flex-wrap gap-2">
                   {EXAMPLES.map((example) => (
                     <Suggestion
@@ -343,16 +463,30 @@ export function ExtractApp() {
               {error ? (
                 <div className="flex items-start gap-2 border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
                   <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-                  <span className="min-w-0 flex-1">Extraction failed. Try again in a moment.</span>
-                  <button className="shrink-0 underline" onClick={() => regenerate()} type="button">
-                    Retry
-                  </button>
+                  <span className="min-w-0 flex-1">That run failed. Try again in a moment.</span>
                 </div>
               ) : null}
             </div>
           </div>
 
-          <ExtractOutput message={assistant} status={status} />
+          <ExtractTable
+            canExtract={displayColumns.length > 0 && hasSource}
+            columns={displayColumns}
+            extracting={extracting}
+            key={tableKey}
+            onColumnsChange={setDisplayColumns}
+            onExtract={() => {
+              void extract();
+            }}
+            onRowsChange={setDisplayRows}
+            onStop={() => {
+              stopSchema();
+              stopExtract();
+            }}
+            rows={displayRows}
+            schemaLoading={schemaLoading}
+            title={displayTitle}
+          />
         </div>
       </div>
     </div>

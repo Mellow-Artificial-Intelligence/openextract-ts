@@ -17,45 +17,11 @@ export const STYLE_DETAILS: Record<StyleName, { label: string; description: stri
   },
 };
 
-export const PRESETS = {
-  document: {
-    label: "Document",
-    spec: "title: string\nsummary: string\nlanguage: string",
-  },
-  invoice: {
-    label: "Invoice",
-    spec: "vendor: string\ntotal: number\nlineItems: [{ description: string, amount: number }]",
-  },
-  contact: {
-    label: "Contact",
-    spec: "name: string\nemail: string\nrole: string\ncompany: string",
-  },
-  facts: {
-    label: "Facts",
-    spec: "facts: [{ name: string, value: string }]",
-  },
-  custom: {
-    label: "Custom",
-    spec: "field: string",
-  },
-} as const;
-
-export type PresetId = keyof typeof PRESETS;
-export const PRESET_IDS = Object.keys(PRESETS) as PresetId[];
-
-export function presetIdForSpec(spec: string): PresetId {
-  const normalized = spec.trim();
-  for (const id of PRESET_IDS) {
-    if (id !== "custom" && PRESETS[id].spec === normalized) return id;
-  }
-  return "custom";
-}
-
-/** Sample sources that fill the form. Clicking one does not run extraction. */
+/** Sample sources that fill the form. Clicking one generates a schema. */
 export const EXAMPLES = [
   {
-    label: "Invoice",
-    presetId: "invoice" as const,
+    label: "Invoice line items",
+    query: "Invoice line items with description, quantity, unit price, and amount",
     text: `INVOICE #1042
 From: Acme Supplies
 Date: 2026-03-12
@@ -65,18 +31,19 @@ Date: 2026-03-12
 Total due             $65.50`,
   },
   {
-    label: "Contact",
-    presetId: "contact" as const,
+    label: "Contacts",
+    query: "People with name, email, role, and company",
     text: `Jordan Lee
 Product Lead, Northwind
 jordan@northwind.dev`,
   },
   {
-    label: "Notes",
-    presetId: "document" as const,
+    label: "Action items",
+    query: "Action items with owner, task, and due date",
     text: `Quarterly Notes
 
 The team shipped the billing API in March. Primary language: English.
-Next step is usage-based invoicing.`,
+Ada owns usage-based invoicing, due 12 April.
+Sam will draft the customer email by Friday.`,
   },
 ] as const;
