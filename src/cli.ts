@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { pathToFileURL } from "node:url";
-import { resolve } from "node:path";
 import { extract, extractWithUsage } from "./extract.js";
 import { extractMany } from "./batch.js";
 import {
@@ -10,6 +9,7 @@ import {
   SchemaValidationError,
   UrlFetchError,
 } from "./exceptions.js";
+import { loadSchema } from "./schema.js";
 import type { ExtractionInputLike } from "./types.js";
 import type { z } from "zod";
 
@@ -123,22 +123,6 @@ function parseArgs(argv: string[]): CliArgs {
   return { ...args, inputFiles } as CliArgs;
 }
 
-async function resolveSchema(schemaPath: string): Promise<z.ZodType<unknown>> {
-  const sep = schemaPath.lastIndexOf(":");
-  if (sep <= 0 || sep === schemaPath.length - 1) {
-    throw new Error(`Invalid schema path '${schemaPath}'. Expected format 'module:exportName'.`);
-  }
-  const modulePath = schemaPath.slice(0, sep);
-  const exportName = schemaPath.slice(sep + 1);
-  const href = pathToFileURL(resolve(modulePath)).href;
-  const mod = (await import(href)) as Record<string, unknown>;
-  const schema = mod[exportName];
-  if (schema == null) {
-    throw new Error(`Export '${exportName}' not found in module '${modulePath}'.`);
-  }
-  return schema as z.ZodType<unknown>;
-}
-
 async function resolveInputs(
   raw: string[],
   mediaType?: string,
@@ -161,7 +145,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const args = parseArgs(argv);
   let schema: z.ZodType<unknown>;
   try {
-    schema = await resolveSchema(args.schema);
+    schema = await loadSchema(args.schema);
   } catch (error) {
     console.error(`error: ${error instanceof Error ? error.message : error}`);
     return 1;

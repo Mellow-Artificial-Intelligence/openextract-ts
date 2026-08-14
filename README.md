@@ -116,6 +116,35 @@ npx openextract ./reports/q4.pdf \
 
 `--schema` is a `module:exportName` path to a Zod schema. Exit codes: `0` success, `2` URL fetch, `3` schema validation, `4` model, `5` other extraction, `6` missing credentials, `7` partial batch (`--continue-on-error`).
 
+## MCP
+
+```bash
+npx openextract-mcp
+```
+
+stdio by default (Cursor, Claude Desktop). `--http --port 3000` serves Streamable HTTP on `127.0.0.1`.
+
+```json
+{
+  "mcpServers": {
+    "openextract": {
+      "command": "npx",
+      "args": ["openextract-mcp"],
+      "env": {
+        "AI_GATEWAY_API_KEY": "…",
+        "OPENEXTRACT_MODEL": "openai/gpt-5.5"
+      }
+    }
+  }
+}
+```
+
+Tools cover the full API: `extract`, `extract_many`, and reusable `create_extractor` / `extractor_extract` / `close_extractor` sessions. Pass a JSON Schema (or `module:exportName`) plus a path, URL, or base64 bytes. Styles (`direct`, `search`, `code`), retries, usage, and batch options are all available.
+
+```ts
+import { createOpenExtractMcpServer } from "openextract/mcp";
+```
+
 ## Error handling
 
 ```ts
