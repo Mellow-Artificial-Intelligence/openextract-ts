@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "openextract",
-  description: "Extract structured data from documents with a streaming local UI.",
+  description: "Extract structured data from documents in a single turn.",
 };
 
 export const viewport: Viewport = {

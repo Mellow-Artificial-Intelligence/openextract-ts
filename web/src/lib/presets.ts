@@ -51,8 +51,32 @@ export function presetIdForSpec(spec: string): PresetId {
   return "custom";
 }
 
-export const SUGGESTIONS = [
-  "Extract structured fields from this text.",
-  "Summarize the document and list key facts.",
-  "Pull vendor, totals, and line items.",
-];
+/** Sample sources that fill the form. Clicking one does not run extraction. */
+export const EXAMPLES = [
+  {
+    label: "Invoice",
+    presetId: "invoice" as const,
+    text: `INVOICE #1042
+From: Acme Supplies
+Date: 2026-03-12
+
+2 × Widget A          $40.00
+1 × Widget B          $25.50
+Total due             $65.50`,
+  },
+  {
+    label: "Contact",
+    presetId: "contact" as const,
+    text: `Jordan Lee
+Product Lead, Northwind
+jordan@northwind.dev`,
+  },
+  {
+    label: "Notes",
+    presetId: "document" as const,
+    text: `Quarterly Notes
+
+The team shipped the billing API in March. Primary language: English.
+Next step is usage-based invoicing.`,
+  },
+] as const;

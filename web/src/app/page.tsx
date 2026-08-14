@@ -1,5 +1,5 @@
-import { ExtractChat } from "@/components/extract-chat";
+import { ExtractApp } from "@/components/extract-app";
 
 export default function Home() {
-  return <ExtractChat />;
+  return <ExtractApp />;
 }

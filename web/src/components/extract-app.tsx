@@ -1,6 +1,6 @@
 "use client";
 
-import { ChatMessages } from "@/components/chat-messages";
+import { ExtractOutput } from "@/components/extract-output";
 import { ExtractSettings } from "@/components/extract-settings";
 import {
   Attachment,
@@ -36,6 +36,7 @@ import {
   usePromptInputAttachments,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
+import { Suggestion } from "@/components/ai-elements/suggestion";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -56,7 +57,7 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { DEFAULT_MODEL, MODELS, type ModelId } from "@/lib/models";
-import { PRESETS, SUGGESTIONS, presetIdForSpec, type StyleName } from "@/lib/presets";
+import { EXAMPLES, PRESETS, presetIdForSpec, type StyleName } from "@/lib/presets";
 
 function PromptAttachments() {
   const attachments = usePromptInputAttachments();
@@ -87,10 +88,20 @@ function PromptSubmit({
   const busy = status === "submitted" || status === "streaming";
   const empty = !text.trim() && attachments.files.length === 0;
 
-  return <PromptInputSubmit disabled={empty && !busy} onStop={onStop} status={status} />;
+  return (
+    <PromptInputSubmit
+      className="px-2.5"
+      disabled={empty && !busy}
+      onStop={onStop}
+      size="sm"
+      status={status}
+    >
+      {busy ? undefined : "Extract"}
+    </PromptInputSubmit>
+  );
 }
 
-export function ExtractChat() {
+export function ExtractApp() {
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [modelOpen, setModelOpen] = useState(false);
   const [schemaSpec, setSchemaSpec] = useState<string>(PRESETS.document.spec);
@@ -98,9 +109,19 @@ export function ExtractChat() {
   const [instructions, setInstructions] = useState("");
   const [text, setText] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sourceKey, setSourceKey] = useState(0);
 
   const transport = useMemo(
-    () => new DefaultChatTransport({ api: "/api/chat" }),
+    () =>
+      new DefaultChatTransport({
+        api: "/api/extract",
+        prepareSendMessagesRequest: ({ messages, body }) => ({
+          body: {
+            ...body,
+            messages: messages.filter((message) => message.role === "user").slice(-1),
+          },
+        }),
+      }),
     [],
   );
 
@@ -114,12 +135,16 @@ export function ExtractChat() {
     () => ({ model, schemaSpec, style, instructions }),
     [instructions, model, schemaSpec, style],
   );
+  const last = messages.at(-1);
+  const assistant = last?.role === "assistant" ? last : undefined;
 
   const submit = useCallback(
     (message: PromptInputMessage) => {
       const hasText = Boolean(message.text.trim());
       const hasFiles = Boolean(message.files.length);
       if (!(hasText || hasFiles) || busy) return;
+      stop();
+      setMessages([]);
       void sendMessage(
         {
           text: hasText ? message.text : "Extract structured data from the attached file.",
@@ -127,23 +152,21 @@ export function ExtractChat() {
         },
         { body: requestBody },
       );
-      setText("");
     },
-    [busy, requestBody, sendMessage],
+    [busy, requestBody, sendMessage, setMessages, stop],
   );
 
-  const runSuggestion = useCallback(
-    (suggestion: string) => {
-      if (busy) return;
-      void sendMessage({ text: suggestion }, { body: requestBody });
-    },
-    [busy, requestBody, sendMessage],
-  );
+  const loadExample = useCallback((example: (typeof EXAMPLES)[number]) => {
+    if (busy) return;
+    setSchemaSpec(PRESETS[example.presetId].spec);
+    setText(example.text);
+  }, [busy]);
 
   const startOver = useCallback(() => {
     stop();
     setMessages([]);
     setText("");
+    setSourceKey((key) => key + 1);
   }, [setMessages, stop]);
 
   const settings = (
@@ -170,7 +193,7 @@ export function ExtractChat() {
           structured data from any file, URL, or pasted text
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-1">
-          {messages.length > 0 ? (
+          {assistant || text ? (
             <Button onClick={startOver} size="sm" type="button" variant="ghost">
               <PlusIcon />
               New
@@ -195,7 +218,7 @@ export function ExtractChat() {
           <div className="shrink-0 border-b px-4 py-3">
             <h2 className="font-medium text-sm">Extraction</h2>
             <p className="text-muted-foreground text-xs">
-              Schema, style, and instructions for this chat.
+              Schema, style, and instructions for this run.
             </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-4">{settings}</div>
@@ -208,7 +231,9 @@ export function ExtractChat() {
           >
             <SheetHeader>
               <SheetTitle>Extraction</SheetTitle>
-              <SheetDescription>Schema, style, and instructions for this chat.</SheetDescription>
+              <SheetDescription>
+                Schema, style, and instructions for this run.
+              </SheetDescription>
             </SheetHeader>
             <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               {settings}
@@ -217,33 +242,28 @@ export function ExtractChat() {
         </Sheet>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <ChatMessages
-            messages={messages}
-            onSuggestion={runSuggestion}
-            status={status}
-            suggestions={SUGGESTIONS}
-          />
-
-          <div className="shrink-0 border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
+          <div className="shrink-0 border-b p-3 sm:p-4">
             <div className="mx-auto grid w-full max-w-3xl gap-2">
-              {error ? (
-                <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
-                  <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-                  <span className="min-w-0 flex-1">Extraction failed. Try again in a moment.</span>
-                  <button className="shrink-0 underline" onClick={() => regenerate()} type="button">
-                    Retry
-                  </button>
-                </div>
-              ) : null}
-
-              <PromptInput globalDrop multiple onSubmit={submit}>
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 className="font-medium text-sm">Source</h2>
+                <p className="text-muted-foreground text-xs">⌘/Ctrl+Enter extracts</p>
+              </div>
+              <PromptInput
+                clearOnSubmit={false}
+                globalDrop
+                key={sourceKey}
+                multiple
+                onSubmit={submit}
+              >
                 <PromptInputHeader>
                   <PromptAttachments />
                 </PromptInputHeader>
                 <PromptInputBody>
                   <PromptInputTextarea
+                    className="min-h-28 max-h-56"
                     onChange={(event) => setText(event.target.value)}
                     placeholder="Paste text or attach a file…"
+                    submitOnEnter={false}
                     value={text}
                   />
                 </PromptInputBody>
@@ -291,8 +311,30 @@ export function ExtractChat() {
                   <PromptSubmit onStop={stop} status={status} text={text} />
                 </PromptInputFooter>
               </PromptInput>
+              {!assistant && !busy ? (
+                <div className="flex flex-wrap gap-2">
+                  {EXAMPLES.map((example) => (
+                    <Suggestion
+                      key={example.label}
+                      onClick={() => loadExample(example)}
+                      suggestion={example.label}
+                    />
+                  ))}
+                </div>
+              ) : null}
+              {error ? (
+                <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
+                  <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+                  <span className="min-w-0 flex-1">Extraction failed. Try again in a moment.</span>
+                  <button className="shrink-0 underline" onClick={() => regenerate()} type="button">
+                    Retry
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
+
+          <ExtractOutput message={assistant} status={status} />
         </div>
       </div>
     </div>

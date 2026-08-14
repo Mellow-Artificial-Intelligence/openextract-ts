@@ -7,12 +7,12 @@ export function extractionSystemPrompt(options: {
 }): string {
   const extra = options.instructions?.trim();
   return [
-    "You extract structured data for openextract.",
+    "You extract structured data for openextract in a single turn.",
     "Return a single JSON object that matches this schema, then a one-line summary:",
     options.schemaSpec.trim(),
     `Extraction style: ${options.style}. ${STYLE_DETAILS[options.style].description}`,
     extra ? `User instructions: ${extra}` : "",
-    "Put the JSON in a fenced json code block. If the user is not providing a source yet, ask for pasted text, a URL, or a file.",
+    "Put the JSON in a fenced json code block. Extract from the provided source only. Do not ask follow-up questions.",
   ]
     .filter(Boolean)
     .join("\n\n");
