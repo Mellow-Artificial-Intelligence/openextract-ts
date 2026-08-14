@@ -68,9 +68,7 @@ export function ExtractTable({
   onRowsChange,
   schemaLoading,
   extracting,
-  canExtract,
-  onExtract,
-  onStop,
+  emptyHint,
 }: {
   title: string;
   columns: TableColumn[];
@@ -79,9 +77,7 @@ export function ExtractTable({
   onRowsChange: Dispatch<SetStateAction<TableRow[]>>;
   schemaLoading: boolean;
   extracting: boolean;
-  canExtract: boolean;
-  onExtract: () => void;
-  onStop: () => void;
+  emptyHint: string;
 }) {
   const [copied, setCopied] = useState(false);
   const busy = schemaLoading || extracting;
@@ -129,14 +125,15 @@ export function ExtractTable({
           columnHelper.accessor((row) => row.values[column.key], {
             id: column.key,
             header: () => (
-              <div className="flex min-w-48 items-center gap-1">
+              <div className="flex min-w-36 flex-col gap-1 sm:min-w-48 sm:flex-row sm:items-center">
                 <Input
                   aria-label={`${column.label} column name`}
-                  className="h-7 min-w-0 flex-1 border-transparent bg-transparent px-1.5 font-medium shadow-none focus-visible:border-ring"
+                  className="h-8 min-w-0 flex-1 border-transparent bg-transparent px-1.5 font-medium shadow-none focus-visible:border-ring sm:h-7"
                   disabled={busy}
                   onChange={(event) => updateColumn(column.key, { label: event.target.value })}
                   value={column.label}
                 />
+                <div className="flex items-center gap-1">
                 <Select
                   disabled={busy}
                   onValueChange={(value) => updateColumn(column.key, { type: value as ColumnType })}
@@ -144,7 +141,7 @@ export function ExtractTable({
                 >
                   <SelectTrigger
                     aria-label={`${column.label} type`}
-                    className="h-7 min-w-[5.5rem] px-1.5 text-[11px]"
+                    className="h-8 min-w-[5.5rem] px-1.5 text-[11px] sm:h-7"
                     size="sm"
                   >
                     <SelectValue />
@@ -159,6 +156,7 @@ export function ExtractTable({
                 </Select>
                 <Button
                   aria-label={`Remove ${column.label}`}
+                  className="size-8 sm:size-6"
                   disabled={busy || columns.length <= 1}
                   onClick={() => removeColumn(column.key)}
                   size="icon-xs"
@@ -167,12 +165,13 @@ export function ExtractTable({
                 >
                   <Trash2Icon />
                 </Button>
+                </div>
               </div>
             ),
             cell: ({ row }) => (
               <Input
                 aria-label={`${column.label} for row`}
-                className="h-7 min-w-32 border-transparent bg-transparent px-1.5 shadow-none focus-visible:border-ring"
+                className="h-8 min-w-28 border-transparent bg-transparent px-1.5 shadow-none focus-visible:border-ring sm:h-7 sm:min-w-32"
                 disabled={busy}
                 onChange={(event) => updateCell(row.original.id, column.key, event.target.value)}
                 value={cellText(row.original.values[column.key])}
@@ -189,6 +188,7 @@ export function ExtractTable({
           cell: ({ row }) => (
             <Button
               aria-label="Remove row"
+              className="size-8 sm:size-6"
               disabled={busy}
               onClick={() => onRowsChange((prev) => prev.filter((item) => item.id !== row.original.id))}
               size="icon-xs"
@@ -223,7 +223,7 @@ export function ExtractTable({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-black/5 px-3 py-2 sm:px-4">
+      <div className="flex shrink-0 flex-col gap-2 border-b border-black/5 px-3 py-2 sm:flex-row sm:items-center sm:px-4">
         <div className="min-w-0 flex-1">
           {schemaLoading ? (
             <Shimmer as="span" className="text-sm">
@@ -241,48 +241,39 @@ export function ExtractTable({
             {rows.length === 1 ? "row" : "rows"}
           </p>
         </div>
-        <Button
-          disabled={busy}
-          onClick={() => onColumnsChange((prev) => [...prev, nextColumn(prev)])}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <PlusIcon />
-          Column
-        </Button>
-        <Button
-          disabled={busy || columns.length === 0}
-          onClick={() => onRowsChange((prev) => [...prev, { id: nanoid(), values: {} }])}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <PlusIcon />
-          Row
-        </Button>
-        <Button disabled={rows.length === 0} onClick={() => void copyJson()} size="sm" type="button" variant="outline">
-          {copied ? <CheckIcon /> : <CopyIcon />}
-          JSON
-        </Button>
-        {busy ? (
-          <Button onClick={onStop} size="sm" type="button" variant="outline">
-            Stop
+        <div className="flex flex-wrap gap-1.5">
+          <Button
+            disabled={busy}
+            onClick={() => onColumnsChange((prev) => [...prev, nextColumn(prev)])}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <PlusIcon />
+            <span className="hidden sm:inline">Column</span>
           </Button>
-        ) : (
-          <Button disabled={!canExtract} onClick={onExtract} size="sm" type="button">
-            Extract
+          <Button
+            disabled={busy || columns.length === 0}
+            onClick={() => onRowsChange((prev) => [...prev, { id: nanoid(), values: {} }])}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <PlusIcon />
+            <span className="hidden sm:inline">Row</span>
           </Button>
-        )}
+          <Button disabled={rows.length === 0} onClick={() => void copyJson()} size="sm" type="button" variant="outline">
+            {copied ? <CheckIcon /> : <CopyIcon />}
+            <span className="hidden sm:inline">JSON</span>
+          </Button>
+        </div>
       </div>
 
       {columns.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center sm:p-8">
           <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Table</p>
-          <h3 className="font-medium text-sm">Describe what you want</h3>
-          <p className="max-w-sm text-muted-foreground text-sm">
-            Generate a schema from your query. Columns stream in here — edit them, then extract to fill the rows.
-          </p>
+          <h3 className="font-medium text-sm">{title || "Table"}</h3>
+          <p className="max-w-sm text-muted-foreground text-sm">{emptyHint}</p>
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-auto">
@@ -329,7 +320,7 @@ export function ExtractTable({
               {table.getRowModel().rows.length === 0 ? (
                 <DataRow>
                   <TableCell className="h-24 text-center text-muted-foreground" colSpan={defs.length}>
-                    Edit the columns, then extract to fill this table.
+                    {emptyHint}
                   </TableCell>
                 </DataRow>
               ) : (

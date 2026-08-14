@@ -1,6 +1,7 @@
 "use client";
 
 import { ExtractSettings } from "@/components/extract-settings";
+import { ExtractSteps, type FlowStep } from "@/components/extract-steps";
 import { ExtractTable } from "@/components/extract-table";
 import {
   Attachment,
@@ -36,7 +37,7 @@ import {
   usePromptInputAttachments,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
-import { Suggestion } from "@/components/ai-elements/suggestion";
+import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -49,6 +50,7 @@ import { useObject } from "@ai-sdk/react";
 import type { FileUIPart } from "ai";
 import {
   CheckIcon,
+  ChevronLeftIcon,
   PlusIcon,
   SlidersHorizontalIcon,
   TriangleAlertIcon,
@@ -113,7 +115,16 @@ async function withDataUrls(files: FileUIPart[]): Promise<FileUIPart[]> {
   );
 }
 
+function StepFooter({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="shrink-0 border-t border-black/5 bg-background px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
+      <div className="mx-auto flex w-full max-w-3xl items-center gap-2">{children}</div>
+    </div>
+  );
+}
+
 export function ExtractApp() {
+  const [step, setStep] = useState<FlowStep>("describe");
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [modelOpen, setModelOpen] = useState(false);
   const [style, setStyle] = useState<StyleName>("direct");
@@ -173,6 +184,8 @@ export function ExtractApp() {
     extracting || rows.length === 0
       ? mergeStreamedRows(rows, extractObject?.rows, (index) => rows[index]?.id ?? `stream-${index}`)
       : rows;
+  const schemaReady = schemaLoading || displayColumns.length > 0;
+  const extractReady = displayColumns.length > 0;
 
   const setDisplayColumns: Dispatch<SetStateAction<TableColumn[]>> = (update) => {
     setColumns((prev) => {
@@ -201,6 +214,7 @@ export function ExtractApp() {
       setRows([]);
       setTitle("Table");
       setTableKey(nanoid());
+      setStep("schema");
       submitSchema({ query: trimmed, source: nextSource, model });
     },
     [busy, clearExtract, model, query, source, stopExtract, submitSchema],
@@ -244,6 +258,7 @@ export function ExtractApp() {
     stopExtract();
     clearSchema();
     clearExtract();
+    setStep("describe");
     setQuery("");
     setSource("");
     setSourceFiles([]);
@@ -254,46 +269,84 @@ export function ExtractApp() {
     setSourceKey((key) => key + 1);
   }, [clearExtract, clearSchema, stopExtract, stopSchema]);
 
-  const settings = (
-    <ExtractSettings
-      instructions={instructions}
-      onInstructions={setInstructions}
-      onStyle={setStyle}
-      style={style}
+  const table = (
+    <ExtractTable
+      columns={displayColumns}
+      emptyHint={
+        step === "extract"
+          ? "Paste a source or attach a file, then extract to fill the rows."
+          : "Columns stream in here. Edit them, then continue to add a source."
+      }
+      extracting={extracting}
+      key={tableKey}
+      onColumnsChange={setDisplayColumns}
+      onRowsChange={setDisplayRows}
+      rows={displayRows}
+      schemaLoading={schemaLoading}
+      title={displayTitle}
     />
+  );
+
+  const modelPicker = (
+    <ModelSelector onOpenChange={setModelOpen} open={modelOpen}>
+      <ModelSelectorTrigger asChild>
+        <PromptInputButton className="max-w-[min(100%,11rem)]">
+          <ModelSelectorLogo provider={selected.provider} />
+          <ModelSelectorName>{selected.name}</ModelSelectorName>
+        </PromptInputButton>
+      </ModelSelectorTrigger>
+      <ModelSelectorContent className="w-[calc(100vw-2rem)] max-w-md">
+        <ModelSelectorInput placeholder="Search models…" />
+        <ModelSelectorList>
+          <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+          <ModelSelectorGroup heading="AI Gateway">
+            {MODELS.map((item) => (
+              <ModelSelectorItem
+                key={item.id}
+                onSelect={() => {
+                  setModel(item.id);
+                  setModelOpen(false);
+                }}
+                value={item.id}
+              >
+                <ModelSelectorLogo provider={item.provider} />
+                <ModelSelectorName>{item.name}</ModelSelectorName>
+                {model === item.id ? <CheckIcon className="ml-auto size-4" /> : null}
+              </ModelSelectorItem>
+            ))}
+          </ModelSelectorGroup>
+        </ModelSelectorList>
+      </ModelSelectorContent>
+    </ModelSelector>
   );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-black/5 bg-background/80 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-lg sm:px-6">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-black/5 bg-background/80 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-lg sm:h-14 sm:gap-3 sm:px-6">
         <div className="flex shrink-0 items-center gap-2">
-          <span className="flex size-8 items-center justify-center bg-foreground">
-            <span className="font-bold font-mono text-background text-xs">OE</span>
+          <span className="flex size-7 items-center justify-center bg-foreground sm:size-8">
+            <span className="font-bold font-mono text-background text-[10px] sm:text-xs">OE</span>
           </span>
           <span className="hidden font-mono text-muted-foreground text-sm sm:inline">
             openextract
           </span>
         </div>
-        <span className="hidden min-w-0 truncate font-mono text-muted-foreground text-xs lg:inline">
-          describe a table, then extract into it
-        </span>
-        <nav className="ml-auto flex shrink-0 items-center gap-3 sm:gap-4">
-          {columns.length > 0 || query || source ? (
+        <nav className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+          {step !== "describe" || query || source ? (
             <Button onClick={startOver} size="sm" type="button" variant="outline">
               <PlusIcon />
-              New
+              <span className="hidden sm:inline">New</span>
             </Button>
           ) : null}
           <Button
             aria-label="Extraction settings"
-            className="md:hidden"
             onClick={() => setSettingsOpen(true)}
             size="sm"
             type="button"
             variant="outline"
           >
             <SlidersHorizontalIcon />
-            {style}
+            <span className="hidden capitalize sm:inline">{style}</span>
           </Button>
           <a
             className="font-mono text-muted-foreground text-xs transition-colors hover:text-foreground"
@@ -306,189 +359,208 @@ export function ExtractApp() {
         </nav>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-80 shrink-0 flex-col border-r border-black/5 md:flex">
-          <div className="shrink-0 border-b border-black/5 px-4 py-3">
-            <p className="mb-1 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-              Extraction
-            </p>
-            <h2 className="font-medium text-sm">Describe, edit, extract</h2>
-            <p className="mt-1 text-muted-foreground text-xs">
-              Generate columns from a query, edit the table, then fill it from a source.
-            </p>
+      <ExtractSteps
+        extractReady={extractReady}
+        onStep={setStep}
+        schemaReady={schemaReady}
+        step={step}
+      />
+
+      <Sheet onOpenChange={setSettingsOpen} open={settingsOpen}>
+        <SheetContent className="w-full gap-0 data-[side=right]:w-full sm:max-w-sm" side="right">
+          <SheetHeader>
+            <SheetTitle>Extraction</SheetTitle>
+            <SheetDescription>Style and instructions for this run.</SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <ExtractSettings
+              instructions={instructions}
+              onInstructions={setInstructions}
+              onStyle={setStyle}
+              style={style}
+            />
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-4">{settings}</div>
-        </aside>
+        </SheetContent>
+      </Sheet>
 
-        <Sheet onOpenChange={setSettingsOpen} open={settingsOpen}>
-          <SheetContent
-            className="w-full gap-0 data-[side=right]:w-full sm:max-w-sm"
-            side="right"
-          >
-            <SheetHeader>
-              <SheetTitle>Extraction</SheetTitle>
-              <SheetDescription>
-                Style and instructions for this run.
-              </SheetDescription>
-            </SheetHeader>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              {settings}
+      {step === "describe" ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex min-h-full w-full max-w-lg flex-col gap-4 p-4 sm:justify-center sm:p-6">
+            <div className="space-y-1">
+              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                Step 1
+              </p>
+              <h1 className="font-medium text-lg sm:text-xl">What should the table contain?</h1>
+              <p className="text-muted-foreground text-sm">
+                Describe the columns you want. We&apos;ll generate a schema you can edit before extracting.
+              </p>
             </div>
-          </SheetContent>
-        </Sheet>
-
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="shrink-0 border-b border-black/5 p-3 sm:p-4">
-            <div className="mx-auto grid w-full max-w-3xl gap-3">
-              <PromptInput clearOnSubmit={false} onSubmit={submitQuery}>
-                <PromptInputHeader className="border-b border-black/5">
-                  <div className="flex w-full items-center justify-between gap-2">
-                    <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-                      Query
-                    </span>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      ⌘/Ctrl+Enter generates columns
-                    </span>
-                  </div>
-                </PromptInputHeader>
-                <PromptInputBody>
-                  <PromptInputTextarea
-                    className="min-h-16 max-h-32 text-sm"
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Describe the table you want… e.g. invoice line items with quantity and amount"
-                    submitOnEnter={false}
-                    value={query}
+            <PromptInput clearOnSubmit={false} onSubmit={submitQuery}>
+              <PromptInputBody>
+                <PromptInputTextarea
+                  className="min-h-24 max-h-40 text-sm sm:min-h-28"
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="e.g. invoice line items with quantity, unit price, and amount"
+                  submitOnEnter={false}
+                  value={query}
+                />
+              </PromptInputBody>
+              <PromptInputFooter className="gap-2 border-t border-black/5">
+                <PromptInputTools className="min-w-0 flex-1 overflow-hidden">
+                  {modelPicker}
+                </PromptInputTools>
+                <PromptInputSubmit
+                  className="h-9 px-3"
+                  disabled={(!query.trim() && !schemaLoading) || extracting}
+                  onStop={stopSchema}
+                  size="sm"
+                  status={schemaLoading ? "streaming" : "ready"}
+                >
+                  {schemaLoading ? undefined : "Generate"}
+                </PromptInputSubmit>
+              </PromptInputFooter>
+            </PromptInput>
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                Try an example
+              </p>
+              <Suggestions>
+                {EXAMPLES.map((example) => (
+                  <Suggestion
+                    key={example.label}
+                    onClick={() => loadExample(example)}
+                    suggestion={example.label}
                   />
-                </PromptInputBody>
-                <PromptInputFooter className="gap-2 border-t border-black/5">
-                  <PromptInputTools className="min-w-0 flex-1 overflow-hidden">
-                    <ModelSelector onOpenChange={setModelOpen} open={modelOpen}>
-                      <ModelSelectorTrigger asChild>
-                        <PromptInputButton className="max-w-[min(100%,11rem)]">
-                          <ModelSelectorLogo provider={selected.provider} />
-                          <ModelSelectorName>{selected.name}</ModelSelectorName>
-                        </PromptInputButton>
-                      </ModelSelectorTrigger>
-                      <ModelSelectorContent className="w-[calc(100vw-2rem)] max-w-md">
-                        <ModelSelectorInput placeholder="Search models…" />
-                        <ModelSelectorList>
-                          <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-                          <ModelSelectorGroup heading="AI Gateway">
-                            {MODELS.map((item) => (
-                              <ModelSelectorItem
-                                key={item.id}
-                                onSelect={() => {
-                                  setModel(item.id);
-                                  setModelOpen(false);
-                                }}
-                                value={item.id}
-                              >
-                                <ModelSelectorLogo provider={item.provider} />
-                                <ModelSelectorName>{item.name}</ModelSelectorName>
-                                {model === item.id ? (
-                                  <CheckIcon className="ml-auto size-4" />
-                                ) : null}
-                              </ModelSelectorItem>
-                            ))}
-                          </ModelSelectorGroup>
-                        </ModelSelectorList>
-                      </ModelSelectorContent>
-                    </ModelSelector>
-                  </PromptInputTools>
-                  <PromptInputSubmit
-                    className="px-2.5"
-                    disabled={(!query.trim() && !schemaLoading) || extracting}
-                    onStop={stopSchema}
-                    size="sm"
-                    status={schemaLoading ? "streaming" : "ready"}
-                  >
-                    {schemaLoading ? undefined : "Generate"}
-                  </PromptInputSubmit>
-                </PromptInputFooter>
-              </PromptInput>
+                ))}
+              </Suggestions>
+            </div>
+            {error ? (
+              <div className="flex items-start gap-2 border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
+                <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+                <span className="min-w-0 flex-1">That run failed. Try again in a moment.</span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
-              <PromptInput
-                clearOnSubmit={false}
-                globalDrop
-                key={sourceKey}
-                multiple
-                onSubmit={() => {
+      {step === "schema" ? (
+        <>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">{table}</div>
+          <StepFooter>
+            <Button
+              className="h-11 sm:h-9"
+              onClick={() => setStep("describe")}
+              type="button"
+              variant="outline"
+            >
+              <ChevronLeftIcon />
+              Back
+            </Button>
+            {schemaLoading ? (
+              <Button className="h-11 flex-1 sm:h-9 sm:flex-none" onClick={stopSchema} type="button" variant="outline">
+                Stop
+              </Button>
+            ) : (
+              <Button
+                className="h-11 flex-1 sm:h-9 sm:flex-none sm:px-5"
+                disabled={!extractReady}
+                onClick={() => setStep("extract")}
+                type="button"
+              >
+                Continue
+              </Button>
+            )}
+          </StepFooter>
+        </>
+      ) : null}
+
+      {step === "extract" ? (
+        <>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="shrink-0 border-b border-black/5 p-3 sm:p-4">
+              <div className="mx-auto w-full max-w-3xl">
+                <PromptInput
+                  clearOnSubmit={false}
+                  globalDrop
+                  key={sourceKey}
+                  multiple
+                  onSubmit={() => {
+                    void extract();
+                  }}
+                >
+                  <PromptInputHeader className="border-b border-black/5">
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                        Source
+                      </span>
+                      <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">
+                        paste or attach
+                      </span>
+                    </div>
+                    <PromptAttachments />
+                    <SourceFiles onFiles={setSourceFiles} />
+                  </PromptInputHeader>
+                  <PromptInputBody>
+                    <PromptInputTextarea
+                      className="min-h-16 max-h-32 font-mono text-sm sm:min-h-20 sm:max-h-40"
+                      onChange={(event) => setSource(event.target.value)}
+                      placeholder="Paste text or attach a file to extract from…"
+                      submitOnEnter={false}
+                      value={source}
+                    />
+                  </PromptInputBody>
+                  <PromptInputFooter className="gap-2 border-t border-black/5">
+                    <PromptInputTools>
+                      <PromptInputActionMenu>
+                        <PromptInputActionMenuTrigger />
+                        <PromptInputActionMenuContent>
+                          <PromptInputActionAddAttachments />
+                        </PromptInputActionMenuContent>
+                      </PromptInputActionMenu>
+                    </PromptInputTools>
+                  </PromptInputFooter>
+                </PromptInput>
+                {error ? (
+                  <div className="mt-3 flex items-start gap-2 border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
+                    <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+                    <span className="min-w-0 flex-1">That run failed. Try again in a moment.</span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            {table}
+          </div>
+          <StepFooter>
+            <Button
+              className="h-11 sm:h-9"
+              disabled={busy}
+              onClick={() => setStep("schema")}
+              type="button"
+              variant="outline"
+            >
+              <ChevronLeftIcon />
+              Back
+            </Button>
+            {extracting ? (
+              <Button className="h-11 flex-1 sm:h-9 sm:flex-none" onClick={stopExtract} type="button" variant="outline">
+                Stop
+              </Button>
+            ) : (
+              <Button
+                className="h-11 flex-1 sm:h-9 sm:flex-none sm:px-5"
+                disabled={!hasSource || displayColumns.length === 0}
+                onClick={() => {
                   void extract();
                 }}
+                type="button"
               >
-                <PromptInputHeader className="border-b border-black/5">
-                  <div className="flex w-full items-center justify-between gap-2">
-                    <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-                      Source
-                    </span>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      used when you extract
-                    </span>
-                  </div>
-                  <PromptAttachments />
-                  <SourceFiles onFiles={setSourceFiles} />
-                </PromptInputHeader>
-                <PromptInputBody>
-                  <PromptInputTextarea
-                    className="min-h-20 max-h-40 font-mono text-sm"
-                    onChange={(event) => setSource(event.target.value)}
-                    placeholder="Paste text or attach a file to extract from…"
-                    submitOnEnter={false}
-                    value={source}
-                  />
-                </PromptInputBody>
-                <PromptInputFooter className="gap-2 border-t border-black/5">
-                  <PromptInputTools>
-                    <PromptInputActionMenu>
-                      <PromptInputActionMenuTrigger />
-                      <PromptInputActionMenuContent>
-                        <PromptInputActionAddAttachments />
-                      </PromptInputActionMenuContent>
-                    </PromptInputActionMenu>
-                  </PromptInputTools>
-                </PromptInputFooter>
-              </PromptInput>
-
-              {columns.length === 0 && !busy ? (
-                <div className="flex flex-wrap gap-2">
-                  {EXAMPLES.map((example) => (
-                    <Suggestion
-                      key={example.label}
-                      onClick={() => loadExample(example)}
-                      suggestion={example.label}
-                    />
-                  ))}
-                </div>
-              ) : null}
-              {error ? (
-                <div className="flex items-start gap-2 border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
-                  <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-                  <span className="min-w-0 flex-1">That run failed. Try again in a moment.</span>
-                </div>
-              ) : null}
-            </div>
-          </div>
-
-          <ExtractTable
-            canExtract={displayColumns.length > 0 && hasSource}
-            columns={displayColumns}
-            extracting={extracting}
-            key={tableKey}
-            onColumnsChange={setDisplayColumns}
-            onExtract={() => {
-              void extract();
-            }}
-            onRowsChange={setDisplayRows}
-            onStop={() => {
-              stopSchema();
-              stopExtract();
-            }}
-            rows={displayRows}
-            schemaLoading={schemaLoading}
-            title={displayTitle}
-          />
-        </div>
-      </div>
+                Extract
+              </Button>
+            )}
+          </StepFooter>
+        </>
+      ) : null}
     </div>
   );
 }

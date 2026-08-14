@@ -132,7 +132,7 @@ cp web/.env.example web/.env.local
 npm run web
 ```
 
-Opens a Next.js extraction UI at http://localhost:3000. Describe the table you want, generate a schema, edit the columns, then extract. Rows stream into a sortable table. Re-extracting replaces the previous result.
+The web UI now starts from a natural-language query: describe the table you want, stream a generated schema into a shadcn table, edit columns and cells, then extract structured rows that fill the table in place.
 
 On Vercel, set the Git root directory to `web/`. Production uses AI Gateway via OIDC; locally set `AI_GATEWAY_API_KEY`.
 
