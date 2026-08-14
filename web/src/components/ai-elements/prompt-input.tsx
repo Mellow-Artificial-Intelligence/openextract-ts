@@ -509,6 +509,8 @@ export type PromptInputProps = Omit<
     message: PromptInputMessage,
     event: FormEvent<HTMLFormElement>
   ) => void | Promise<void>;
+  /** When false, keep text and attachments after a successful submit. Default true. */
+  clearOnSubmit?: boolean;
 };
 
 export const PromptInput = ({
@@ -521,6 +523,7 @@ export const PromptInput = ({
   maxFileSize,
   onError,
   onSubmit,
+  clearOnSubmit = true,
   children,
   ...props
 }: PromptInputProps) => {
@@ -855,7 +858,7 @@ export const PromptInput = ({
 
       // Reset form immediately after capturing text to avoid race condition
       // where user input during async blob conversion would be lost
-      if (!usingProvider) {
+      if (clearOnSubmit && !usingProvider) {
         form.reset();
       }
 
@@ -881,15 +884,16 @@ export const PromptInput = ({
         if (result instanceof Promise) {
           try {
             await result;
-            clear();
-            if (usingProvider) {
-              controller.textInput.clear();
+            if (clearOnSubmit) {
+              clear();
+              if (usingProvider) {
+                controller.textInput.clear();
+              }
             }
           } catch {
             // Don't clear on error - user may want to retry
           }
-        } else {
-          // Sync function completed without throwing, clear inputs
+        } else if (clearOnSubmit) {
           clear();
           if (usingProvider) {
             controller.textInput.clear();
@@ -899,7 +903,7 @@ export const PromptInput = ({
         // Don't clear on error - user may want to retry
       }
     },
-    [usingProvider, controller, files, onSubmit, clear]
+    [usingProvider, controller, files, onSubmit, clear, clearOnSubmit]
   );
 
   // Render with or without local provider
@@ -951,13 +955,17 @@ export const PromptInputBody = ({
 
 export type PromptInputTextareaProps = ComponentProps<
   typeof InputGroupTextarea
->;
+> & {
+  /** When false, Enter inserts a newline and Ctrl/Cmd+Enter submits. Default true. */
+  submitOnEnter?: boolean;
+};
 
 export const PromptInputTextarea = ({
   onChange,
   onKeyDown,
   className,
   placeholder = "What would you like to know?",
+  submitOnEnter = true,
   ...props
 }: PromptInputTextareaProps) => {
   const controller = useOptionalPromptInputController();
@@ -979,6 +987,9 @@ export const PromptInputTextarea = ({
           return;
         }
         if (e.shiftKey) {
+          return;
+        }
+        if (!submitOnEnter && !(e.metaKey || e.ctrlKey)) {
           return;
         }
         e.preventDefault();
@@ -1008,7 +1019,7 @@ export const PromptInputTextarea = ({
         }
       }
     },
-    [onKeyDown, isComposing, attachments]
+    [onKeyDown, isComposing, attachments, submitOnEnter]
   );
 
   const handlePaste: ClipboardEventHandler<HTMLTextAreaElement> = useCallback(

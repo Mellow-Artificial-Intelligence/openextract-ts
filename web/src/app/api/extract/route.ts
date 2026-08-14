@@ -25,6 +25,15 @@ function hasGatewayAuth() {
   return Boolean(process.env.AI_GATEWAY_API_KEY) || Boolean(process.env.VERCEL);
 }
 
+/** One user turn only — extraction is not a conversation. */
+function lastUserTurn(messages: UIMessage[]): UIMessage[] {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message?.role === "user") return [message];
+  }
+  return [];
+}
+
 export async function POST(req: Request) {
   if (!hasGatewayAuth()) {
     return Response.json(
@@ -41,9 +50,9 @@ export async function POST(req: Request) {
     instructions?: string;
   };
 
-  const messages = body.messages;
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return Response.json({ error: "messages is required" }, { status: 400 });
+  const messages = lastUserTurn(Array.isArray(body.messages) ? body.messages : []);
+  if (messages.length === 0) {
+    return Response.json({ error: "A source is required" }, { status: 400 });
   }
 
   const model = typeof body.model === "string" && isModelId(body.model) ? body.model : "openai/gpt-5.5";
