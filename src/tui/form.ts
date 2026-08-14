@@ -1,3 +1,4 @@
+import { toError } from "../errors.js";
 import { extractWithUsage, type ExtractOptions } from "../extract.js";
 import { resolveSchemaSpec } from "../schema-spec.js";
 import type { ExtractionInputLike, Usage } from "../types.js";
@@ -113,7 +114,7 @@ export function validateForm(form: TuiForm): string | null {
   try {
     resolveTuiInput(form);
   } catch (error) {
-    return error instanceof Error ? error.message : String(error);
+    return toError(error).message;
   }
   if (!form.model.trim()) return "Enter an AI Gateway model id (e.g. openai/gpt-5.5).";
   if (!form.schemaSpec.trim()) return "Describe the output shape, or pick a preset.";

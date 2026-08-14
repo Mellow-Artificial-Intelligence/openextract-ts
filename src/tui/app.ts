@@ -10,6 +10,7 @@ import {
   createCliRenderer,
   type CliRenderer,
 } from "@opentui/core";
+import { toError } from "../errors.js";
 import {
   PRESETS,
   PRESET_IDS,
@@ -451,7 +452,7 @@ export async function runApp(
       focus = "result";
       paintFocus();
     } catch (error) {
-      status = error instanceof Error ? error.message : String(error);
+      status = toError(error).message;
       statusTone = "error";
     } finally {
       busy = false;
