@@ -9,3 +9,5 @@ npm run web
 ```
 
 Open http://localhost:3000. Paste text or attach a file, pick a schema preset, and the model streams JSON through `/api/chat`.
+
+On Vercel, set the Git root directory to `web/`. AI Gateway uses OIDC; no `AI_GATEWAY_API_KEY` is required.
