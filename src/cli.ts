@@ -10,13 +10,14 @@ import {
   UrlFetchError,
 } from "./exceptions.js";
 import { loadSchema } from "./schema.js";
+import { launchTui, tuiArgv, wantsTui } from "./tui.js";
 import type { ExtractionInputLike } from "./types.js";
 import type { z } from "zod";
 
 interface CliArgs {
   inputFiles: string[];
-  schema: string;
-  model: string;
+  schema?: string;
+  model?: string;
   instructions?: string;
   style: string;
   mediaType?: string;
@@ -31,9 +32,13 @@ interface CliArgs {
 
 function usage(code = 1): never {
   const stream = code === 0 ? console.log : console.error;
-  stream(`Usage: openextract <input...> --schema <module:export> --model <provider/model>
+  stream(`Usage: openextract [<input...>] [--schema <module:export> --model <provider/model>]
+
+  openextract                 Launch the OpenTUI app
+  openextract --tui [input]   Launch the TUI, optionally with a path or URL
 
 Options:
+  --tui                 Open the interactive TUI
   --schema              Zod schema export path (module:exportName)
   --model               AI Gateway model id (e.g. openai/gpt-5.5)
   --instructions        Optional natural-language guidance
@@ -108,6 +113,8 @@ function parseArgs(argv: string[]): CliArgs {
       case "--retry-max-backoff":
         [args.retryMaxBackoff, i] = [Number(takeValue(argv, i, arg)[0]), i + 1];
         break;
+      case "--tui":
+        break;
       case "--help":
       case "-h":
         usage(0);
@@ -119,7 +126,6 @@ function parseArgs(argv: string[]): CliArgs {
         inputFiles.push(arg);
     }
   }
-  if (!args.schema || !args.model || inputFiles.length === 0) usage();
   return { ...args, inputFiles } as CliArgs;
 }
 
@@ -142,7 +148,20 @@ function printJson(payload: unknown, asRepr: boolean): void {
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
+  if (argv.includes("--help") || argv.includes("-h")) usage(0);
+  if (wantsTui(argv)) {
+    const args = parseArgs(tuiArgv(argv));
+    return launchTui({
+      source: args.inputFiles[0],
+      mediaType: args.mediaType,
+      schema: args.schema,
+      model: args.model,
+      instructions: args.instructions,
+      style: args.style,
+    });
+  }
   const args = parseArgs(argv);
+  if (!args.schema || !args.model || args.inputFiles.length === 0) usage();
   let schema: z.ZodType<unknown>;
   try {
     schema = await loadSchema(args.schema);
