@@ -12,7 +12,8 @@
     "ai",
     "document",
     "structured-data",
-    "vercel-ai-sdk"
+    "vercel-ai-sdk",
+    "mcp"
   ],
   "repository": {
     "type": "git",
@@ -31,10 +32,15 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./dist/mcp.js"
     }
   },
   "bin": {
-    "openextract": "./dist/cli.js"
+    "openextract": "./dist/cli.js",
+    "openextract-mcp": "./dist/mcp-cli.js"
   },
   "files": [
     "dist"
@@ -47,6 +53,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "ai": "^6.0.34",
     "zod": "^4.0.0"
   },

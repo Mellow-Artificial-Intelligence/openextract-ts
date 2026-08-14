@@ -37,3 +37,19 @@ Reusable session that stores schema, model, style, retry policy, and timeout.
 - `maxConcurrency` — batch only (default 5)
 
 `model` is an AI Gateway id (`openai/gpt-5.5`) or a `LanguageModel` instance. Colon-prefixed ids (`openai:gpt-5.5`) are accepted.
+
+## MCP
+
+`npx openextract-mcp` starts a stdio MCP server. `--http --port 3000` serves Streamable HTTP on loopback.
+
+Tools: `extract`, `extract_many`, `create_extractor`, `extractor_extract`, `close_extractor`.
+
+`schema` is a JSON Schema object/string or a `module:exportName` path. Inputs are a `source` path/URL or base64 `data` plus `mediaType`.
+
+```ts
+import { createOpenExtractMcpServer } from "openextract/mcp";
+
+const server = createOpenExtractMcpServer({ model: "openai/gpt-5.5" });
+```
+
+Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts: `extract-document`, `extract-batch`.
