@@ -124,6 +124,16 @@ lineItems: [{ description: string, amount: number }]
 
 Keys: `Tab` cycles fields, `Ctrl+E` extracts, `Ctrl+S` saves, `Ctrl+C` quits.
 
+## Local web UI
+
+```bash
+cp web/.env.example web/.env.local
+# set AI_GATEWAY_API_KEY
+npm run web
+```
+
+Opens a Next.js chat at http://localhost:3000. Paste text or attach a file, choose a schema preset, and the response streams through the [AI SDK](https://ai-sdk.dev) and [AI Elements](https://elements.ai-sdk.dev).
+
 ## Command line
 
 ```bash

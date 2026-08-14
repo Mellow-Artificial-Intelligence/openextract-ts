@@ -12,6 +12,8 @@ npm test
 npm run typecheck
 ```
 
+The local Next.js UI lives in `web/`. From the repo root: `npm install --prefix web` then `npm run web`.
+
 ## Making changes
 
 1. Create a new branch from `main`
