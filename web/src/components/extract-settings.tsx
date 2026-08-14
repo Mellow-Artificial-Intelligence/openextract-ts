@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -9,8 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { PRESETS, PRESET_IDS, STYLES, type PresetId, type StyleName } from "@/lib/presets";
-import { Button } from "@/components/ui/button";
 
 export function ExtractSettings({
   schemaSpec,
@@ -19,6 +20,7 @@ export function ExtractSettings({
   onSchemaSpec,
   onStyle,
   onInstructions,
+  className,
 }: {
   schemaSpec: string;
   style: StyleName;
@@ -26,11 +28,12 @@ export function ExtractSettings({
   onSchemaSpec: (spec: string) => void;
   onStyle: (style: StyleName) => void;
   onInstructions: (value: string) => void;
+  className?: string;
 }) {
   const preset = PRESET_IDS.find((id) => PRESETS[id].spec === schemaSpec.trim()) ?? "custom";
 
   return (
-    <aside className="flex w-full shrink-0 flex-col gap-4 border-border border-b p-4 md:h-full md:w-72 md:overflow-y-auto md:border-r md:border-b-0">
+    <div className={cn("flex flex-col gap-4", className)}>
       <div className="space-y-2">
         <Label>Schema</Label>
         <div className="flex flex-wrap gap-1">
@@ -47,7 +50,7 @@ export function ExtractSettings({
           ))}
         </div>
         <Textarea
-          className="min-h-32 font-mono text-xs"
+          className="min-h-24 font-mono text-xs md:min-h-32"
           onChange={(event) => onSchemaSpec(event.target.value)}
           spellCheck={false}
           value={schemaSpec}
@@ -56,7 +59,7 @@ export function ExtractSettings({
       <div className="space-y-2">
         <Label htmlFor="style">Style</Label>
         <Select onValueChange={(value) => onStyle(value as StyleName)} value={style}>
-          <SelectTrigger id="style">
+          <SelectTrigger className="w-full" id="style">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -77,6 +80,6 @@ export function ExtractSettings({
           value={instructions}
         />
       </div>
-    </aside>
+    </div>
   );
 }

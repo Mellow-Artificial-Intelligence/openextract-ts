@@ -41,7 +41,7 @@ function MessageParts({
         }
         if (part.type === "text") {
           return (
-            <MessageContent key={key}>
+            <MessageContent className="max-w-full overflow-x-auto" key={key}>
               <MessageResponse isAnimating={isStreaming}>{part.text}</MessageResponse>
             </MessageContent>
           );
@@ -52,7 +52,7 @@ function MessageParts({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               alt={part.filename ?? "attachment"}
-              className="max-h-48 rounded-lg border border-border"
+              className="h-auto max-h-48 w-full max-w-full rounded-lg border border-border object-contain sm:w-auto"
               key={key}
               src={part.url}
             />
@@ -60,7 +60,7 @@ function MessageParts({
         }
         if (part.type === "file") {
           return (
-            <p className="text-muted-foreground text-xs" key={key}>
+            <p className="break-all text-muted-foreground text-xs" key={key}>
               {part.filename ?? "attached file"}
             </p>
           );
@@ -82,17 +82,18 @@ export function ChatMessages({
   const waiting = status === "submitted" && messages.at(-1)?.role === "user";
 
   return (
-    <Conversation>
-      <ConversationContent>
+    <Conversation className="min-h-0">
+      <ConversationContent className="gap-6 p-3 sm:gap-8 sm:p-4">
         {messages.length === 0 ? (
           <ConversationEmptyState
-            description="Paste text, drop a file, or pick a suggestion. Responses stream from the AI SDK through /api/chat."
+            className="px-2"
+            description="Paste text or attach a file, then extract against your schema."
             icon={<FileTextIcon className="size-8" />}
             title="Extract structured data"
           />
         ) : (
           messages.map((message) => (
-            <Message from={message.role} key={message.id}>
+            <Message className="max-w-full sm:max-w-[95%]" from={message.role} key={message.id}>
               <MessageParts
                 isStreaming={status === "streaming" && message.id === lastId}
                 message={message}
