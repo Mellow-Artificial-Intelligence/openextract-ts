@@ -5,6 +5,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
 import { z } from "zod";
 import { extractMany, extractManyWithResults } from "./batch.js";
+import { toError } from "./errors.js";
 import { extract, extractWithUsage, type ExtractOptions } from "./extract.js";
 import { ModelError } from "./exceptions.js";
 import { loadSchema } from "./schema.js";
@@ -101,7 +102,7 @@ function extractOptions(args: {
 }
 
 function serializeError(error: unknown): Record<string, unknown> {
-  const err = error instanceof Error ? error : new Error(String(error));
+  const err = toError(error);
   const payload: Record<string, unknown> = { error: err.message, errorType: err.name };
   if (error instanceof ModelError) {
     payload.provider = error.provider;
