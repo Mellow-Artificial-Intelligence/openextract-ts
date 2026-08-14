@@ -50,7 +50,7 @@ function EmptyValue({ label = "—" }: { label?: string }) {
 
 function ValueChip({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-foreground text-xs">
+    <span className="border border-black/10 bg-card px-1.5 py-0.5 font-mono text-foreground text-xs">
       {children}
     </span>
   );
@@ -90,7 +90,7 @@ function FieldValue({ value }: { value: unknown }) {
       <div className="grid gap-1.5">
         {value.map((item, index) => (
           <div
-            className="fade-in slide-in-from-bottom-1 animate-in rounded-lg border bg-muted/30 px-2.5 py-1.5"
+            className="fade-in slide-in-from-bottom-1 animate-in border border-black/10 bg-card px-2.5 py-1.5"
             key={index}
           >
             <div className="font-mono text-[0.7rem] text-muted-foreground">{index + 1}</div>
@@ -197,14 +197,14 @@ export function ExtractionResult({
 
   return (
     <Artifact className="w-full">
-      <ArtifactHeader className="gap-2 px-3 py-2">
+      <ArtifactHeader className="gap-2 px-3 py-2.5 sm:px-4">
         <div className="flex min-w-0 items-center gap-2">
           <ArtifactTitle>
             {/* Shimmer renders a <p> by default, which cannot nest inside ArtifactTitle. */}
             {streaming ? <Shimmer as="span">Extracting…</Shimmer> : "Result"}
           </ArtifactTitle>
           {fieldCount > 0 ? (
-            <ArtifactDescription className="hidden shrink-0 text-xs sm:block">
+            <ArtifactDescription className="hidden shrink-0 font-mono text-[10px] sm:block">
               {fieldCount} {fieldCount === 1 ? "field" : "fields"}
             </ArtifactDescription>
           ) : null}

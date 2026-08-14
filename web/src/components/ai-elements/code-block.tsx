@@ -309,7 +309,7 @@ export const CodeBlockContainer = ({
 }: HTMLAttributes<HTMLDivElement> & { language: string }) => (
   <div
     className={cn(
-      "group relative w-full overflow-hidden rounded-md border bg-background text-foreground",
+      "group relative w-full overflow-hidden border bg-card text-foreground",
       className
     )}
     data-language={language}
@@ -329,7 +329,7 @@ export const CodeBlockHeader = ({
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex items-center justify-between border-b bg-muted/80 px-3 py-2 text-muted-foreground text-xs",
+      "flex items-center justify-between border-b border-black/5 bg-card px-3 py-2 font-mono text-[10px] text-muted-foreground uppercase tracking-wider",
       className
     )}
     {...props}

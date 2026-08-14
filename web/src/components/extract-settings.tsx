@@ -35,7 +35,9 @@ function Section({
   return (
     <section className="space-y-2">
       <div className="space-y-0.5">
-        <Label htmlFor={htmlFor}>{title}</Label>
+        <Label className="font-mono text-sm" htmlFor={htmlFor}>
+          {title}
+        </Label>
         <p className="text-muted-foreground text-xs">{hint}</p>
       </div>
       {children}

@@ -49,7 +49,6 @@ import { useChat } from "@ai-sdk/react";
 import type { ChatStatus } from "ai";
 import { DefaultChatTransport } from "ai";
 import {
-  BracesIcon,
   CheckIcon,
   PlusIcon,
   SlidersHorizontalIcon,
@@ -58,6 +57,8 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import { DEFAULT_MODEL, MODELS, type ModelId } from "@/lib/models";
 import { EXAMPLES, PRESETS, presetIdForSpec, type StyleName } from "@/lib/presets";
+
+const GITHUB_URL = "https://github.com/Mellow-Artificial-Intelligence/openextract";
 
 function PromptAttachments() {
   const attachments = usePromptInputAttachments();
@@ -182,19 +183,21 @@ export function ExtractApp() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex min-h-14 shrink-0 items-center gap-3 border-b px-3 pt-[env(safe-area-inset-top)] sm:px-4">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-black/5 bg-background/80 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-lg sm:px-6">
         <div className="flex shrink-0 items-center gap-2">
-          <span className="flex size-6 items-center justify-center rounded-md bg-foreground text-background">
-            <BracesIcon className="size-3.5" />
+          <span className="flex size-8 items-center justify-center bg-foreground">
+            <span className="font-bold font-mono text-background text-xs">OE</span>
           </span>
-          <span className="font-medium text-sm tracking-tight">openextract</span>
+          <span className="hidden font-mono text-muted-foreground text-sm sm:inline">
+            openextract
+          </span>
         </div>
-        <span className="hidden min-w-0 truncate text-muted-foreground text-sm lg:inline">
-          structured data from any file, URL, or pasted text
+        <span className="hidden min-w-0 truncate font-mono text-muted-foreground text-xs lg:inline">
+          typed output from any media
         </span>
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        <nav className="ml-auto flex shrink-0 items-center gap-3 sm:gap-4">
           {assistant || text ? (
-            <Button onClick={startOver} size="sm" type="button" variant="ghost">
+            <Button onClick={startOver} size="sm" type="button" variant="outline">
               <PlusIcon />
               New
             </Button>
@@ -210,14 +213,25 @@ export function ExtractApp() {
             <SlidersHorizontalIcon />
             {PRESETS[presetIdForSpec(schemaSpec)].label}
           </Button>
-        </div>
+          <a
+            className="font-mono text-muted-foreground text-xs transition-colors hover:text-foreground"
+            href={GITHUB_URL}
+            rel="noreferrer"
+            target="_blank"
+          >
+            GitHub
+          </a>
+        </nav>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-80 shrink-0 flex-col border-r md:flex">
-          <div className="shrink-0 border-b px-4 py-3">
-            <h2 className="font-medium text-sm">Extraction</h2>
-            <p className="text-muted-foreground text-xs">
+        <aside className="hidden w-80 shrink-0 flex-col border-r border-black/5 md:flex">
+          <div className="shrink-0 border-b border-black/5 px-4 py-3">
+            <p className="mb-1 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+              Extraction
+            </p>
+            <h2 className="font-medium text-sm">Schema in, typed data out</h2>
+            <p className="mt-1 text-muted-foreground text-xs">
               Schema, style, and instructions for this run.
             </p>
           </div>
@@ -242,12 +256,8 @@ export function ExtractApp() {
         </Sheet>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="shrink-0 border-b p-3 sm:p-4">
-            <div className="mx-auto grid w-full max-w-3xl gap-2">
-              <div className="flex items-baseline justify-between gap-2">
-                <h2 className="font-medium text-sm">Source</h2>
-                <p className="text-muted-foreground text-xs">⌘/Ctrl+Enter extracts</p>
-              </div>
+          <div className="shrink-0 border-b border-black/5 p-3 sm:p-4">
+            <div className="mx-auto grid w-full max-w-3xl gap-3">
               <PromptInput
                 clearOnSubmit={false}
                 globalDrop
@@ -255,19 +265,27 @@ export function ExtractApp() {
                 multiple
                 onSubmit={submit}
               >
-                <PromptInputHeader>
+                <PromptInputHeader className="border-b border-black/5">
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Source
+                    </span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      ⌘/Ctrl+Enter extracts
+                    </span>
+                  </div>
                   <PromptAttachments />
                 </PromptInputHeader>
                 <PromptInputBody>
                   <PromptInputTextarea
-                    className="min-h-28 max-h-56"
+                    className="min-h-28 max-h-56 font-mono text-sm"
                     onChange={(event) => setText(event.target.value)}
                     placeholder="Paste text or attach a file…"
                     submitOnEnter={false}
                     value={text}
                   />
                 </PromptInputBody>
-                <PromptInputFooter className="gap-2">
+                <PromptInputFooter className="gap-2 border-t border-black/5">
                   <PromptInputTools className="min-w-0 flex-1 overflow-hidden">
                     <PromptInputActionMenu>
                       <PromptInputActionMenuTrigger />
@@ -323,7 +341,7 @@ export function ExtractApp() {
                 </div>
               ) : null}
               {error ? (
-                <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
+                <div className="flex items-start gap-2 border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
                   <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
                   <span className="min-w-0 flex-1">Extraction failed. Try again in a moment.</span>
                   <button className="shrink-0 underline" onClick={() => regenerate()} type="button">
