@@ -39,12 +39,15 @@ function AssistantText({ text, isStreaming }: { text: string; isStreaming: boole
 
 function EmptyResult() {
   return (
-    <div className="flex size-full flex-col items-center justify-center gap-3 p-8 text-center">
-      <div className="flex size-11 items-center justify-center rounded-xl border bg-muted/40">
-        <FileTextIcon className="size-5 text-muted-foreground" />
+    <div className="flex size-full flex-col items-center justify-center gap-4 p-8 text-center">
+      <div className="flex size-9 items-center justify-center border border-black/10 bg-card">
+        <FileTextIcon className="size-4 text-muted-foreground" />
       </div>
       <div className="space-y-1">
-        <h2 className="font-medium text-base">No extraction yet</h2>
+        <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+          Result
+        </p>
+        <h2 className="font-medium text-sm">No extraction yet</h2>
         <p className="mx-auto max-w-sm text-muted-foreground text-sm">
           Paste a source or attach a file, then extract. Results replace the previous run.
         </p>
