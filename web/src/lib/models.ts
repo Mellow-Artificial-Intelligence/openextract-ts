@@ -1,8 +1,7 @@
-export const DEFAULT_MODEL = "openai/gpt-5.5";
+export const DEFAULT_MODEL = "openai/gpt-5.6-luna";
 
 export const MODELS = [
-  { id: "openai/gpt-5.5", name: "GPT-5.5", provider: "openai" },
-  { id: "openai/gpt-5.4", name: "GPT-5.4", provider: "openai" },
+  { id: "openai/gpt-5.6-luna", name: "GPT-5.6 Luna", provider: "openai" },
   { id: "xai/grok-4.6", name: "Grok 4.6", provider: "xai" },
   { id: "anthropic/claude-sonnet-5", name: "Claude Sonnet 5", provider: "anthropic" },
   { id: "google/gemini-3.7-flash", name: "Gemini 3.7 Flash", provider: "google" },

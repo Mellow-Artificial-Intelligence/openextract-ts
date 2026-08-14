@@ -5,7 +5,7 @@ import {
   toUIMessageStream,
   type UIMessage,
 } from "ai";
-import { isModelId } from "@/lib/models";
+import { DEFAULT_MODEL, isModelId } from "@/lib/models";
 import { STYLES, type StyleName } from "@/lib/presets";
 import { extractionSystemPrompt } from "@/lib/system-prompt";
 
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "A source is required" }, { status: 400 });
   }
 
-  const model = typeof body.model === "string" && isModelId(body.model) ? body.model : "openai/gpt-5.5";
+  const model = typeof body.model === "string" && isModelId(body.model) ? body.model : DEFAULT_MODEL;
   const schemaSpec =
     typeof body.schemaSpec === "string" && body.schemaSpec.trim()
       ? body.schemaSpec.slice(0, MAX_SCHEMA_CHARS)
