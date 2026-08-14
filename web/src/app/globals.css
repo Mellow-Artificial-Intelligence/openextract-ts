@@ -134,14 +134,6 @@
   }
 }
 
-.grid-bg {
-  background-color: var(--background);
-  background-image:
-    linear-gradient(to right, rgb(0 0 0 / 3%) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(0 0 0 / 3%) 1px, transparent 1px);
-  background-size: 60px 60px;
-}
-
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

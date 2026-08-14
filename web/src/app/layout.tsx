@@ -30,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${jetbrainsMono.variable} h-dvh overflow-hidden antialiased`}
       lang="en"
     >
-      <body className="grid-bg flex h-dvh touch-manipulation flex-col overflow-hidden overscroll-none bg-background text-foreground">
+      <body className="flex h-dvh touch-manipulation flex-col overflow-hidden overscroll-none bg-background text-foreground">
         <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>
