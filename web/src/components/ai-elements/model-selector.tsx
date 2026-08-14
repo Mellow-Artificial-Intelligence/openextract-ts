@@ -38,6 +38,7 @@ export const ModelSelectorContent = ({
   className,
   children,
   title = "Model Selector",
+  onOpenAutoFocus,
   ...props
 }: ModelSelectorContentProps) => (
   <DialogContent
@@ -47,6 +48,13 @@ export const ModelSelectorContent = ({
       className
     )}
     {...props}
+    onOpenAutoFocus={(event) => {
+      // Keep the iOS keyboard closed so the first tap can select a model.
+      if (window.matchMedia("(pointer: coarse)").matches) {
+        event.preventDefault();
+      }
+      onOpenAutoFocus?.(event);
+    }}
   >
     <DialogTitle className="sr-only">{title}</DialogTitle>
     <Command className="**:data-[slot=command-input-wrapper]:h-auto">
@@ -90,8 +98,29 @@ export const ModelSelectorGroup = (props: ModelSelectorGroupProps) => (
 
 export type ModelSelectorItemProps = ComponentProps<typeof CommandItem>;
 
-export const ModelSelectorItem = (props: ModelSelectorItemProps) => (
-  <CommandItem {...props} />
+export const ModelSelectorItem = ({
+  className,
+  disabled,
+  onPointerDown,
+  onSelect,
+  ...props
+}: ModelSelectorItemProps) => (
+  <CommandItem
+    {...props}
+    className={cn("min-h-11 sm:min-h-auto", className)}
+    disabled={disabled}
+    onPointerDown={(event) => {
+      onPointerDown?.(event);
+      if (disabled || event.defaultPrevented || event.button !== 0) {
+        return;
+      }
+      // cmdk selects on click; iOS drops that click when the dialog locks
+      // body pointer-events or the search input steals focus.
+      event.preventDefault();
+      onSelect?.(String(props.value ?? ""));
+    }}
+    onSelect={onSelect}
+  />
 );
 
 export type ModelSelectorShortcutProps = ComponentProps<typeof CommandShortcut>;
