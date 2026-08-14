@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { pathToFileURL } from "node:url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { toError } from "./errors.js";
 import { createOpenExtractMcpServer, startOpenExtractMcpHttpServer } from "./mcp.js";
 
 function usage(code = 0): never {
@@ -51,7 +52,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   main().catch((error) => {
-    console.error(error instanceof Error ? error.message : error);
+    console.error(toError(error).message);
     process.exit(1);
   });
 }

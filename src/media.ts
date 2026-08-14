@@ -269,12 +269,8 @@ export async function getMedia(
     source = inputFile.source;
   }
   const limit = resolveMaxInputBytes(options.maxInputBytes);
-  if (typeof source === "string") {
-    const resolved = await readFromPath(source, limit);
-    return { data: resolved.data, mediaType: mediaType ?? resolved.mediaType };
-  }
-  if (source instanceof URL) {
-    const resolved = await readFromPath(source.href, limit);
+  if (typeof source === "string" || source instanceof URL) {
+    const resolved = await readFromPath(typeof source === "string" ? source : source.href, limit);
     return { data: resolved.data, mediaType: mediaType ?? resolved.mediaType };
   }
   if (source instanceof Uint8Array) {

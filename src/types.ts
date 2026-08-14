@@ -1,6 +1,19 @@
 import { DEFAULT_RETRY_MAX_BACKOFF, validateRetryOptions } from "./config.js";
+import type { ExtractionStyle } from "./styles.js";
 
 export type MediaSource = string | URL | Uint8Array | NodeJS.ReadableStream;
+
+export interface ExtractOptions {
+  instructions?: string;
+  style?: ExtractionStyle | string;
+  mediaType?: string;
+  maxInputBytes?: number;
+  maxRetries?: number;
+  retryBackoff?: number;
+  retryMaxBackoff?: number;
+  timeout?: number;
+  instrument?: boolean;
+}
 
 export interface ExtractionInput {
   source: MediaSource;

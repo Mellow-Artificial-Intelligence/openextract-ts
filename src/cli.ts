@@ -2,6 +2,7 @@
 import { pathToFileURL } from "node:url";
 import { extract, extractWithUsage } from "./extract.js";
 import { extractMany } from "./batch.js";
+import { toError } from "./errors.js";
 import {
   ExtractionError,
   ModelError,
@@ -147,6 +148,10 @@ function printJson(payload: unknown, asRepr: boolean): void {
   console.log(asRepr ? String(payload) : JSON.stringify(payload, null, 2));
 }
 
+function printError(error: unknown): void {
+  console.error(`error: ${toError(error).message}`);
+}
+
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (argv.includes("--help") || argv.includes("-h")) usage(0);
   if (wantsTui(argv)) {
@@ -166,14 +171,14 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   try {
     schema = await loadSchema(args.schema);
   } catch (error) {
-    console.error(`error: ${error instanceof Error ? error.message : error}`);
+    printError(error);
     return 1;
   }
   let inputs: ExtractionInputLike[];
   try {
     inputs = await resolveInputs(args.inputFiles, args.mediaType);
   } catch (error) {
-    console.error(`error: ${error instanceof Error ? error.message : error}`);
+    printError(error);
     return 1;
   }
   if (args.usage && inputs.length !== 1) {
@@ -219,7 +224,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       });
     }
   } catch (error) {
-    console.error(`error: ${error instanceof Error ? error.message : error}`);
+    printError(error);
     if (error instanceof UrlFetchError) return 2;
     if (error instanceof SchemaValidationError) return 3;
     if (error instanceof ModelError) return 4;

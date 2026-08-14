@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { toError } from "./errors.js";
 import type { TuiLaunchOptions } from "./tui/form.js";
 
 export const TUI_RUNTIME_HELP = `The OpenTUI renderer needs Bun, or Node.js 26.4+ with --experimental-ffi.
@@ -36,7 +37,7 @@ export async function launchTui(options: TuiLaunchOptions = {}): Promise<number>
   } catch (error) {
     const redirected = reexecWithBun();
     if (redirected !== null) return redirected;
-    const message = error instanceof Error ? error.message : String(error);
+    const message = toError(error).message;
     console.error(`error: failed to start the OpenTUI app (${message})`);
     console.error(TUI_RUNTIME_HELP);
     return 1;
