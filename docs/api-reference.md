@@ -6,7 +6,7 @@
 
 ## Local web UI
 
-`npm run web` starts the Next.js app in `web/`. Streaming chat goes through `POST /api/chat` (`streamText` + UI message stream). Set `AI_GATEWAY_API_KEY` in `web/.env.local`.
+`npm run web` starts the Next.js app in `web/`. Streaming chat goes through `POST /api/chat` (`streamText` + UI message stream). Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC.
 
 ## Extraction
 

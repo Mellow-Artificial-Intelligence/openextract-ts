@@ -134,6 +134,8 @@ npm run web
 
 Opens a Next.js chat at http://localhost:3000. Paste text or attach a file, choose a schema preset, and the response streams through the [AI SDK](https://ai-sdk.dev) and [AI Elements](https://elements.ai-sdk.dev).
 
+On Vercel, set the Git root directory to `web/`. Production uses AI Gateway via OIDC; locally set `AI_GATEWAY_API_KEY`.
+
 ## Command line
 
 ```bash
