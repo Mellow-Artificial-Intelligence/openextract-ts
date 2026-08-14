@@ -4,6 +4,10 @@
 
 `openextract` and `openextract --tui [input]` launch an OpenTUI app. The TUI calls `extractWithUsage` with a schema from a preset, field list, JSON example, JSON Schema, or `module:export`. It requires Bun or Node.js 26.4+ with `--experimental-ffi`.
 
+## Local web UI
+
+`npm run web` starts the Next.js app in `web/`. Streaming chat goes through `POST /api/chat` (`streamText` + UI message stream). Set `AI_GATEWAY_API_KEY` in `web/.env.local`.
+
 ## Extraction
 
 ### `extract(schema, model, inputFile, options?)`
