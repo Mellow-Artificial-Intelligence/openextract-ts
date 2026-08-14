@@ -1,6 +1,22 @@
 export const STYLES = ["direct", "search", "code"] as const;
 export type StyleName = (typeof STYLES)[number];
 
+/** Shared by the style picker and the system prompt so both describe the same behaviour. */
+export const STYLE_DETAILS: Record<StyleName, { label: string; description: string }> = {
+  direct: {
+    label: "Direct",
+    description: "Read the full source and extract in one pass.",
+  },
+  search: {
+    label: "Search",
+    description: "Scan for the most relevant passages before extracting.",
+  },
+  code: {
+    label: "Code",
+    description: "Reason over the text as data (counts, totals, lists) before extracting.",
+  },
+};
+
 export const PRESETS = {
   document: {
     label: "Document",

@@ -19,8 +19,14 @@ function asStyle(value: unknown): StyleName {
   return typeof value === "string" && STYLES_SET.has(value) ? (value as StyleName) : "direct";
 }
 
+function hasGatewayAuth() {
+  // VERCEL_OIDC_TOKEN is injected at runtime and is not available at Next.js
+  // build time, so do not read it from process.env here.
+  return Boolean(process.env.AI_GATEWAY_API_KEY) || Boolean(process.env.VERCEL);
+}
+
 export async function POST(req: Request) {
-  if (!process.env.AI_GATEWAY_API_KEY?.trim() && !process.env.VERCEL_OIDC_TOKEN?.trim()) {
+  if (!hasGatewayAuth()) {
     return Response.json(
       { error: "Set AI_GATEWAY_API_KEY in web/.env.local to run locally." },
       { status: 401 },
