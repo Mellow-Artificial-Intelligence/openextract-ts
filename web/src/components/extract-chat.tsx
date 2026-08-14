@@ -36,7 +36,6 @@ import {
   usePromptInputAttachments,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -46,11 +45,18 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useChat } from "@ai-sdk/react";
+import type { ChatStatus } from "ai";
 import { DefaultChatTransport } from "ai";
-import { CheckIcon, SlidersHorizontalIcon } from "lucide-react";
+import {
+  BracesIcon,
+  CheckIcon,
+  PlusIcon,
+  SlidersHorizontalIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { DEFAULT_MODEL, MODELS, type ModelId } from "@/lib/models";
-import { PRESETS, SUGGESTIONS, type StyleName } from "@/lib/presets";
+import { PRESETS, SUGGESTIONS, presetIdForSpec, type StyleName } from "@/lib/presets";
 
 function PromptAttachments() {
   const attachments = usePromptInputAttachments();
@@ -67,6 +73,23 @@ function PromptAttachments() {
   );
 }
 
+/** Lives inside PromptInput so it can disable itself when there is nothing to send. */
+function PromptSubmit({
+  text,
+  status,
+  onStop,
+}: {
+  text: string;
+  status: ChatStatus;
+  onStop: () => void;
+}) {
+  const attachments = usePromptInputAttachments();
+  const busy = status === "submitted" || status === "streaming";
+  const empty = !text.trim() && attachments.files.length === 0;
+
+  return <PromptInputSubmit disabled={empty && !busy} onStop={onStop} status={status} />;
+}
+
 export function ExtractChat() {
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [modelOpen, setModelOpen] = useState(false);
@@ -81,7 +104,7 @@ export function ExtractChat() {
     [],
   );
 
-  const { messages, sendMessage, status, stop, error, regenerate } = useChat({
+  const { messages, sendMessage, setMessages, status, stop, error, regenerate } = useChat({
     transport,
   });
 
@@ -109,6 +132,20 @@ export function ExtractChat() {
     [busy, requestBody, sendMessage],
   );
 
+  const runSuggestion = useCallback(
+    (suggestion: string) => {
+      if (busy) return;
+      void sendMessage({ text: suggestion }, { body: requestBody });
+    },
+    [busy, requestBody, sendMessage],
+  );
+
+  const startOver = useCallback(() => {
+    stop();
+    setMessages([]);
+    setText("");
+  }, [setMessages, stop]);
+
   const settings = (
     <ExtractSettings
       instructions={instructions}
@@ -122,26 +159,48 @@ export function ExtractChat() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex min-h-12 shrink-0 items-center gap-2 border-border border-b px-3 pt-[env(safe-area-inset-top)] sm:px-4">
-        <span className="font-medium text-sm tracking-tight">openextract</span>
-        <span className="hidden min-w-0 truncate text-muted-foreground text-sm sm:inline">
+      <header className="flex min-h-14 shrink-0 items-center gap-3 border-b px-3 pt-[env(safe-area-inset-top)] sm:px-4">
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="flex size-6 items-center justify-center rounded-md bg-foreground text-background">
+            <BracesIcon className="size-3.5" />
+          </span>
+          <span className="font-medium text-sm tracking-tight">openextract</span>
+        </div>
+        <span className="hidden min-w-0 truncate text-muted-foreground text-sm lg:inline">
           structured data from any file, URL, or pasted text
         </span>
-        <Button
-          aria-label="Extraction settings"
-          className="ml-auto size-10 md:hidden"
-          onClick={() => setSettingsOpen(true)}
-          size="icon"
-          type="button"
-          variant="ghost"
-        >
-          <SlidersHorizontalIcon />
-        </Button>
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {messages.length > 0 ? (
+            <Button onClick={startOver} size="sm" type="button" variant="ghost">
+              <PlusIcon />
+              New
+            </Button>
+          ) : null}
+          <Button
+            aria-label="Extraction settings"
+            className="md:hidden"
+            onClick={() => setSettingsOpen(true)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <SlidersHorizontalIcon />
+            {PRESETS[presetIdForSpec(schemaSpec)].label}
+          </Button>
+        </div>
       </header>
+
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-72 shrink-0 overflow-y-auto border-border border-r p-4 md:flex">
-          {settings}
+        <aside className="hidden w-80 shrink-0 flex-col border-r md:flex">
+          <div className="shrink-0 border-b px-4 py-3">
+            <h2 className="font-medium text-sm">Extraction</h2>
+            <p className="text-muted-foreground text-xs">
+              Schema, style, and instructions for this chat.
+            </p>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">{settings}</div>
         </aside>
+
         <Sheet onOpenChange={setSettingsOpen} open={settingsOpen}>
           <SheetContent
             className="w-full gap-0 data-[side=right]:w-full sm:max-w-sm"
@@ -156,84 +215,83 @@ export function ExtractChat() {
             </div>
           </SheetContent>
         </Sheet>
+
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <ChatMessages messages={messages} status={status} />
-          {error ? (
-            <div className="flex items-start justify-between gap-3 border-border border-t px-3 py-2 text-destructive text-sm sm:px-4">
-              <span className="min-w-0">Something went wrong. Check AI_GATEWAY_API_KEY and try again.</span>
-              <button className="shrink-0 underline" onClick={() => regenerate()} type="button">
-                Retry
-              </button>
-            </div>
-          ) : null}
-          <div className="grid shrink-0 gap-3 border-border border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
-            {messages.length === 0 ? (
-              <Suggestions>
-                {SUGGESTIONS.map((suggestion) => (
-                  <Suggestion
-                    key={suggestion}
-                    onClick={(value) => {
-                      if (busy) return;
-                      void sendMessage({ text: value }, { body: requestBody });
-                    }}
-                    suggestion={suggestion}
+          <ChatMessages
+            messages={messages}
+            onSuggestion={runSuggestion}
+            status={status}
+            suggestions={SUGGESTIONS}
+          />
+
+          <div className="shrink-0 border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
+            <div className="mx-auto grid w-full max-w-3xl gap-2">
+              {error ? (
+                <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
+                  <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+                  <span className="min-w-0 flex-1">Extraction failed. Try again in a moment.</span>
+                  <button className="shrink-0 underline" onClick={() => regenerate()} type="button">
+                    Retry
+                  </button>
+                </div>
+              ) : null}
+
+              <PromptInput globalDrop multiple onSubmit={submit}>
+                <PromptInputHeader>
+                  <PromptAttachments />
+                </PromptInputHeader>
+                <PromptInputBody>
+                  <PromptInputTextarea
+                    onChange={(event) => setText(event.target.value)}
+                    placeholder="Paste text or attach a file…"
+                    value={text}
                   />
-                ))}
-              </Suggestions>
-            ) : null}
-            <PromptInput globalDrop multiple onSubmit={submit}>
-              <PromptInputHeader>
-                <PromptAttachments />
-              </PromptInputHeader>
-              <PromptInputBody>
-                <PromptInputTextarea
-                  onChange={(event) => setText(event.target.value)}
-                  placeholder="Paste text or attach a file…"
-                  value={text}
-                />
-              </PromptInputBody>
-              <PromptInputFooter className="gap-2">
-                <PromptInputTools className="min-w-0 flex-1 overflow-hidden">
-                  <PromptInputActionMenu>
-                    <PromptInputActionMenuTrigger />
-                    <PromptInputActionMenuContent>
-                      <PromptInputActionAddAttachments />
-                    </PromptInputActionMenuContent>
-                  </PromptInputActionMenu>
-                  <ModelSelector onOpenChange={setModelOpen} open={modelOpen}>
-                    <ModelSelectorTrigger asChild>
-                      <PromptInputButton className="max-w-[min(100%,11rem)]">
-                        <ModelSelectorLogo provider={selected.provider} />
-                        <ModelSelectorName>{selected.name}</ModelSelectorName>
-                      </PromptInputButton>
-                    </ModelSelectorTrigger>
-                    <ModelSelectorContent className="w-[calc(100vw-2rem)] max-w-md">
-                      <ModelSelectorInput placeholder="Search models…" />
-                      <ModelSelectorList>
-                        <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-                        <ModelSelectorGroup heading="AI Gateway">
-                          {MODELS.map((item) => (
-                            <ModelSelectorItem
-                              key={item.id}
-                              onSelect={() => {
-                                setModel(item.id);
-                                setModelOpen(false);
-                              }}
-                              value={item.id}
-                            >
-                              <ModelSelectorLogo provider={item.provider} />
-                              <ModelSelectorName>{item.name}</ModelSelectorName>
-                              {model === item.id ? <CheckIcon className="ml-auto size-4" /> : null}
-                            </ModelSelectorItem>
-                          ))}
-                        </ModelSelectorGroup>
-                      </ModelSelectorList>
-                    </ModelSelectorContent>
-                  </ModelSelector>
-                </PromptInputTools>
-                <PromptInputSubmit onStop={stop} status={status} />
-              </PromptInputFooter>
-            </PromptInput>
+                </PromptInputBody>
+                <PromptInputFooter className="gap-2">
+                  <PromptInputTools className="min-w-0 flex-1 overflow-hidden">
+                    <PromptInputActionMenu>
+                      <PromptInputActionMenuTrigger />
+                      <PromptInputActionMenuContent>
+                        <PromptInputActionAddAttachments />
+                      </PromptInputActionMenuContent>
+                    </PromptInputActionMenu>
+                    <ModelSelector onOpenChange={setModelOpen} open={modelOpen}>
+                      <ModelSelectorTrigger asChild>
+                        <PromptInputButton className="max-w-[min(100%,11rem)]">
+                          <ModelSelectorLogo provider={selected.provider} />
+                          <ModelSelectorName>{selected.name}</ModelSelectorName>
+                        </PromptInputButton>
+                      </ModelSelectorTrigger>
+                      <ModelSelectorContent className="w-[calc(100vw-2rem)] max-w-md">
+                        <ModelSelectorInput placeholder="Search models…" />
+                        <ModelSelectorList>
+                          <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+                          <ModelSelectorGroup heading="AI Gateway">
+                            {MODELS.map((item) => (
+                              <ModelSelectorItem
+                                key={item.id}
+                                onSelect={() => {
+                                  setModel(item.id);
+                                  setModelOpen(false);
+                                }}
+                                value={item.id}
+                              >
+                                <ModelSelectorLogo provider={item.provider} />
+                                <ModelSelectorName>{item.name}</ModelSelectorName>
+                                {model === item.id ? (
+                                  <CheckIcon className="ml-auto size-4" />
+                                ) : null}
+                              </ModelSelectorItem>
+                            ))}
+                          </ModelSelectorGroup>
+                        </ModelSelectorList>
+                      </ModelSelectorContent>
+                    </ModelSelector>
+                  </PromptInputTools>
+                  <PromptSubmit onStop={stop} status={status} text={text} />
+                </PromptInputFooter>
+              </PromptInput>
+            </div>
           </div>
         </div>
       </div>
