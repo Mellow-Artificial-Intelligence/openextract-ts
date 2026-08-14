@@ -105,6 +105,25 @@ const rich = await extractManyWithResults(PdfInfo, "xai/grok-4.6", [
 console.log(totalUsage(rich.filter((item) => !(item instanceof Error))));
 ```
 
+## Terminal UI
+
+```bash
+npx openextract
+npx openextract --tui ./reports/q4.pdf
+```
+
+The OpenTUI app takes a file, URL, or pasted text, a schema (presets, a field list, JSON, or `module:export`), and writes validated JSON. The native renderer needs [Bun](https://bun.sh) or Node.js 26.4+ with `--experimental-ffi`. If `bun` is on your `PATH`, `openextract` re-execs through it automatically.
+
+Schema field lists look like this:
+
+```
+vendor: string
+total: number
+lineItems: [{ description: string, amount: number }]
+```
+
+Keys: `Tab` cycles fields, `Ctrl+E` extracts, `Ctrl+S` saves, `Ctrl+C` quits.
+
 ## Command line
 
 ```bash

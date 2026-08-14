@@ -1,5 +1,9 @@
 # API reference
 
+## Terminal UI
+
+`openextract` and `openextract --tui [input]` launch an OpenTUI app. The TUI calls `extractWithUsage` with a schema from a preset, field list, JSON example, JSON Schema, or `module:export`. It requires Bun or Node.js 26.4+ with `--experimental-ffi`.
+
 ## Extraction
 
 ### `extract(schema, model, inputFile, options?)`
