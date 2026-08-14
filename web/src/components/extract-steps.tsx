@@ -50,10 +50,21 @@ export function ExtractSteps({
           <ChevronLeftIcon />
         </Button>
         <div className="min-w-0 flex-1 text-center">
+          <p className="truncate font-medium text-sm">{meta.label}</p>
           <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
             Step {meta.n} of {FLOW_STEPS.length}
           </p>
-          <p className="truncate font-medium text-sm">{meta.label}</p>
+          <div className="mx-auto mt-1.5 flex max-w-24 gap-1">
+            {FLOW_STEPS.map((id, i) => (
+              <span
+                className={cn(
+                  "h-1 flex-1 rounded-full",
+                  i < index ? "bg-foreground/35" : i === index ? "bg-foreground" : "bg-muted",
+                )}
+                key={id}
+              />
+            ))}
+          </div>
         </div>
         <Button
           aria-label="Next step"

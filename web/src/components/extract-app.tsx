@@ -50,6 +50,7 @@ import { useObject } from "@ai-sdk/react";
 import type { FileUIPart } from "ai";
 import {
   CheckIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   PlusIcon,
   SlidersHorizontalIcon,
@@ -67,8 +68,18 @@ import {
   type TableColumn,
   type TableRow,
 } from "@/lib/table-schema";
+import { cn } from "@/lib/utils";
 
 const GITHUB_URL = "https://github.com/Mellow-Artificial-Intelligence/openextract";
+
+function sourceSummary(source: string, files: FileUIPart[]) {
+  const chars = source.trim().length;
+  if (!chars && files.length === 0) return "Paste text or attach a file";
+  const parts: string[] = [];
+  if (chars) parts.push(`${chars} chars`);
+  if (files.length) parts.push(`${files.length} file${files.length === 1 ? "" : "s"}`);
+  return parts.join(" · ");
+}
 
 function PromptAttachments() {
   const attachments = usePromptInputAttachments();
@@ -138,6 +149,7 @@ export function ExtractApp() {
   const [columns, setColumns] = useState<TableColumn[]>([]);
   const [rows, setRows] = useState<TableRow[]>([]);
   const [tableKey, setTableKey] = useState("init");
+  const [sourceOpen, setSourceOpen] = useState(true);
 
   const {
     object: schemaObject,
@@ -225,6 +237,7 @@ export function ExtractApp() {
     const files = await withDataUrls(sourceFiles);
     if (!query.trim() && !source.trim() && files.length === 0) return;
     stopSchema();
+    setSourceOpen(false);
     submitExtract({
       query,
       source,
@@ -267,6 +280,7 @@ export function ExtractApp() {
     setTitle("Table");
     setTableKey(nanoid());
     setSourceKey((key) => key + 1);
+    setSourceOpen(true);
   }, [clearExtract, clearSchema, stopExtract, stopSchema]);
 
   const table = (
@@ -465,7 +479,10 @@ export function ExtractApp() {
               <Button
                 className="h-11 flex-1 sm:h-9 sm:flex-none sm:px-5"
                 disabled={!extractReady}
-                onClick={() => setStep("extract")}
+                onClick={() => {
+                  setSourceOpen(true);
+                  setStep("extract");
+                }}
                 type="button"
               >
                 Continue
@@ -478,51 +495,66 @@ export function ExtractApp() {
       {step === "extract" ? (
         <>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="shrink-0 border-b border-black/5 p-3 sm:p-4">
+            <div className="shrink-0 border-b border-black/5">
               <div className="mx-auto w-full max-w-3xl">
-                <PromptInput
-                  clearOnSubmit={false}
-                  globalDrop
-                  key={sourceKey}
-                  multiple
-                  onSubmit={() => {
-                    void extract();
-                  }}
+                <button
+                  aria-expanded={sourceOpen}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left sm:pointer-events-none sm:cursor-default sm:px-4 sm:pt-4 sm:pb-2"
+                  onClick={() => setSourceOpen((open) => !open)}
+                  type="button"
                 >
-                  <PromptInputHeader className="border-b border-black/5">
-                    <div className="flex w-full items-center justify-between gap-2">
-                      <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-                        Source
-                      </span>
-                      <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">
-                        paste or attach
-                      </span>
-                    </div>
-                    <PromptAttachments />
-                    <SourceFiles onFiles={setSourceFiles} />
-                  </PromptInputHeader>
-                  <PromptInputBody>
-                    <PromptInputTextarea
-                      className="min-h-16 max-h-32 font-mono text-sm sm:min-h-20 sm:max-h-40"
-                      onChange={(event) => setSource(event.target.value)}
-                      placeholder="Paste text or attach a file to extract from…"
-                      submitOnEnter={false}
-                      value={source}
-                    />
-                  </PromptInputBody>
-                  <PromptInputFooter className="gap-2 border-t border-black/5">
-                    <PromptInputTools>
-                      <PromptInputActionMenu>
-                        <PromptInputActionMenuTrigger />
-                        <PromptInputActionMenuContent>
-                          <PromptInputActionAddAttachments />
-                        </PromptInputActionMenuContent>
-                      </PromptInputActionMenu>
-                    </PromptInputTools>
-                  </PromptInputFooter>
-                </PromptInput>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Source
+                    </span>
+                    <span className="block truncate text-muted-foreground text-xs">
+                      {sourceSummary(source, sourceFiles)}
+                    </span>
+                  </span>
+                  <ChevronDownIcon
+                    className={cn(
+                      "size-4 shrink-0 text-muted-foreground transition-transform sm:hidden",
+                      sourceOpen && "rotate-180",
+                    )}
+                  />
+                </button>
+                <div className={cn("px-3 pb-3 sm:px-4 sm:pb-4", !sourceOpen && "max-sm:hidden")}>
+                  <PromptInput
+                    clearOnSubmit={false}
+                    globalDrop
+                    key={sourceKey}
+                    multiple
+                    onSubmit={() => {
+                      void extract();
+                    }}
+                  >
+                    <PromptInputHeader className="border-b border-black/5">
+                      <PromptAttachments />
+                      <SourceFiles onFiles={setSourceFiles} />
+                    </PromptInputHeader>
+                    <PromptInputBody>
+                      <PromptInputTextarea
+                        className="min-h-16 max-h-32 font-mono text-sm sm:min-h-20 sm:max-h-40"
+                        onChange={(event) => setSource(event.target.value)}
+                        placeholder="Paste text or attach a file to extract from…"
+                        submitOnEnter={false}
+                        value={source}
+                      />
+                    </PromptInputBody>
+                    <PromptInputFooter className="gap-2 border-t border-black/5">
+                      <PromptInputTools>
+                        <PromptInputActionMenu>
+                          <PromptInputActionMenuTrigger />
+                          <PromptInputActionMenuContent>
+                            <PromptInputActionAddAttachments />
+                          </PromptInputActionMenuContent>
+                        </PromptInputActionMenu>
+                      </PromptInputTools>
+                    </PromptInputFooter>
+                  </PromptInput>
+                </div>
                 {error ? (
-                  <div className="mt-3 flex items-start gap-2 border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
+                  <div className="flex items-start gap-2 px-3 pb-3 text-destructive text-sm sm:px-4">
                     <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
                     <span className="min-w-0 flex-1">That run failed. Try again in a moment.</span>
                   </div>
