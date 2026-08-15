@@ -61,7 +61,6 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 import { DEFAULT_MODEL, MODELS, type ModelId } from "@/lib/models";
 import { EXAMPLES, type StyleName } from "@/lib/presets";
 import {
-  extractRowsClientSchema,
   mergeStreamedRows,
   normalizeColumns,
   tableSchemaObject,
@@ -150,6 +149,9 @@ export function ExtractApp() {
   const [rows, setRows] = useState<TableRow[]>([]);
   const [tableKey, setTableKey] = useState("init");
   const [sourceOpen, setSourceOpen] = useState(true);
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<Error | null>(null);
+  const extractAbort = useRef<AbortController | null>(null);
 
   const {
     object: schemaObject,
@@ -168,21 +170,15 @@ export function ExtractApp() {
     },
   });
 
-  const {
-    object: extractObject,
-    submit: submitExtract,
-    isLoading: extracting,
-    stop: stopExtract,
-    error: extractError,
-    clear: clearExtract,
-  } = useObject({
-    api: "/api/extract",
-    schema: extractRowsClientSchema,
-    onFinish({ object }) {
-      if (!object?.rows) return;
-      setRows((prev) => mergeStreamedRows(prev, object.rows, (index) => prev[index]?.id ?? `stream-${index}`));
-    },
-  });
+  const stopExtract = useCallback(() => {
+    extractAbort.current?.abort();
+    extractAbort.current = null;
+    setExtracting(false);
+  }, []);
+
+  const clearExtract = useCallback(() => {
+    setExtractError(null);
+  }, []);
 
   const selected = MODELS.find((item) => item.id === model) ?? MODELS[0]!;
   const busy = schemaLoading || extracting;
@@ -192,10 +188,7 @@ export function ExtractApp() {
   const displayColumns = schemaLoading || columns.length === 0 ? streamedColumns : columns;
   const displayTitle =
     schemaLoading && schemaObject?.title?.trim() ? schemaObject.title.trim() : title;
-  const displayRows =
-    extracting || rows.length === 0
-      ? mergeStreamedRows(rows, extractObject?.rows, (index) => rows[index]?.id ?? `stream-${index}`)
-      : rows;
+  const displayRows = rows;
   const schemaReady = schemaLoading || displayColumns.length > 0;
   const extractReady = displayColumns.length > 0;
 
@@ -207,13 +200,7 @@ export function ExtractApp() {
   };
 
   const setDisplayRows: Dispatch<SetStateAction<TableRow[]>> = (update) => {
-    setRows((prev) => {
-      const base =
-        extracting || prev.length === 0
-          ? mergeStreamedRows(prev, extractObject?.rows, (index) => prev[index]?.id ?? `stream-${index}`)
-          : prev;
-      return typeof update === "function" ? update(base) : update;
-    });
+    setRows((prev) => (typeof update === "function" ? update(prev) : update));
   };
 
   const generate = useCallback(
@@ -238,16 +225,38 @@ export function ExtractApp() {
     if (!query.trim() && !source.trim() && files.length === 0) return;
     stopSchema();
     setSourceOpen(false);
-    submitExtract({
-      query,
-      source,
-      files,
-      columns: displayColumns,
-      model,
-      style,
-      instructions,
-    });
-  }, [busy, displayColumns, instructions, model, query, source, sourceFiles, stopSchema, style, submitExtract]);
+    extractAbort.current?.abort();
+    const controller = new AbortController();
+    extractAbort.current = controller;
+    setExtracting(true);
+    setExtractError(null);
+    setRows([]);
+    try {
+      const response = await fetch("/api/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query,
+          source,
+          files,
+          columns: displayColumns,
+          model,
+          style,
+          instructions,
+        }),
+        signal: controller.signal,
+      });
+      const data = (await response.json()) as { rows?: unknown; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Extraction failed");
+      setRows(mergeStreamedRows([], data.rows, (index) => `row-${index}`));
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      setExtractError(error instanceof Error ? error : new Error("Extraction failed"));
+    } finally {
+      if (extractAbort.current === controller) extractAbort.current = null;
+      setExtracting(false);
+    }
+  }, [busy, displayColumns, instructions, model, query, source, sourceFiles, stopSchema, style]);
 
   const submitQuery = useCallback(
     (message: PromptInputMessage) => {

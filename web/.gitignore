@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# Workflow SDK generated routes
+/src/app/.well-known/
+
 # production
 /build
 
@@ -40,3 +43,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/.swc
