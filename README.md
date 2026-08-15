@@ -178,6 +178,32 @@ Tools cover the full API: `extract`, `extract_many`, and reusable `create_extrac
 import { createOpenExtractMcpServer } from "openextract/mcp";
 ```
 
+## Vercel Workflows
+
+Run extraction agents as durable workflows. Each document is a retryable step, so long `search` / `code` tool loops survive crashes and deploys. Zod schemas are not serializable — pass JSON Schema (or a JSON Schema string).
+
+```ts
+import { start } from "workflow/api";
+import { extractWorkflow } from "openextract/workflow";
+
+const run = await start(extractWorkflow, [
+  {
+    schema: {
+      type: "object",
+      properties: { summary: { type: "string" }, language: { type: "string" } },
+      required: ["summary", "language"],
+    },
+    model: "openai/gpt-5.5",
+    input: { source: "https://example.com/document.pdf" },
+    style: "direct",
+  },
+]);
+
+const { output, usage } = await run.returnValue;
+```
+
+`extractManyWorkflow` runs each input as its own step. In Next.js, wrap the config with `withWorkflow()` from `workflow/next` and set `transpilePackages: ["openextract"]` so the `"use workflow"` / `"use step"` directives compile. See `examples/workflow/extract-route.ts`. The local web UI (`npm run web`) starts table extraction through the same runtime.
+
 ## Error handling
 
 ```ts

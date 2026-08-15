@@ -8,6 +8,8 @@ cp web/.env.example web/.env.local
 npm run web
 ```
 
-Open http://localhost:3000. Describe the table you want, generate columns, edit them, then extract from pasted text or an attached file. The UI is a three-step flow so query, schema, and source each get their own screen. `/api/schema` streams the table shape; `/api/extract` streams rows into a sortable shadcn table.
+Open http://localhost:3000. Describe the table you want, generate columns, edit them, then extract from pasted text or an attached file. The UI is a three-step flow so query, schema, and source each get their own screen. `/api/schema` streams the table shape; `/api/extract` starts a Vercel Workflow (`WorkflowAgent`) and returns rows into a sortable shadcn table.
 
-On Vercel, set the Git root directory to `web/`. AI Gateway uses OIDC; no `AI_GATEWAY_API_KEY` is required.
+Inspect durable runs with `npx workflow web`.
+
+On Vercel, set the Git root directory to `web/`. AI Gateway uses OIDC; no `AI_GATEWAY_API_KEY` is required. The Workflow SDK needs no extra production config.
