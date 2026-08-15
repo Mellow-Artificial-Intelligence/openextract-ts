@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-15
+
 ### Added
 
 - Agent-native repo docs: `AGENTS.md`, `CLAUDE.md`, and `VISION.md`.
@@ -34,5 +36,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Rewrote the library in TypeScript on the Vercel AI SDK. Schemas are Zod objects, model calls use `generateText` / `ToolLoopAgent` through AI Gateway, and the public API is async-first (`extract`, `extractWithUsage`, `extractMany`, `Extractor`).
 - Shared one extraction pipeline across one-shot, session, and batch APIs so media loading, style workspaces, retries, and option defaults are no longer duplicated.
 
-[Unreleased]: https://github.com/Mellow-Artificial-Intelligence/openextract-ts/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Mellow-Artificial-Intelligence/openextract-ts/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Mellow-Artificial-Intelligence/openextract-ts/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Mellow-Artificial-Intelligence/openextract-ts/releases/tag/v0.1.0
