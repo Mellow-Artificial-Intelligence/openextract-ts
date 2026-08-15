@@ -59,7 +59,7 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { streamExtractRows } from "@/lib/extract-stream";
+import { fetchExtractRows } from "@/lib/extract-stream";
 import {
   DEFAULT_MODEL,
   MODELS,
@@ -71,7 +71,6 @@ import {
 import { EXAMPLES, type StyleName } from "@/lib/presets";
 import { swarmAgentInstructions } from "@/lib/system-prompt";
 import {
-  extractRowsClientSchema,
   mergeStreamedRows,
   normalizeColumns,
   tableSchemaObject,
@@ -166,6 +165,9 @@ export function ExtractApp() {
   const [rows, setRows] = useState<TableRow[]>([]);
   const [tableKey, setTableKey] = useState("init");
   const [sourceOpen, setSourceOpen] = useState(true);
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<Error | null>(null);
+  const extractAbort = useRef<AbortController | null>(null);
 
   const {
     object: schemaObject,
@@ -184,21 +186,15 @@ export function ExtractApp() {
     },
   });
 
-  const {
-    object: extractObject,
-    submit: submitExtract,
-    isLoading: extracting,
-    stop: stopExtract,
-    error: extractError,
-    clear: clearExtract,
-  } = useObject({
-    api: "/api/extract",
-    schema: extractRowsClientSchema,
-    onFinish({ object }) {
-      if (!object?.rows) return;
-      setRows((prev) => mergeStreamedRows(prev, object.rows, (index) => prev[index]?.id ?? `stream-${index}`));
-    },
-  });
+  const stopExtract = useCallback(() => {
+    extractAbort.current?.abort();
+    extractAbort.current = null;
+    setExtracting(false);
+  }, []);
+
+  const clearExtract = useCallback(() => {
+    setExtractError(null);
+  }, []);
 
   const selected = MODELS.find((item) => item.id === model) ?? MODELS[0]!;
   const swarming = swarmAgents.some((agent) => agent.status === "pending" || agent.status === "running");
@@ -209,11 +205,7 @@ export function ExtractApp() {
   const displayColumns = schemaLoading || columns.length === 0 ? streamedColumns : columns;
   const displayTitle =
     schemaLoading && schemaObject?.title?.trim() ? schemaObject.title.trim() : title;
-  const displayRows = swarming
-    ? rows
-    : extracting || rows.length === 0
-      ? mergeStreamedRows(rows, extractObject?.rows, (index) => rows[index]?.id ?? `stream-${index}`)
-      : rows;
+  const displayRows = rows;
   const schemaReady = schemaLoading || displayColumns.length > 0;
   const extractReady = displayColumns.length > 0;
 
@@ -225,14 +217,7 @@ export function ExtractApp() {
   };
 
   const setDisplayRows: Dispatch<SetStateAction<TableRow[]>> = (update) => {
-    setRows((prev) => {
-      const base = swarming
-        ? prev
-        : extracting || prev.length === 0
-          ? mergeStreamedRows(prev, extractObject?.rows, (index) => prev[index]?.id ?? `stream-${index}`)
-          : prev;
-      return typeof update === "function" ? update(base) : update;
-    });
+    setRows((prev) => (typeof update === "function" ? update(prev) : update));
   };
 
   const stopSwarm = useCallback(() => {
@@ -270,27 +255,41 @@ export function ExtractApp() {
     stopSchema();
     setSourceOpen(false);
     const models = agentModels.length > 0 ? agentModels : [model];
-    if (models.length === 1) {
-      setSwarmAgents([]);
-      setSwarmError(null);
-      submitExtract({
-        query,
-        source,
-        files,
-        columns: displayColumns,
-        model: models[0],
-        style,
-        instructions,
-      });
-      return;
-    }
-    stopExtract();
-    clearExtract();
-    setRows([]);
-    setSwarmError(null);
+    extractAbort.current?.abort();
     swarmAbort.current?.abort();
     const controller = new AbortController();
+    extractAbort.current = controller;
     swarmAbort.current = controller;
+    setExtractError(null);
+    setSwarmError(null);
+    setRows([]);
+    if (models.length === 1) {
+      setSwarmAgents([]);
+      setExtracting(true);
+      try {
+        const extracted = await fetchExtractRows(
+          {
+            query,
+            source,
+            files,
+            columns: displayColumns,
+            model: models[0],
+            style,
+            instructions,
+          },
+          controller.signal,
+        );
+        setRows(mergeStreamedRows([], extracted, (index) => `row-${index}`));
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
+        setExtractError(error instanceof Error ? error : new Error("Extraction failed"));
+      } finally {
+        if (extractAbort.current === controller) extractAbort.current = null;
+        setExtracting(false);
+      }
+      return;
+    }
+    setExtracting(false);
     setSwarmAgents(models.map((id) => ({ model: id, status: "running" as const, rows: 0 })));
     const groups: Array<Array<Record<string, unknown>>> = models.map(() => []);
     const publish = () => {
@@ -299,7 +298,7 @@ export function ExtractApp() {
     };
     const outcomes = await Promise.allSettled(
       models.map(async (agentModel, index) => {
-        const extracted = await streamExtractRows(
+        const extracted = await fetchExtractRows(
           {
             query,
             source,
@@ -309,16 +308,7 @@ export function ExtractApp() {
             style,
             instructions: swarmAgentInstructions(instructions, index, models.length),
           },
-          {
-            signal: controller.signal,
-            onRows: (partial) => {
-              groups[index] = partial;
-              setSwarmAgents((prev) =>
-                prev.map((agent, i) => (i === index ? { ...agent, rows: partial.length } : agent)),
-              );
-              publish();
-            },
-          },
+          controller.signal,
         );
         groups[index] = extracted;
         setSwarmAgents((prev) =>
@@ -338,21 +328,8 @@ export function ExtractApp() {
     if (outcomes.every((outcome) => outcome.status === "rejected")) {
       setSwarmError(new Error("Every swarm agent failed."));
     }
-  }, [
-    agentModels,
-    busy,
-    clearExtract,
-    displayColumns,
-    instructions,
-    model,
-    query,
-    source,
-    sourceFiles,
-    stopExtract,
-    stopSchema,
-    style,
-    submitExtract,
-  ]);
+    if (swarmAbort.current === controller) swarmAbort.current = null;
+  }, [agentModels, busy, displayColumns, instructions, model, query, source, sourceFiles, stopSchema, style]);
 
   const submitQuery = useCallback(
     (message: PromptInputMessage) => {

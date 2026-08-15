@@ -6,7 +6,7 @@
 
 ## Local web UI
 
-`npm run web` starts the Next.js app in `web/`. Single-turn extraction streams through `POST /api/extract` (`streamText` + UI message stream). Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC. The UI can run several agents in parallel, attach a model to each agent, and merge unique rows. CLI `--models` assigns one model per agent.
+`npm run web` starts the Next.js app in `web/`. Table extraction runs as a Vercel Workflow (`WorkflowAgent` in `web/src/workflows/extract.ts`); `POST /api/extract` starts the run and returns the structured rows. Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC. Pull-request preview deploys are skipped. Inspect runs with `npx workflow web`. The UI can run several agents in parallel, attach a model to each agent, and merge unique rows. CLI `--models` assigns one model per agent.
 
 ## Extraction
 
@@ -71,3 +71,34 @@ const server = createOpenExtractMcpServer({ model: "openai/gpt-5.5" });
 ```
 
 Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts: `extract-document`, `extract-batch`, `extract-swarm`.
+
+## Vercel Workflows
+
+`openextract/workflow` exports durable workflow functions. Arguments must be serializable (JSON Schema, model id, path/URL or base64). Start them with `start()` from `workflow/api`.
+
+### `extractWorkflow(input)`
+
+`"use workflow"` function. Loads the schema inside a `"use step"` and returns `{ output, usage }`.
+
+### `extractManyWorkflow(input)`
+
+Same, one step per input. `maxConcurrency` chunks parallel steps (default 5). `returnExceptions: true` returns `{ error, errorType }` per failure instead of failing the run.
+
+### `runSerializableExtract(input, model?)`
+
+The step body without directives. Use this if you write your own `"use workflow"` function and keep the directives in app source.
+
+```ts
+import { start } from "workflow/api";
+import { extractWorkflow } from "openextract/workflow";
+
+const run = await start(extractWorkflow, [
+  {
+    schema: { type: "object", properties: { summary: { type: "string" } } },
+    model: "openai/gpt-5.5",
+    input: { source: "https://example.com/document.pdf" },
+  },
+]);
+```
+
+Next.js: `withWorkflow()` in `next.config` and `transpilePackages: ["openextract"]`. See `examples/workflow/extract-route.ts`.

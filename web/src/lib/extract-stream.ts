@@ -10,6 +10,21 @@ export function rowsFromExtractText(text: string): Array<Record<string, unknown>
   );
 }
 
+export async function fetchExtractRows(
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<Array<Record<string, unknown>>> {
+  const response = await fetch("/api/extract", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  const data = (await response.json()) as { rows?: unknown; error?: string };
+  if (!response.ok) throw new Error(data.error ?? `Extract failed (${response.status})`);
+  return rowsFromExtractText(JSON.stringify({ rows: data.rows })) ?? [];
+}
+
 export async function streamExtractRows(
   body: unknown,
   options: {
