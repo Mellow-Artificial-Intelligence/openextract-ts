@@ -10,8 +10,12 @@ import {
   renameColumnKey,
   rowsToJson,
   toColumnKey,
+  unionRows,
   uniqueKey,
 } from "../web/src/lib/table-schema.ts";
+import { assignSwarmModels } from "../web/src/lib/models.ts";
+import { parsePartialJson } from "../web/src/lib/partial-json.ts";
+import { rowsFromExtractText } from "../web/src/lib/extract-stream.ts";
 
 describe("toColumnKey", () => {
   it("keeps ident keys", () => {
@@ -121,5 +125,46 @@ describe("parseDataUrl", () => {
 
   it("rejects non-data URLs", () => {
     expect(parseDataUrl("https://example.com")).toBeNull();
+  });
+});
+
+describe("unionRows", () => {
+  it("dedupes fingerprints across agents", () => {
+    expect(
+      unionRows([
+        [{ name: "Ada", age: 36 }, { name: "Sam", age: 1 }],
+        [{ name: "Ada", age: 36 }, { name: "Grace", age: 2 }],
+      ]),
+    ).toEqual([
+      { name: "Ada", age: 36 },
+      { name: "Sam", age: 1 },
+      { name: "Grace", age: 2 },
+    ]);
+  });
+});
+
+describe("assignSwarmModels", () => {
+  it("repeats the selected model", () => {
+    expect(assignSwarmModels(3, "xai/grok-4.6", false)).toEqual([
+      "xai/grok-4.6",
+      "xai/grok-4.6",
+      "xai/grok-4.6",
+    ]);
+  });
+
+  it("rotates the model list", () => {
+    expect(assignSwarmModels(4, "xai/grok-4.6", true)).toEqual([
+      "openai/gpt-5.6-luna",
+      "xai/grok-4.6",
+      "google/gemini-3.7-flash",
+      "openai/gpt-5.6-luna",
+    ]);
+  });
+});
+
+describe("parsePartialJson", () => {
+  it("closes an open rows array", () => {
+    expect(parsePartialJson('{"rows":[{"name":"Ada"}')).toEqual({ rows: [{ name: "Ada" }] });
+    expect(rowsFromExtractText('{"rows":[{"name":"Ada"}')).toEqual([{ name: "Ada" }]);
   });
 });

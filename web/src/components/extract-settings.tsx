@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { SWARM_SIZES, type SwarmSize } from "@/lib/models";
 import { STYLES, STYLE_DETAILS, type StyleName } from "@/lib/presets";
 
 function Section({
@@ -39,18 +40,69 @@ function Section({
 export function ExtractSettings({
   style,
   instructions,
+  agents,
+  fanoutModels,
   onStyle,
   onInstructions,
+  onAgents,
+  onFanoutModels,
   className,
 }: {
   style: StyleName;
   instructions: string;
+  agents: SwarmSize;
+  fanoutModels: boolean;
   onStyle: (style: StyleName) => void;
   onInstructions: (value: string) => void;
+  onAgents: (value: SwarmSize) => void;
+  onFanoutModels: (value: boolean) => void;
   className?: string;
 }) {
   return (
     <div className={cn("flex flex-col gap-6", className)}>
+      <Section
+        hint="How many agents extract this source in parallel. 1 is a single pass."
+        htmlFor="agents"
+        title="Agents"
+      >
+        <Select
+          onValueChange={(value) => onAgents(Number(value) as SwarmSize)}
+          value={String(agents)}
+        >
+          <SelectTrigger className="w-full" id="agents">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SWARM_SIZES.map((count) => (
+              <SelectItem key={count} value={String(count)}>
+                {count === 1 ? "1 agent" : `${count} agents`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Section>
+
+      {agents > 1 ? (
+        <Section
+          hint="Same model for every agent, or rotate through the model list."
+          htmlFor="fanout"
+          title="Models"
+        >
+          <Select
+            onValueChange={(value) => onFanoutModels(value === "fanout")}
+            value={fanoutModels ? "fanout" : "same"}
+          >
+            <SelectTrigger className="w-full" id="fanout">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="same">Selected model</SelectItem>
+              <SelectItem value="fanout">Rotate all models</SelectItem>
+            </SelectContent>
+          </Select>
+        </Section>
+      ) : null}
+
       <Section hint="How the model works through the source." htmlFor="style" title="Style">
         <Select onValueChange={(value) => onStyle(value as StyleName)} value={style}>
           <SelectTrigger className="w-full" id="style">

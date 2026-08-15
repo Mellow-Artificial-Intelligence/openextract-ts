@@ -5,6 +5,13 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
 import { z } from "zod";
 import { extractMany, extractManyWithResults } from "./batch.js";
+import { SWARM_REDUCES } from "./reduce.js";
+import {
+  extractSwarm,
+  extractSwarmWithResults,
+  type ExtractSwarmOptions,
+  type SwarmMember,
+} from "./swarm.js";
 import { toError } from "./errors.js";
 import { extract, extractWithUsage, type ExtractOptions } from "./extract.js";
 import { ModelError } from "./exceptions.js";
@@ -61,6 +68,8 @@ export interface CreateOpenExtractMcpServerOptions {
   extractWithUsage?: typeof extractWithUsage;
   extractMany?: typeof extractMany;
   extractManyWithResults?: typeof extractManyWithResults;
+  extractSwarm?: typeof extractSwarm;
+  extractSwarmWithResults?: typeof extractSwarmWithResults;
   createExtractor?: (
     schema: z.ZodType<unknown>,
     model: LanguageModel,
@@ -122,7 +131,7 @@ function toolResult(payload: unknown, isError = false) {
 
 function capabilities(): Record<string, unknown> {
   return {
-    tools: ["extract", "extract_many", "create_extractor", "extractor_extract", "close_extractor"],
+    tools: ["extract", "extract_many", "extract_swarm", "create_extractor", "extractor_extract", "close_extractor"],
     styles: STYLES,
     inputs: ["local path", "http(s) URL", "base64 bytes + mediaType"],
     schemas: ["JSON Schema object", "JSON Schema string", "module:exportName"],
@@ -139,6 +148,9 @@ function capabilities(): Record<string, unknown> {
       "returnExceptions",
       "includeUsage",
       "includeResults",
+      "size",
+      "models",
+      "reduce",
     ],
     env: [
       "AI_GATEWAY_API_KEY",
@@ -166,6 +178,8 @@ export function createOpenExtractMcpServer(
   const runExtractWithUsage = options.extractWithUsage ?? extractWithUsage;
   const runExtractMany = options.extractMany ?? extractMany;
   const runExtractManyWithResults = options.extractManyWithResults ?? extractManyWithResults;
+  const runExtractSwarm = options.extractSwarm ?? extractSwarm;
+  const runExtractSwarmWithResults = options.extractSwarmWithResults ?? extractSwarmWithResults;
   const createExtractor =
     options.createExtractor ??
     ((schema, model, extractorOptions) => new Extractor(schema, model, extractorOptions));
@@ -183,7 +197,7 @@ export function createOpenExtractMcpServer(
     { name: "openextract", version: SERVER_VERSION },
     {
       instructions:
-        "Use extract for one document and extract_many for batches. " +
+        "Use extract for one document, extract_many for batches, and extract_swarm to run parallel agents on one input. " +
         "Pass a JSON Schema (or module:exportName) plus a path, URL, or base64 bytes. " +
         "create_extractor stores schema/model/options for repeated extractor_extract calls.",
       capabilities: { tools: {}, resources: {}, prompts: {}, completions: {} },
@@ -249,6 +263,53 @@ export function createOpenExtractMcpServer(
           ? await runExtractManyWithResults(schema, model, inputs, opts)
           : await runExtractMany(schema, model, inputs, opts);
         return toolResult(results.map((item) => (item instanceof Error ? serializeError(item) : item)));
+      } catch (error) {
+        return toolResult(serializeError(error), true);
+      }
+    },
+  );
+
+  server.registerTool(
+    "extract_swarm",
+    {
+      title: "Extract swarm",
+      description:
+        "Run several extraction agents in parallel on one input, then reduce their outputs " +
+        "(merge filled fields / unique rows, vote, or take the first success).",
+      inputSchema: {
+        ...sharedFields,
+        ...inputFields,
+        models: z.array(z.string()).min(1).optional().describe("Agent model ids. Overrides model+size when set."),
+        size: z.number().int().positive().optional().describe("Repeat model this many times (default 1)"),
+        reduce: z.enum(SWARM_REDUCES).optional().describe("merge (default), vote, or first"),
+        maxConcurrency: z.number().int().positive().optional(),
+        includeResults: z.boolean().optional().describe("Return output plus per-agent results and usage"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    },
+    async (args) => {
+      try {
+        const schema = await loadSchema(args.schema);
+        const input = resolveMcpInput(args);
+        const members: SwarmMember[] | string = args.models?.length
+          ? args.models.map((model) => ({ model }))
+          : resolveModel(args.model);
+        const opts: ExtractSwarmOptions = {
+          ...extractOptions(args),
+          size: args.models?.length ? undefined : args.size,
+          reduce: args.reduce,
+          maxConcurrency: args.maxConcurrency,
+        };
+        if (args.includeResults) {
+          const swarm = await runExtractSwarmWithResults(schema, members, input, opts);
+          return toolResult({
+            output: swarm.output,
+            usage: swarm.usage,
+            reduce: swarm.reduce,
+            agents: swarm.agents.map((item) => (item instanceof Error ? serializeError(item) : item)),
+          });
+        }
+        return toolResult(await runExtractSwarm(schema, members, input, opts));
       } catch (error) {
         return toolResult(serializeError(error), true);
       }
@@ -364,7 +425,7 @@ export function createOpenExtractMcpServer(
           text: [
             "# openextract MCP",
             "",
-            "Tools: `extract`, `extract_many`, `create_extractor`, `extractor_extract`, `close_extractor`.",
+            "Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`.",
             "Styles: `direct` (any media), `search` and `code` (UTF-8 text only).",
             "Schema: JSON Schema object/string, or `module:exportName` for a local Zod export.",
             "Input: `source` (path or URL) or `data` (base64) plus `mediaType`.",
@@ -399,6 +460,34 @@ export function createOpenExtractMcpServer(
             text:
               `Extract structured data from ${source} using the openextract extract tool. ` +
               `Schema: ${schema}. Style: ${style ?? "direct"}.` +
+              (instructions ? ` Instructions: ${instructions}` : ""),
+          },
+        },
+      ],
+    }),
+  );
+
+  server.registerPrompt(
+    "extract-swarm",
+    {
+      title: "Extract swarm",
+      description: "Prompt the model to extract with several parallel agents on one document.",
+      argsSchema: {
+        source: z.string().describe("Path or URL"),
+        schema: z.string().describe("JSON Schema or module:exportName"),
+        size: z.string().optional().describe("Number of agents"),
+        instructions: z.string().optional(),
+      },
+    },
+    ({ source, schema, size, instructions }) => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text:
+              `Extract structured data from ${source} using the openextract extract_swarm tool. ` +
+              `Schema: ${schema}. Agents: ${size ?? "3"}.` +
               (instructions ? ` Instructions: ${instructions}` : ""),
           },
         },

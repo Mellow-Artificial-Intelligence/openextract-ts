@@ -39,6 +39,14 @@ export function schemaUserPrompt(query: string, source?: string): string {
     : `Table request:\n${query}`;
 }
 
+export function swarmAgentInstructions(instructions: string, index: number, total: number): string {
+  const role =
+    `You are extraction agent ${index + 1} of ${total}. ` +
+    "Work independently. Prefer recall: extract every matching row you can justify from the source.";
+  const extra = instructions.trim();
+  return extra ? `${extra}\n\n${role}` : role;
+}
+
 export function extractUserPrompt(query: string, source?: string): string {
   const text = source?.trim();
   if (text && query.trim()) return `${query.trim()}\n\n${text}`;

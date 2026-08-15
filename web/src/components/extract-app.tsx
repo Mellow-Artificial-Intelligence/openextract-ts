@@ -2,6 +2,7 @@
 
 import { ExtractSettings } from "@/components/extract-settings";
 import { ExtractSteps, type FlowStep } from "@/components/extract-steps";
+import { ExtractSwarmStatus, type SwarmAgentState } from "@/components/extract-swarm";
 import { ExtractTable } from "@/components/extract-table";
 import {
   Attachment,
@@ -58,13 +59,16 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { DEFAULT_MODEL, MODELS, type ModelId } from "@/lib/models";
+import { streamExtractRows } from "@/lib/extract-stream";
+import { assignSwarmModels, DEFAULT_MODEL, MODELS, type ModelId, type SwarmSize } from "@/lib/models";
 import { EXAMPLES, type StyleName } from "@/lib/presets";
+import { swarmAgentInstructions } from "@/lib/system-prompt";
 import {
   extractRowsClientSchema,
   mergeStreamedRows,
   normalizeColumns,
   tableSchemaObject,
+  unionRows,
   type TableColumn,
   type TableRow,
 } from "@/lib/table-schema";
@@ -139,6 +143,11 @@ export function ExtractApp() {
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [modelOpen, setModelOpen] = useState(false);
   const [style, setStyle] = useState<StyleName>("direct");
+  const [agents, setAgents] = useState<SwarmSize>(1);
+  const [fanoutModels, setFanoutModels] = useState(false);
+  const [swarmAgents, setSwarmAgents] = useState<SwarmAgentState[]>([]);
+  const [swarmError, setSwarmError] = useState<Error | null>(null);
+  const swarmAbort = useRef<AbortController | null>(null);
   const [instructions, setInstructions] = useState("");
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("");
@@ -185,15 +194,17 @@ export function ExtractApp() {
   });
 
   const selected = MODELS.find((item) => item.id === model) ?? MODELS[0]!;
-  const busy = schemaLoading || extracting;
-  const error = schemaError ?? extractError;
+  const swarming = swarmAgents.some((agent) => agent.status === "pending" || agent.status === "running");
+  const busy = schemaLoading || extracting || swarming;
+  const error = schemaError ?? extractError ?? swarmError;
   const hasSource = Boolean(source.trim() || sourceFiles.length);
   const streamedColumns = normalizeColumns(schemaObject?.columns);
   const displayColumns = schemaLoading || columns.length === 0 ? streamedColumns : columns;
   const displayTitle =
     schemaLoading && schemaObject?.title?.trim() ? schemaObject.title.trim() : title;
-  const displayRows =
-    extracting || rows.length === 0
+  const displayRows = swarming
+    ? rows
+    : extracting || rows.length === 0
       ? mergeStreamedRows(rows, extractObject?.rows, (index) => rows[index]?.id ?? `stream-${index}`)
       : rows;
   const schemaReady = schemaLoading || displayColumns.length > 0;
@@ -208,20 +219,33 @@ export function ExtractApp() {
 
   const setDisplayRows: Dispatch<SetStateAction<TableRow[]>> = (update) => {
     setRows((prev) => {
-      const base =
-        extracting || prev.length === 0
+      const base = swarming
+        ? prev
+        : extracting || prev.length === 0
           ? mergeStreamedRows(prev, extractObject?.rows, (index) => prev[index]?.id ?? `stream-${index}`)
           : prev;
       return typeof update === "function" ? update(base) : update;
     });
   };
 
+  const stopSwarm = useCallback(() => {
+    swarmAbort.current?.abort();
+    setSwarmAgents((prev) =>
+      prev.map((agent) =>
+        agent.status === "running" || agent.status === "pending" ? { ...agent, status: "done" } : agent,
+      ),
+    );
+  }, []);
+
   const generate = useCallback(
     (nextQuery = query, nextSource = source) => {
       const trimmed = nextQuery.trim();
       if (!trimmed || busy) return;
       stopExtract();
+      stopSwarm();
       clearExtract();
+      setSwarmAgents([]);
+      setSwarmError(null);
       setColumns([]);
       setRows([]);
       setTitle("Table");
@@ -229,7 +253,7 @@ export function ExtractApp() {
       setStep("schema");
       submitSchema({ query: trimmed, source: nextSource, model });
     },
-    [busy, clearExtract, model, query, source, stopExtract, submitSchema],
+    [busy, clearExtract, model, query, source, stopExtract, stopSwarm, submitSchema],
   );
 
   const extract = useCallback(async () => {
@@ -238,16 +262,91 @@ export function ExtractApp() {
     if (!query.trim() && !source.trim() && files.length === 0) return;
     stopSchema();
     setSourceOpen(false);
-    submitExtract({
-      query,
-      source,
-      files,
-      columns: displayColumns,
-      model,
-      style,
-      instructions,
+    const models = assignSwarmModels(agents, model, fanoutModels);
+    if (models.length === 1) {
+      setSwarmAgents([]);
+      setSwarmError(null);
+      submitExtract({
+        query,
+        source,
+        files,
+        columns: displayColumns,
+        model: models[0],
+        style,
+        instructions,
+      });
+      return;
+    }
+    stopExtract();
+    clearExtract();
+    setRows([]);
+    setSwarmError(null);
+    swarmAbort.current?.abort();
+    const controller = new AbortController();
+    swarmAbort.current = controller;
+    setSwarmAgents(models.map((id) => ({ model: id, status: "running" as const, rows: 0 })));
+    const groups: Array<Array<Record<string, unknown>>> = models.map(() => []);
+    const publish = () => {
+      const merged = unionRows(groups);
+      setRows(merged.map((values, index) => ({ id: `swarm-${index}`, values })));
+    };
+    const outcomes = await Promise.allSettled(
+      models.map(async (agentModel, index) => {
+        const extracted = await streamExtractRows(
+          {
+            query,
+            source,
+            files,
+            columns: displayColumns,
+            model: agentModel,
+            style,
+            instructions: swarmAgentInstructions(instructions, index, models.length),
+          },
+          {
+            signal: controller.signal,
+            onRows: (partial) => {
+              groups[index] = partial;
+              setSwarmAgents((prev) =>
+                prev.map((agent, i) => (i === index ? { ...agent, rows: partial.length } : agent)),
+              );
+              publish();
+            },
+          },
+        );
+        groups[index] = extracted;
+        setSwarmAgents((prev) =>
+          prev.map((agent, i) => (i === index ? { ...agent, status: "done", rows: extracted.length } : agent)),
+        );
+        publish();
+      }),
+    );
+    if (controller.signal.aborted) return;
+    outcomes.forEach((outcome, index) => {
+      if (outcome.status === "rejected") {
+        setSwarmAgents((prev) =>
+          prev.map((agent, i) => (i === index ? { ...agent, status: "error" } : agent)),
+        );
+      }
     });
-  }, [busy, displayColumns, instructions, model, query, source, sourceFiles, stopSchema, style, submitExtract]);
+    if (outcomes.every((outcome) => outcome.status === "rejected")) {
+      setSwarmError(new Error("Every swarm agent failed."));
+    }
+  }, [
+    agents,
+    busy,
+    clearExtract,
+    displayColumns,
+    fanoutModels,
+    instructions,
+    model,
+    query,
+    source,
+    sourceFiles,
+    stopExtract,
+    stopSchema,
+    style,
+    submitExtract,
+  ]);
 
   const submitQuery = useCallback(
     (message: PromptInputMessage) => {
@@ -269,8 +368,11 @@ export function ExtractApp() {
   const startOver = useCallback(() => {
     stopSchema();
     stopExtract();
+    stopSwarm();
     clearSchema();
     clearExtract();
+    setSwarmAgents([]);
+    setSwarmError(null);
     setStep("describe");
     setQuery("");
     setSource("");
@@ -281,7 +383,7 @@ export function ExtractApp() {
     setTableKey(nanoid());
     setSourceKey((key) => key + 1);
     setSourceOpen(true);
-  }, [clearExtract, clearSchema, stopExtract, stopSchema]);
+  }, [clearExtract, clearSchema, stopExtract, stopSchema, stopSwarm]);
 
   const table = (
     <ExtractTable
@@ -291,7 +393,7 @@ export function ExtractApp() {
           ? "Paste a source or attach a file, then extract to fill the rows."
           : "Columns stream in here. Edit them, then continue to add a source."
       }
-      extracting={extracting}
+      extracting={extracting || swarming}
       key={tableKey}
       onColumnsChange={setDisplayColumns}
       onRowsChange={setDisplayRows}
@@ -360,7 +462,9 @@ export function ExtractApp() {
             variant="outline"
           >
             <SlidersHorizontalIcon />
-            <span className="hidden capitalize sm:inline">{style}</span>
+            <span className="hidden capitalize sm:inline">
+              {agents > 1 ? `${agents} agents` : style}
+            </span>
           </Button>
           <a
             className="font-mono text-muted-foreground text-xs transition-colors hover:text-foreground"
@@ -384,11 +488,15 @@ export function ExtractApp() {
         <SheetContent className="w-full gap-0 data-[side=right]:w-full sm:max-w-sm" side="right">
           <SheetHeader>
             <SheetTitle>Extraction</SheetTitle>
-            <SheetDescription>Style and instructions for this run.</SheetDescription>
+            <SheetDescription>Agents, style, and instructions for this run.</SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <ExtractSettings
+              agents={agents}
+              fanoutModels={fanoutModels}
               instructions={instructions}
+              onAgents={setAgents}
+              onFanoutModels={setFanoutModels}
               onInstructions={setInstructions}
               onStyle={setStyle}
               style={style}
@@ -559,6 +667,7 @@ export function ExtractApp() {
                     <span className="min-w-0 flex-1">That run failed. Try again in a moment.</span>
                   </div>
                 ) : null}
+                <ExtractSwarmStatus agents={swarmAgents} />
               </div>
             </div>
             {table}
@@ -574,8 +683,13 @@ export function ExtractApp() {
               <ChevronLeftIcon />
               Back
             </Button>
-            {extracting ? (
-              <Button className="h-11 flex-1 sm:h-9 sm:flex-none" onClick={stopExtract} type="button" variant="outline">
+            {extracting || swarming ? (
+              <Button
+                className="h-11 flex-1 sm:h-9 sm:flex-none"
+                onClick={swarming ? stopSwarm : stopExtract}
+                type="button"
+                variant="outline"
+              >
                 Stop
               </Button>
             ) : (
@@ -587,7 +701,7 @@ export function ExtractApp() {
                 }}
                 type="button"
               >
-                Extract
+                {agents > 1 ? `Extract · ${agents}` : "Extract"}
               </Button>
             )}
           </StepFooter>

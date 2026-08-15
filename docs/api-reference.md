@@ -6,7 +6,7 @@
 
 ## Local web UI
 
-`npm run web` starts the Next.js app in `web/`. Single-turn extraction streams through `POST /api/extract` (`streamText` + UI message stream). Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC.
+`npm run web` starts the Next.js app in `web/`. Single-turn extraction streams through `POST /api/extract` (`streamText` + UI message stream). Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC. The UI can run several agents in parallel and merge unique rows.
 
 ## Extraction
 
@@ -30,6 +30,14 @@ Batch API returning `ExtractionResult` objects (output, usage, attempts, duratio
 
 Async generator of `[index, result]` pairs in completion order.
 
+### `extractSwarm(schema, agents, inputFile, options?)`
+
+Run several agents on one input in parallel and reduce their outputs. `agents` is a model, a model list, or `{ model, style?, instructions? }` members. `size` repeats a single model (max 16). `reduce` is `merge` (default), `vote`, or `first`. The source is loaded once.
+
+### `extractSwarmWithResults(schema, agents, inputFile, options?)`
+
+Same as `extractSwarm`, returning `{ output, agents, usage, reduce }`. Per-agent failures are `Error` values; the call throws only when every agent fails.
+
 ### `Extractor`
 
 Reusable session that stores schema, model, style, retry policy, and timeout.
@@ -42,7 +50,8 @@ Reusable session that stores schema, model, style, retry policy, and timeout.
 - `maxInputBytes` — per-input cap (default 50 MiB)
 - `maxRetries` / `retryBackoff` / `retryMaxBackoff`
 - `timeout` — model call timeout in seconds
-- `maxConcurrency` — batch only (default 5)
+- `maxConcurrency` — batch and swarm (default 5)
+- `size` / `reduce` — swarm only (`merge` | `vote` | `first`)
 
 `model` is an AI Gateway id (`openai/gpt-5.5`) or a `LanguageModel` instance. Colon-prefixed ids (`openai:gpt-5.5`) are accepted.
 
@@ -50,7 +59,7 @@ Reusable session that stores schema, model, style, retry policy, and timeout.
 
 `npx openextract-mcp` starts a stdio MCP server. `--http --port 3000` serves Streamable HTTP on loopback.
 
-Tools: `extract`, `extract_many`, `create_extractor`, `extractor_extract`, `close_extractor`.
+Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`.
 
 `schema` is a JSON Schema object/string or a `module:exportName` path. Inputs are a `source` path/URL or base64 `data` plus `mediaType`.
 
@@ -60,4 +69,4 @@ import { createOpenExtractMcpServer } from "openextract/mcp";
 const server = createOpenExtractMcpServer({ model: "openai/gpt-5.5" });
 ```
 
-Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts: `extract-document`, `extract-batch`.
+Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts: `extract-document`, `extract-batch`, `extract-swarm`.
