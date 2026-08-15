@@ -60,7 +60,14 @@ import {
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { streamExtractRows } from "@/lib/extract-stream";
-import { assignSwarmModels, DEFAULT_MODEL, MODELS, type ModelId, type SwarmSize } from "@/lib/models";
+import {
+  DEFAULT_MODEL,
+  MODELS,
+  resizeAgentModels,
+  setAgentModelAt,
+  type ModelId,
+  type SwarmSize,
+} from "@/lib/models";
 import { EXAMPLES, type StyleName } from "@/lib/presets";
 import { swarmAgentInstructions } from "@/lib/system-prompt";
 import {
@@ -144,7 +151,7 @@ export function ExtractApp() {
   const [modelOpen, setModelOpen] = useState(false);
   const [style, setStyle] = useState<StyleName>("direct");
   const [agents, setAgents] = useState<SwarmSize>(1);
-  const [fanoutModels, setFanoutModels] = useState(false);
+  const [agentModels, setAgentModels] = useState<ModelId[]>([DEFAULT_MODEL]);
   const [swarmAgents, setSwarmAgents] = useState<SwarmAgentState[]>([]);
   const [swarmError, setSwarmError] = useState<Error | null>(null);
   const swarmAbort = useRef<AbortController | null>(null);
@@ -262,7 +269,7 @@ export function ExtractApp() {
     if (!query.trim() && !source.trim() && files.length === 0) return;
     stopSchema();
     setSourceOpen(false);
-    const models = assignSwarmModels(agents, model, fanoutModels);
+    const models = agentModels.length > 0 ? agentModels : [model];
     if (models.length === 1) {
       setSwarmAgents([]);
       setSwarmError(null);
@@ -332,11 +339,10 @@ export function ExtractApp() {
       setSwarmError(new Error("Every swarm agent failed."));
     }
   }, [
-    agents,
+    agentModels,
     busy,
     clearExtract,
     displayColumns,
-    fanoutModels,
     instructions,
     model,
     query,
@@ -382,8 +388,10 @@ export function ExtractApp() {
     setTitle("Table");
     setTableKey(nanoid());
     setSourceKey((key) => key + 1);
+    setAgents(1);
+    setAgentModels([model]);
     setSourceOpen(true);
-  }, [clearExtract, clearSchema, stopExtract, stopSchema, stopSwarm]);
+  }, [clearExtract, clearSchema, model, stopExtract, stopSchema, stopSwarm]);
 
   const table = (
     <ExtractTable
@@ -421,6 +429,7 @@ export function ExtractApp() {
                 key={item.id}
                 onSelect={() => {
                   setModel(item.id);
+                  setAgentModels((prev) => (agents === 1 ? [item.id] : prev));
                   setModelOpen(false);
                 }}
                 value={item.id}
@@ -492,11 +501,14 @@ export function ExtractApp() {
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <ExtractSettings
+              agentModels={agentModels}
               agents={agents}
-              fanoutModels={fanoutModels}
               instructions={instructions}
-              onAgents={setAgents}
-              onFanoutModels={setFanoutModels}
+              onAgentModel={(index, id) => setAgentModels((prev) => setAgentModelAt(prev, index, id))}
+              onAgents={(count) => {
+                setAgents(count);
+                setAgentModels((prev) => resizeAgentModels(prev, count, model));
+              }}
               onInstructions={setInstructions}
               onStyle={setStyle}
               style={style}

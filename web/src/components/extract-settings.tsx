@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { SWARM_SIZES, type SwarmSize } from "@/lib/models";
+import { ModelSelectorLogo } from "@/components/ai-elements/model-selector";
+import { MODELS, SWARM_SIZES, type ModelId, type SwarmSize } from "@/lib/models";
 import { STYLES, STYLE_DETAILS, type StyleName } from "@/lib/presets";
 
 function Section({
@@ -41,21 +42,21 @@ export function ExtractSettings({
   style,
   instructions,
   agents,
-  fanoutModels,
+  agentModels,
   onStyle,
   onInstructions,
   onAgents,
-  onFanoutModels,
+  onAgentModel,
   className,
 }: {
   style: StyleName;
   instructions: string;
   agents: SwarmSize;
-  fanoutModels: boolean;
+  agentModels: ModelId[];
   onStyle: (style: StyleName) => void;
   onInstructions: (value: string) => void;
   onAgents: (value: SwarmSize) => void;
-  onFanoutModels: (value: boolean) => void;
+  onAgentModel: (index: number, model: ModelId) => void;
   className?: string;
 }) {
   return (
@@ -84,22 +85,34 @@ export function ExtractSettings({
 
       {agents > 1 ? (
         <Section
-          hint="Same model for every agent, or rotate through the model list."
-          htmlFor="fanout"
-          title="Models"
+          hint="Attach a model to each agent. Agents can share a model or use different ones."
+          htmlFor="agent-model-0"
+          title="Agent models"
         >
-          <Select
-            onValueChange={(value) => onFanoutModels(value === "fanout")}
-            value={fanoutModels ? "fanout" : "same"}
-          >
-            <SelectTrigger className="w-full" id="fanout">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="same">Selected model</SelectItem>
-              <SelectItem value="fanout">Rotate all models</SelectItem>
-            </SelectContent>
-          </Select>
+          <ol className="space-y-2">
+            {agentModels.map((id, index) => (
+              <li className="flex items-center gap-2" key={`agent-${index}`}>
+                <span className="w-5 shrink-0 font-mono text-[11px] text-muted-foreground">
+                  {index + 1}
+                </span>
+                <Select onValueChange={(value) => onAgentModel(index, value as ModelId)} value={id}>
+                  <SelectTrigger className="w-full" id={index === 0 ? "agent-model-0" : undefined}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MODELS.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        <span className="flex items-center gap-2">
+                          <ModelSelectorLogo provider={item.provider} />
+                          {item.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </li>
+            ))}
+          </ol>
         </Section>
       ) : null}
 

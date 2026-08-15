@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- Agent swarms: `extractSwarm` / `extractSwarmWithResults` run parallel agents on one input (same model × `size`, or a mixed model list) and reduce with `merge`, `vote`, or `first`. Wired through the CLI (`--swarm`, `--reduce`), MCP (`extract_swarm`), and the web UI agent count setting.
+- Agent swarms: `extractSwarm` / `extractSwarmWithResults` run parallel agents on one input (same model × `size`, or a mixed model list) and reduce with `merge`, `vote`, or `first`. Wired through the CLI (`--swarm`, `--models`, `--reduce`), MCP (`extract_swarm`), and the web UI, where each agent gets its own model picker.
 
 ## [0.1.0] - 2026-08-14
 

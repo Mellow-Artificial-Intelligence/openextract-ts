@@ -125,7 +125,7 @@ const { output, usage, agents } = await extractSwarmWithResults(PdfInfo, [
 ], "./reports/q4.pdf", { reduce: "merge" });
 ```
 
-The source is loaded once. Failed agents are skipped as long as one succeeds. In the web UI, set **Agents** in Extraction settings.
+The source is loaded once. Failed agents are skipped as long as one succeeds. In the web UI, set **Agents** and attach a model to each one. On the CLI, pass `--models openai/gpt-5.6-luna,xai/grok-4.6`.
 
 ## Terminal UI
 

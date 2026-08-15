@@ -13,7 +13,7 @@ import {
   unionRows,
   uniqueKey,
 } from "../web/src/lib/table-schema.ts";
-import { assignSwarmModels } from "../web/src/lib/models.ts";
+import { resizeAgentModels, setAgentModelAt } from "../web/src/lib/models.ts";
 import { parsePartialJson } from "../web/src/lib/partial-json.ts";
 import { rowsFromExtractText } from "../web/src/lib/extract-stream.ts";
 
@@ -143,21 +143,29 @@ describe("unionRows", () => {
   });
 });
 
-describe("assignSwarmModels", () => {
-  it("repeats the selected model", () => {
-    expect(assignSwarmModels(3, "xai/grok-4.6", false)).toEqual([
+describe("resizeAgentModels", () => {
+  it("keeps existing assignments and fills unused models", () => {
+    expect(resizeAgentModels(["xai/grok-4.6"], 3, "xai/grok-4.6")).toEqual([
       "xai/grok-4.6",
-      "xai/grok-4.6",
-      "xai/grok-4.6",
+      "openai/gpt-5.6-luna",
+      "google/gemini-3.7-flash",
     ]);
   });
 
-  it("rotates the model list", () => {
-    expect(assignSwarmModels(4, "xai/grok-4.6", true)).toEqual([
+  it("trims and replaces one slot", () => {
+    const three: Array<"openai/gpt-5.6-luna" | "xai/grok-4.6" | "google/gemini-3.7-flash"> = [
       "openai/gpt-5.6-luna",
       "xai/grok-4.6",
       "google/gemini-3.7-flash",
+    ];
+    expect(resizeAgentModels(three, 2, "xai/grok-4.6")).toEqual([
       "openai/gpt-5.6-luna",
+      "xai/grok-4.6",
+    ]);
+    expect(setAgentModelAt(three, 1, "openai/gpt-5.6-luna")).toEqual([
+      "openai/gpt-5.6-luna",
+      "openai/gpt-5.6-luna",
+      "google/gemini-3.7-flash",
     ]);
   });
 });

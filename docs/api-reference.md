@@ -6,7 +6,7 @@
 
 ## Local web UI
 
-`npm run web` starts the Next.js app in `web/`. Single-turn extraction streams through `POST /api/extract` (`streamText` + UI message stream). Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC. The UI can run several agents in parallel and merge unique rows.
+`npm run web` starts the Next.js app in `web/`. Single-turn extraction streams through `POST /api/extract` (`streamText` + UI message stream). Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC. The UI can run several agents in parallel, attach a model to each agent, and merge unique rows. CLI `--models` assigns one model per agent.
 
 ## Extraction
 
@@ -52,6 +52,7 @@ Reusable session that stores schema, model, style, retry policy, and timeout.
 - `timeout` — model call timeout in seconds
 - `maxConcurrency` — batch and swarm (default 5)
 - `size` / `reduce` — swarm only (`merge` | `vote` | `first`)
+- `models` — swarm agent model ids (CLI `--models`, MCP `models`)
 
 `model` is an AI Gateway id (`openai/gpt-5.5`) or a `LanguageModel` instance. Colon-prefixed ids (`openai:gpt-5.5`) are accepted.
 
