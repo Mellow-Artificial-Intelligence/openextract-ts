@@ -2,6 +2,8 @@
 import { pathToFileURL } from "node:url";
 import { extract, extractWithUsage } from "./extract.js";
 import { extractMany } from "./batch.js";
+import { extractSwarm, extractSwarmWithResults } from "./swarm.js";
+import { SWARM_REDUCES, type SwarmReduce } from "./reduce.js";
 import { toError } from "./errors.js";
 import {
   ExtractionError,
@@ -29,6 +31,9 @@ interface CliArgs {
   maxInputBytes?: number;
   retryBackoff: number;
   retryMaxBackoff: number;
+  swarm: number;
+  reduce: SwarmReduce;
+  models: string[];
 }
 
 function usage(code = 1): never {
@@ -51,7 +56,10 @@ Options:
   --max-retries         Retry transient model errors (default: 0)
   --max-input-bytes     Per-input byte cap
   --retry-backoff       Base backoff seconds (default: 1)
-  --retry-max-backoff   Max backoff seconds (default: 60)`);
+  --retry-max-backoff   Max backoff seconds (default: 60)
+  --swarm               Parallel agents on one input (default: 1)
+  --models              Comma-separated model ids, one per swarm agent
+  --reduce              merge | vote | first (swarm only, default: merge)`);
   process.exit(code);
 }
 
@@ -74,6 +82,9 @@ function parseArgs(argv: string[]): CliArgs {
     maxRetries: 0,
     retryBackoff: 1,
     retryMaxBackoff: 60,
+    swarm: 1,
+    reduce: "merge",
+    models: [],
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
@@ -114,6 +125,25 @@ function parseArgs(argv: string[]): CliArgs {
       case "--retry-max-backoff":
         [args.retryMaxBackoff, i] = [Number(takeValue(argv, i, arg)[0]), i + 1];
         break;
+      case "--swarm":
+        [args.swarm, i] = [Number(takeValue(argv, i, arg)[0]), i + 1];
+        break;
+      case "--models": {
+        const [value, next] = takeValue(argv, i, arg);
+        args.models = value.split(",").map((id) => id.trim()).filter(Boolean);
+        i = next;
+        break;
+      }
+      case "--reduce": {
+        const [value, next] = takeValue(argv, i, arg);
+        if (!(SWARM_REDUCES as readonly string[]).includes(value)) {
+          console.error(`error: --reduce must be ${SWARM_REDUCES.join(" | ")}`);
+          process.exit(1);
+        }
+        args.reduce = value as SwarmReduce;
+        i = next;
+        break;
+      }
       case "--tui":
         break;
       case "--help":
@@ -166,7 +196,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     });
   }
   const args = parseArgs(argv);
-  if (!args.schema || !args.model || args.inputFiles.length === 0) usage();
+  if (!args.schema || args.inputFiles.length === 0) usage();
+  if (!args.model && args.models.length === 0) usage();
   let schema: z.ZodType<unknown>;
   try {
     schema = await loadSchema(args.schema);
@@ -185,6 +216,18 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     console.error("error: --usage requires exactly one input file");
     return 1;
   }
+  if (!Number.isInteger(args.swarm) || args.swarm < 1) {
+    console.error("error: --swarm must be a positive integer");
+    return 1;
+  }
+  if ((args.swarm > 1 || args.models.length > 1) && inputs.length !== 1) {
+    console.error("error: --swarm and --models apply to a single input; omit them for batch files");
+    return 1;
+  }
+  if (args.models.length > 1 && args.swarm > 1 && args.swarm !== args.models.length) {
+    console.error("error: --swarm does not match the number of --models");
+    return 1;
+  }
   const shared = {
     instructions: args.instructions,
     style: args.style,
@@ -199,14 +242,28 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   try {
     if (inputs.length === 1) {
       const inputFile = inputs[0]!;
-      if (args.usage) {
-        const { output, usage } = await extractWithUsage(schema, args.model, inputFile, shared);
+      const swarmAgents = args.models.length > 0 ? args.models : args.model!;
+      const useSwarm = args.models.length > 1 || args.swarm > 1;
+      if (useSwarm) {
+        const swarmOpts = {
+          ...shared,
+          size: args.models.length > 1 ? undefined : args.swarm,
+          reduce: args.reduce,
+        };
+        if (args.usage) {
+          const swarm = await extractSwarmWithResults(schema, swarmAgents, inputFile, swarmOpts);
+          payload = { result: swarm.output, usage: swarm.usage, agents: swarm.agents.length, reduce: swarm.reduce };
+        } else {
+          payload = await extractSwarm(schema, swarmAgents, inputFile, swarmOpts);
+        }
+      } else if (args.usage) {
+        const { output, usage } = await extractWithUsage(schema, args.model ?? args.models[0]!, inputFile, shared);
         payload = { result: output, usage };
       } else {
-        payload = await extract(schema, args.model, inputFile, shared);
+        payload = await extract(schema, args.model ?? args.models[0]!, inputFile, shared);
       }
     } else {
-      const results = await extractMany(schema, args.model, inputs, {
+      const results = await extractMany(schema, args.model ?? args.models[0]!, inputs, {
         ...shared,
         returnExceptions: args.continueOnError,
       });

@@ -107,6 +107,30 @@ export function emptyRow(columns: TableColumn[], id: string): TableRow {
   return { id, values };
 }
 
+export function rowFingerprint(values: Record<string, unknown>): string {
+  return JSON.stringify(
+    Object.keys(values)
+      .sort()
+      .map((key) => [key, values[key] ?? null]),
+  );
+}
+
+export function unionRows(
+  groups: Iterable<Iterable<Record<string, unknown>>>,
+): Array<Record<string, unknown>> {
+  const seen = new Set<string>();
+  const rows: Array<Record<string, unknown>> = [];
+  for (const group of groups) {
+    for (const row of group) {
+      const key = rowFingerprint(row);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push(row);
+    }
+  }
+  return rows;
+}
+
 export function mergeStreamedRows(
   prev: TableRow[],
   streamed: unknown,

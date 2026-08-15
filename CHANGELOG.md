@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Agent swarms: `extractSwarm` / `extractSwarmWithResults` run parallel agents on one input (same model × `size`, or a mixed model list) and reduce with `merge`, `vote`, or `first`. Wired through the CLI (`--swarm`, `--models`, `--reduce`), MCP (`extract_swarm`), and the web UI, where each agent gets its own model picker.
 - `openextract/workflow` durable extraction: `extractWorkflow` / `extractManyWorkflow` for Vercel Workflows, plus `runSerializableExtract` for app-local `"use workflow"` wrappers. Arguments are JSON Schema + path/URL/base64 (Zod objects are not serializable across step boundaries).
 - Local web UI runs table extraction as a `WorkflowAgent` workflow (`POST /api/extract` starts the run).
 

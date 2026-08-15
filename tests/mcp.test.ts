@@ -70,6 +70,7 @@ describe("MCP server", () => {
       "create_extractor",
       "extract",
       "extract_many",
+      "extract_swarm",
       "extractor_extract",
     ]);
     const resources = await session.client.listResources();
@@ -81,6 +82,7 @@ describe("MCP server", () => {
     expect(prompts.prompts.map((prompt) => prompt.name).sort()).toEqual([
       "extract-batch",
       "extract-document",
+      "extract-swarm",
     ]);
   });
 
@@ -130,6 +132,25 @@ describe("MCP server", () => {
       { name: "Ada", age: 36 },
       { error: "rate limited", errorType: "ModelError", provider: null, statusCode: 429, retryable: true, retryAfter: null },
     ]);
+  });
+
+  it("runs a swarm and returns reduced output", async () => {
+    const session = await connect({
+      extractSwarm: async (_schema, agents) => {
+        expect(agents).toEqual([{ model: "openai/gpt-5.5" }, { model: "xai/grok-4.6" }]);
+        return { name: "Ada", age: 36 };
+      },
+    });
+    sessions.push(session);
+    const result = await session.client.callTool({
+      name: "extract_swarm",
+      arguments: {
+        schema: PersonSchema,
+        models: ["openai/gpt-5.5", "xai/grok-4.6"],
+        source: "./notes.txt",
+      },
+    });
+    expect(textPayload(result)).toEqual({ name: "Ada", age: 36 });
   });
 
   it("runs a reusable extractor session", async () => {
