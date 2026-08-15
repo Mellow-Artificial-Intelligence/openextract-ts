@@ -136,7 +136,7 @@ npm run web
 
 The web UI is a three-step flow: describe the table, stream and edit the schema, then extract rows from a source into a sortable shadcn table.
 
-On Vercel, set the Git root directory to `web/`. Production uses AI Gateway via OIDC; locally set `AI_GATEWAY_API_KEY`.
+On Vercel, set the Git root directory to `web/`. Production uses AI Gateway via OIDC; locally set `AI_GATEWAY_API_KEY`. Pull-request preview deploys are off.
 
 ## Command line
 

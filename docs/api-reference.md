@@ -6,7 +6,7 @@
 
 ## Local web UI
 
-`npm run web` starts the Next.js app in `web/`. Table extraction runs as a Vercel Workflow (`WorkflowAgent` in `web/src/workflows/extract.ts`); `POST /api/extract` starts the run and returns the structured rows. Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC. Inspect runs with `npx workflow web`.
+`npm run web` starts the Next.js app in `web/`. Table extraction runs as a Vercel Workflow (`WorkflowAgent` in `web/src/workflows/extract.ts`); `POST /api/extract` starts the run and returns the structured rows. Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC. Pull-request preview deploys are skipped. Inspect runs with `npx workflow web`.
 
 ## Extraction
 

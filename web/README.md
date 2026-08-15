@@ -12,4 +12,4 @@ Open http://localhost:3000. Describe the table you want, generate columns, edit 
 
 Inspect durable runs with `npx workflow web`.
 
-On Vercel, set the Git root directory to `web/`. AI Gateway uses OIDC; no `AI_GATEWAY_API_KEY` is required. The Workflow SDK needs no extra production config.
+On Vercel, set the Git root directory to `web/`. AI Gateway uses OIDC; no `AI_GATEWAY_API_KEY` is required. The Workflow SDK needs no extra production config. Preview and pull-request deploys are skipped (`ignoreCommand` in `vercel.json`); only `main` production builds run.
