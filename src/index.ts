@@ -14,6 +14,19 @@ export {
   iterExtractManyAsync,
   type ExtractManyOptions,
 } from "./batch.js";
+export {
+  extractSwarm,
+  extractSwarmAsync,
+  extractSwarmWithResults,
+  extractSwarmWithResultsAsync,
+  resolveSwarmMembers,
+  type ExtractSwarmOptions,
+  type SwarmAgentInput,
+  type SwarmMember,
+  type SwarmReduce,
+  type SwarmResult,
+} from "./swarm.js";
+export { SWARM_REDUCES, normalizeReduce, reduceOutputs } from "./reduce.js";
 export { Extractor, AsyncExtractor, type ExtractorOptions } from "./session.js";
 export { ExtractionStyle, normalizeStyle } from "./styles.js";
 export { RetryPolicy, totalUsage } from "./types.js";

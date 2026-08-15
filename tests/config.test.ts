@@ -4,6 +4,7 @@ import {
   resolveMaxInputBytes,
   validateMaxConcurrency,
   validateRetryOptions,
+  validateSwarmSize,
   validateTimeout,
 } from "../src/config.js";
 
@@ -52,5 +53,8 @@ describe("option validation", () => {
   it("rejects bad concurrency and timeout", () => {
     expect(() => validateMaxConcurrency(0)).toThrow(/maxConcurrency/);
     expect(() => validateTimeout(0, "timeout")).toThrow(/timeout/);
+    expect(() => validateSwarmSize(0)).toThrow(/size/);
+    expect(() => validateSwarmSize(99)).toThrow(/size/);
+    expect(validateSwarmSize(4)).toBe(4);
   });
 });

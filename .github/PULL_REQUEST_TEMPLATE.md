@@ -7,6 +7,8 @@
 <!-- Check every area this PR touches. -->
 
 - [ ] Library / public API (`src/`, `src/index.ts`)
+- [ ] Swarm / reduce (`src/swarm.ts`, `src/reduce.ts`)
+- [ ] Workflow (`src/workflow.ts`, `openextract/workflow`)
 - [ ] CLI / TUI
 - [ ] MCP
 - [ ] Web UI (`web/`)
@@ -22,7 +24,7 @@
 
 <!-- Required if this PR adds or changes an extract path. See AGENTS.md. -->
 
-- [ ] No new extract implementation (or it calls `runDocumentExtraction`)
+- [ ] No new extract implementation (or it calls `runDocumentExtraction` / `runLoadedExtraction`)
 - [ ] No new public export without updating `src/index.ts` (or `openextract/mcp`)
 - [ ] Style change extends `ExtractionStyle` rather than adding a parallel stack
 - [ ] N/A (docs, CI, or non-extract code)

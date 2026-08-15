@@ -13,6 +13,8 @@
     "document",
     "structured-data",
     "vercel-ai-sdk",
+    "vercel-workflow",
+    "durable-workflow",
     "mcp"
   ],
   "repository": {
@@ -36,6 +38,10 @@
     "./mcp": {
       "types": "./dist/mcp.d.ts",
       "import": "./dist/mcp.js"
+    },
+    "./workflow": {
+      "types": "./dist/workflow.d.ts",
+      "import": "./dist/workflow.js"
     }
   },
   "bin": {
@@ -60,6 +66,14 @@
     "@opentui/core": "^0.4.5",
     "ai": "^6.0.34",
     "zod": "^4.0.0"
+  },
+  "peerDependencies": {
+    "workflow": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "workflow": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

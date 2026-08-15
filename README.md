@@ -107,6 +107,26 @@ const rich = await extractManyWithResults(PdfInfo, "xai/grok-4.6", [
 console.log(totalUsage(rich.filter((item) => !(item instanceof Error))));
 ```
 
+## Agent swarms
+
+Run several agents on the same input in parallel, then reduce their outputs. `merge` (default) fills empty fields and unions unique array items. `vote` takes the majority value per field. `first` keeps the first successful agent.
+
+```ts
+import { extractSwarm, extractSwarmWithResults } from "openextract";
+
+const merged = await extractSwarm(PdfInfo, "openai/gpt-5.5", "./reports/q4.pdf", {
+  size: 4,
+});
+
+const { output, usage, agents } = await extractSwarmWithResults(PdfInfo, [
+  { model: "openai/gpt-5.6-luna" },
+  { model: "xai/grok-4.6", style: "search" },
+  { model: "google/gemini-3.7-flash" },
+], "./reports/q4.pdf", { reduce: "merge" });
+```
+
+The source is loaded once. Failed agents are skipped as long as one succeeds. In the web UI, set **Agents** and attach a model to each one. On the CLI, pass `--models openai/gpt-5.6-luna,xai/grok-4.6`.
+
 ## Terminal UI
 
 ```bash
@@ -134,9 +154,9 @@ cp web/.env.example web/.env.local
 npm run web
 ```
 
-The web UI is a three-step flow: describe the table, stream and edit the schema, then extract rows from a source into a sortable shadcn table.
+The web UI is a three-step flow: describe the table, stream and edit the schema, then extract rows from a source into a sortable shadcn table. Extraction settings can run a swarm of agents in parallel.
 
-On Vercel, set the Git root directory to `web/`. Production uses AI Gateway via OIDC; locally set `AI_GATEWAY_API_KEY`.
+On Vercel, set the Git root directory to `web/`. Production uses AI Gateway via OIDC; locally set `AI_GATEWAY_API_KEY`. Pull-request preview deploys are off.
 
 ## Command line
 
@@ -172,11 +192,37 @@ stdio by default (Cursor, Claude Desktop). `--http --port 3000` serves Streamabl
 }
 ```
 
-Tools cover the full API: `extract`, `extract_many`, and reusable `create_extractor` / `extractor_extract` / `close_extractor` sessions. Pass a JSON Schema (or `module:exportName`) plus a path, URL, or base64 bytes. Styles (`direct`, `search`, `code`), retries, usage, and batch options are all available.
+Tools cover the full API: `extract`, `extract_many`, `extract_swarm`, and reusable `create_extractor` / `extractor_extract` / `close_extractor` sessions. Pass a JSON Schema (or `module:exportName`) plus a path, URL, or base64 bytes. Styles (`direct`, `search`, `code`), retries, usage, batch, and swarm options are all available.
 
 ```ts
 import { createOpenExtractMcpServer } from "openextract/mcp";
 ```
+
+## Vercel Workflows
+
+Run extraction agents as durable workflows. Each document is a retryable step, so long `search` / `code` tool loops survive crashes and deploys. Zod schemas are not serializable — pass JSON Schema (or a JSON Schema string).
+
+```ts
+import { start } from "workflow/api";
+import { extractWorkflow } from "openextract/workflow";
+
+const run = await start(extractWorkflow, [
+  {
+    schema: {
+      type: "object",
+      properties: { summary: { type: "string" }, language: { type: "string" } },
+      required: ["summary", "language"],
+    },
+    model: "openai/gpt-5.5",
+    input: { source: "https://example.com/document.pdf" },
+    style: "direct",
+  },
+]);
+
+const { output, usage } = await run.returnValue;
+```
+
+`extractManyWorkflow` runs each input as its own step. In Next.js, wrap the config with `withWorkflow()` from `workflow/next` and set `transpilePackages: ["openextract"]` so the `"use workflow"` / `"use step"` directives compile. See `examples/workflow/extract-route.ts`. The local web UI (`npm run web`) starts table extraction through the same runtime.
 
 ## Error handling
 

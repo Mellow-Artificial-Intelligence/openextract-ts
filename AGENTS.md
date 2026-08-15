@@ -35,6 +35,9 @@ Node.js 20+. Set `AI_GATEWAY_API_KEY` for live model calls. Tests use `MockLangu
 | `src/index.ts` | Public library exports. Change this when the API changes. |
 | `src/extract.ts` | One-shot `extract` / `extractWithUsage` |
 | `src/batch.ts` | Concurrent `extractMany*` |
+| `src/swarm.ts` | `extractSwarm*` — parallel agents on one input |
+| `src/reduce.ts` | Swarm reduce: `merge`, `vote`, `first` |
+| `src/workflow.ts` | `openextract/workflow` durable extract |
 | `src/session.ts` | Reusable `Extractor` |
 | `src/pipeline.ts` | Shared media → style → retry → model path |
 | `src/styles.ts` | `direct` / `search` / `code` |
@@ -53,8 +56,8 @@ Node.js 20+. Set `AI_GATEWAY_API_KEY` for live model calls. Tests use `MockLangu
 
 - TypeScript ESM. Imports use `.js` extensions. `verbatimModuleSyntax` and `noUncheckedIndexedAccess` are on.
 - Zod 4 schemas. Public extract functions take `z.ZodType<T>` and return `T`.
-- One pipeline. New extract entry points must call `runDocumentExtraction` in `src/pipeline.ts`. Do not duplicate media loading, style workspaces, or retries.
-- Keep the public surface small. Export new API from `src/index.ts` (or `src/mcp.ts` via `openextract/mcp`).
+- One pipeline. New extract entry points must call `runDocumentExtraction` or `runLoadedExtraction` in `src/pipeline.ts`. Do not duplicate media loading, style workspaces, or retries.
+- Keep the public surface small. Export new API from `src/index.ts`, `src/mcp.ts` (`openextract/mcp`), or `src/workflow.ts` (`openextract/workflow`).
 - Prefer concise, fast code. Reuse helpers; do not add layers for a single call site.
 - Comments describe what the code does, not the product.
 - Async-first. `extractAsync` / `AsyncExtractor` are aliases, not a second implementation.
@@ -92,12 +95,14 @@ Do not weaken these for convenience. Details: [SECURITY.md](SECURITY.md).
 When *using* this library as an agent (not just editing it):
 
 1. Call `extract(schema, model, input, options?)` or the MCP `extract` tool.
-2. Pass a Zod schema in process, or JSON Schema / `module:exportName` over MCP.
-3. Use `extractMany` / `extract_many` for batches. Default concurrency is 5.
-4. Reuse an `Extractor` / `create_extractor` session when schema, model, and style stay fixed.
-5. Choose `style` from the input type; do not invent a fourth style without extending `ExtractionStyle`.
+2. Pass a Zod schema in process, or JSON Schema / `module:exportName` over MCP and workflows.
+3. Use `extractMany` / `extract_many` for many inputs. Default concurrency is 5.
+4. Use `extractSwarm` / `extract_swarm` for several agents on one input (`size` or a model list; `reduce`: `merge`, `vote`, `first`).
+5. Reuse an `Extractor` / `create_extractor` session when schema, model, and style stay fixed.
+6. For durable Vercel Workflows, call `extractWorkflow` / `extractManyWorkflow` from `openextract/workflow` with JSON Schema (Zod is not serializable).
+7. Choose `style` from the input type; do not invent a fourth style without extending `ExtractionStyle`.
 
-MCP: `npx openextract-mcp` (stdio) or `--http --port 3000` (loopback). Tools: `extract`, `extract_many`, `create_extractor`, `extractor_extract`, `close_extractor`. Resources: `openextract://capabilities`, `openextract://docs/api`.
+MCP: `npx openextract-mcp` (stdio) or `--http --port 3000` (loopback). Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`. Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts include `extract-swarm`.
 
 ## Issues and pull requests
 

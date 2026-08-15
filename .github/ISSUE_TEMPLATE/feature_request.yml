@@ -14,7 +14,8 @@ body:
       options:
         - Library / public API
         - New or existing extraction style
-        - Batch / Extractor / swarm composition
+        - Batch / Extractor / extractSwarm
+        - Workflow (`openextract/workflow`)
         - MCP
         - CLI / TUI
         - Web UI

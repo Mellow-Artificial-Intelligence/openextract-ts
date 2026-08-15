@@ -13,11 +13,12 @@ body:
       label: Surface
       description: Where the bug showed up
       options:
-        - Library (extract / extractMany / Extractor)
+        - Library (extract / extractMany / extractSwarm / Extractor)
         - CLI
         - TUI
         - MCP
         - Web UI
+        - Workflow (`openextract/workflow`)
         - Docs
     validations:
       required: true

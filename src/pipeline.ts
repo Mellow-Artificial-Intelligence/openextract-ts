@@ -38,15 +38,13 @@ export function resolveExtractOptions(options: ExtractOptions = {}): ResolvedExt
   };
 }
 
-export async function runDocumentExtraction<T>(
+export async function runLoadedExtraction<T>(
   schema: z.ZodType<T>,
   model: LanguageModel,
-  inputFile: ExtractionInputLike,
+  data: Uint8Array,
+  mediaType: string,
   options: ResolvedExtractOptions,
 ): Promise<{ output: T; usage: Usage; attempts: number }> {
-  const { data, mediaType } = await withExtractionErrors(() =>
-    getMedia(inputFile, { mediaType: options.mediaType, maxInputBytes: options.limit }),
-  );
   return withStyleWorkspace(options.style, data, mediaType, async (prepared) => {
     let attempts = 0;
     const result = await runWithRetries(
@@ -73,6 +71,18 @@ export async function runDocumentExtraction<T>(
     );
     return { ...result, attempts };
   });
+}
+
+export async function runDocumentExtraction<T>(
+  schema: z.ZodType<T>,
+  model: LanguageModel,
+  inputFile: ExtractionInputLike,
+  options: ResolvedExtractOptions,
+): Promise<{ output: T; usage: Usage; attempts: number }> {
+  const { data, mediaType } = await withExtractionErrors(() =>
+    getMedia(inputFile, { mediaType: options.mediaType, maxInputBytes: options.limit }),
+  );
+  return runLoadedExtraction(schema, model, data, mediaType, options);
 }
 
 export function selectExtractionResult<T>(

@@ -1,12 +1,11 @@
-import { createTextStreamResponse, Output, streamText, toTextStream } from "ai";
+import { start } from "workflow/api";
 import { hasGatewayAuth } from "@/lib/gateway";
 import { DEFAULT_MODEL, isModelId } from "@/lib/models";
 import { STYLES, type StyleName } from "@/lib/presets";
-import { filesToParts } from "@/lib/source-files";
-import { extractUserPrompt, extractionSystemPrompt } from "@/lib/system-prompt";
-import { extractOutputSchema, normalizeColumns } from "@/lib/table-schema";
+import { normalizeColumns } from "@/lib/table-schema";
+import { extractTableWorkflow } from "@/workflows/extract";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const STYLES_SET = new Set<string>(STYLES);
 const MAX_QUERY_CHARS = 4_000;
@@ -42,8 +41,8 @@ export async function POST(req: Request) {
 
   const query = typeof body.query === "string" ? body.query.trim().slice(0, MAX_QUERY_CHARS) : "";
   const source = typeof body.source === "string" ? body.source.slice(0, MAX_SOURCE_CHARS) : "";
-  const fileParts = filesToParts(body.files);
-  if (!query && !source.trim() && fileParts.length === 0) {
+  const files = Array.isArray(body.files) ? body.files : [];
+  if (!query && !source.trim() && files.length === 0) {
     return Response.json({ error: "A source is required" }, { status: 400 });
   }
 
@@ -51,27 +50,25 @@ export async function POST(req: Request) {
   const instructions =
     typeof body.instructions === "string" ? body.instructions.slice(0, MAX_INSTRUCTIONS_CHARS) : undefined;
 
-  const result = streamText({
-    model,
-    output: Output.object({
-      name: "ExtractedRows",
-      description: "Rows that fill the table columns.",
-      schema: extractOutputSchema(columns),
-    }),
-    system: extractionSystemPrompt({
+  const run = await start(extractTableWorkflow, [
+    {
+      query,
+      source,
+      files,
       columns,
+      model,
       style: asStyle(body.style),
       instructions,
-    }),
-    messages: [
-      {
-        role: "user",
-        content: [{ type: "text" as const, text: extractUserPrompt(query, source) }, ...fileParts],
-      },
-    ],
-  });
+    },
+  ]);
 
-  return createTextStreamResponse({
-    stream: toTextStream({ stream: result.stream }),
-  });
+  try {
+    const output = await run.returnValue;
+    return Response.json(output, {
+      headers: { "x-workflow-run-id": run.runId },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Extraction failed";
+    return Response.json({ error: message, runId: run.runId }, { status: 500 });
+  }
 }

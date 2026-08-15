@@ -2,6 +2,7 @@ export const DEFAULT_URL_FETCH_TIMEOUT = 30;
 export const DEFAULT_MAX_REDIRECTS = 10;
 export const DEFAULT_RETRY_MAX_BACKOFF = 60;
 export const DEFAULT_MAX_INPUT_BYTES = 50 * 1024 * 1024;
+export const MAX_SWARM_SIZE = 16;
 export const URL_TIMEOUT_ENV = "OPENEXTRACT_URL_TIMEOUT";
 export const MAX_REDIRECTS_ENV = "OPENEXTRACT_MAX_REDIRECTS";
 export const ALLOW_PRIVATE_URLS_ENV = "OPENEXTRACT_ALLOW_PRIVATE_URLS";
@@ -71,6 +72,13 @@ export function validateMaxConcurrency(maxConcurrency: number): void {
   if (!Number.isInteger(maxConcurrency) || maxConcurrency < 1) {
     throw new Error("maxConcurrency must be a positive integer.");
   }
+}
+
+export function validateSwarmSize(size: number): number {
+  if (!Number.isInteger(size) || size < 1 || size > MAX_SWARM_SIZE) {
+    throw new Error(`size must be an integer from 1 to ${MAX_SWARM_SIZE}.`);
+  }
+  return size;
 }
 
 export function validateTimeout(value: number, name: string): number {

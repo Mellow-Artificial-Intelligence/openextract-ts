@@ -27,7 +27,8 @@ body:
       options:
         - MCP stdio (`openextract-mcp`)
         - MCP HTTP
-        - TypeScript `extract` / `extractMany` / `Extractor`
+        - TypeScript `extract` / `extractMany` / `extractSwarm` / `Extractor`
+        - `openextract/workflow`
         - CLI
         - Coding agent editing this repo
     validations:

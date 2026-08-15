@@ -10,8 +10,12 @@ import {
   renameColumnKey,
   rowsToJson,
   toColumnKey,
+  unionRows,
   uniqueKey,
 } from "../web/src/lib/table-schema.ts";
+import { resizeAgentModels, setAgentModelAt } from "../web/src/lib/models.ts";
+import { parsePartialJson } from "../web/src/lib/partial-json.ts";
+import { rowsFromExtractText } from "../web/src/lib/extract-stream.ts";
 
 describe("toColumnKey", () => {
   it("keeps ident keys", () => {
@@ -121,5 +125,54 @@ describe("parseDataUrl", () => {
 
   it("rejects non-data URLs", () => {
     expect(parseDataUrl("https://example.com")).toBeNull();
+  });
+});
+
+describe("unionRows", () => {
+  it("dedupes fingerprints across agents", () => {
+    expect(
+      unionRows([
+        [{ name: "Ada", age: 36 }, { name: "Sam", age: 1 }],
+        [{ name: "Ada", age: 36 }, { name: "Grace", age: 2 }],
+      ]),
+    ).toEqual([
+      { name: "Ada", age: 36 },
+      { name: "Sam", age: 1 },
+      { name: "Grace", age: 2 },
+    ]);
+  });
+});
+
+describe("resizeAgentModels", () => {
+  it("keeps existing assignments and fills unused models", () => {
+    expect(resizeAgentModels(["xai/grok-4.6"], 3, "xai/grok-4.6")).toEqual([
+      "xai/grok-4.6",
+      "openai/gpt-5.6-luna",
+      "google/gemini-3.7-flash",
+    ]);
+  });
+
+  it("trims and replaces one slot", () => {
+    const three: Array<"openai/gpt-5.6-luna" | "xai/grok-4.6" | "google/gemini-3.7-flash"> = [
+      "openai/gpt-5.6-luna",
+      "xai/grok-4.6",
+      "google/gemini-3.7-flash",
+    ];
+    expect(resizeAgentModels(three, 2, "xai/grok-4.6")).toEqual([
+      "openai/gpt-5.6-luna",
+      "xai/grok-4.6",
+    ]);
+    expect(setAgentModelAt(three, 1, "openai/gpt-5.6-luna")).toEqual([
+      "openai/gpt-5.6-luna",
+      "openai/gpt-5.6-luna",
+      "google/gemini-3.7-flash",
+    ]);
+  });
+});
+
+describe("parsePartialJson", () => {
+  it("closes an open rows array", () => {
+    expect(parsePartialJson('{"rows":[{"name":"Ada"}')).toEqual({ rows: [{ name: "Ada" }] });
+    expect(rowsFromExtractText('{"rows":[{"name":"Ada"}')).toEqual([{ name: "Ada" }]);
   });
 });

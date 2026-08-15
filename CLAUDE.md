@@ -38,10 +38,11 @@ npx openextract-mcp
 - Schema: JSON Schema object/string, or a local `module:exportName`.
 - Input: `source` (path/URL) or base64 `data` plus `mediaType`.
 - Style: `direct` for binary media; `search` or `code` only for UTF-8 text.
-- Batch: `extract_many`. Session: `create_extractor` → `extractor_extract` → `close_extractor`.
+- Batch: `extract_many`. Swarm: `extract_swarm` (`size` or `models`, `reduce`: `merge` / `vote` / `first`). Session: `create_extractor` → `extractor_extract` → `close_extractor`.
+- Durable: `extractWorkflow` / `extractManyWorkflow` from `openextract/workflow` with JSON Schema.
 
 In-process, the same rules apply: `extract(schema, model, input)` and share one `Extractor` when the schema is stable.
 
 ## Swarm-shaped work
 
-When a single `extract` call is not enough (large corpora, mixed media, or several schemas), split work across parallel MCP/`extractMany` calls and merge validated objects. Do not add a second pipeline. New swarm orchestration should sit on top of `runDocumentExtraction`.
+When a single `extract` call is not enough, use the shipped primitives: `extractMany` for many inputs, `extractSwarm` for many agents on one input. Do not add a second pipeline. New orchestration should sit on `runDocumentExtraction` / `runLoadedExtraction`.

@@ -70,17 +70,18 @@ The caller should be able to change any of these without rewriting I/O, retries,
 
 ## Current foundation
 
-- Shared pipeline: media → style workspace → retries → structured model output.
+- Shared pipeline: media → style workspace → retries → structured model output (`runDocumentExtraction` / `runLoadedExtraction`).
 - Styles: `direct`, `search`, `code`.
-- Surfaces: library, CLI, OpenTUI, Next.js UI, MCP.
-- Batch + `Extractor` sessions as the first swarm building blocks.
+- Surfaces: library, CLI, OpenTUI, Next.js UI, MCP, Vercel Workflows.
+- Batch (`extractMany`) for many inputs; `extractSwarm` for many agents on one input (`merge` / `vote` / `first`).
+- `Extractor` sessions and `openextract/workflow` for reused or durable runs.
 
 ## Direction
 
 Keep the primitive small. Grow the ways agents can *use* it:
 
 - Richer style/variability so new extraction modes plug in without new entry points.
-- Clearer swarm composition (split, map, reduce) on top of `extract` / `extractMany`.
+- Clearer swarm composition (split, map, reduce) on top of `extract` / `extractMany` / `extractSwarm`.
 - Better agent discovery: capabilities, schemas, and examples that an MCP client can act on immediately.
 - The same contract everywhere — if a human can extract it in the TUI, an agent can extract it through MCP.
 
