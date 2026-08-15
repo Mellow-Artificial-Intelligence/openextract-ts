@@ -1,5 +1,11 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
   - name: Documentation
     url: https://mellow-artificial-intelligence.github.io/openextract/
-    about: Check the documentation for usage guides and examples
+    about: Usage, API, CLI, TUI, and MCP
+  - name: Agent instructions
+    url: https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/AGENTS.md
+    about: How coding agents should work in this repo
+  - name: Vision
+    url: https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/VISION.md
+    about: Why extract stays one primitive, with optional swarms

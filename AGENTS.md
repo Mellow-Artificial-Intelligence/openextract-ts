@@ -99,6 +99,21 @@ When *using* this library as an agent (not just editing it):
 
 MCP: `npx openextract-mcp` (stdio) or `--http --port 3000` (loopback). Tools: `extract`, `extract_many`, `create_extractor`, `extractor_extract`, `close_extractor`. Resources: `openextract://capabilities`, `openextract://docs/api`.
 
+## Issues and pull requests
+
+Use the GitHub forms. Do not open a blank issue.
+
+| Kind | Template |
+| --- | --- |
+| Incorrect behavior | `.github/ISSUE_TEMPLATE/bug_report.yml` |
+| New capability | `.github/ISSUE_TEMPLATE/feature_request.yml` |
+| Agent or MCP blocked | `.github/ISSUE_TEMPLATE/agent.yml` |
+| Code change | `.github/PULL_REQUEST_TEMPLATE.md` |
+
+Fill every required field. Name the surface (library, CLI, TUI, MCP, web, docs) and the extraction style. Feature requests must stay on `extract` / `runDocumentExtraction` — see [VISION.md](VISION.md).
+
+PRs: keep the change focused, run the checklist in the template, and update docs/changelog when the public contract changes.
+
 ## Docs
 
 Update [README.md](README.md) and [docs/api-reference.md](docs/api-reference.md) when the public API, CLI, MCP tools, or env vars change. Note user-facing changes in [CHANGELOG.md](CHANGELOG.md) under `[Unreleased]`.

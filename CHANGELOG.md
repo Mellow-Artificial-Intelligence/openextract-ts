@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Agent-native repo docs: `AGENTS.md`, `CLAUDE.md`, and `VISION.md`.
+- Structured GitHub issue forms (bug, feature, agent/MCP) and an agent-oriented pull request template.
 
 ## [0.1.0] - 2026-08-14
 

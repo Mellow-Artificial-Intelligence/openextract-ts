@@ -1,37 +1,65 @@
-name: Feature Request
-description: Suggest a new feature or enhancement
+name: Feature request
+description: New extract capability, style, surface, or swarm composition
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting a feature. Please describe your idea below.
+        Features should stay on the shared extract primitive. See [VISION.md](https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/VISION.md). Do not propose a second pipeline.
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - Library / public API
+        - New or existing extraction style
+        - Batch / Extractor / swarm composition
+        - MCP
+        - CLI / TUI
+        - Web UI
+        - Docs / agent discovery
+    validations:
+      required: true
 
   - type: textarea
     id: problem
     attributes:
-      label: Problem Statement
-      description: What problem does this feature solve?
-      placeholder: I'm trying to... but currently...
+      label: Problem
+      description: What an agent or caller cannot do today
+      placeholder: I need to extract two schemas from one PDF without writing a second fetch/retry path…
     validations:
       required: true
 
   - type: textarea
     id: solution
     attributes:
-      label: Proposed Solution
-      description: How would you like this to work?
+      label: Proposed change
+      description: Prefer a new option, style, or schema over a new entry point.
     validations:
       required: true
+
+  - type: checkboxes
+    id: vision
+    attributes:
+      label: Vision fit
+      description: Confirm this stays aligned with VISION.md
+      options:
+        - label: Uses `extract` / `runDocumentExtraction` (no parallel extract stack)
+          required: true
+        - label: Variability is a knob (schema, style, model, instructions, session, concurrency)
+          required: true
+        - label: Not a general agent framework or unstructured "summarize this" API
+          required: true
 
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives Considered
-      description: Any alternative solutions or workarounds you've considered?
+      label: Alternatives
+      description: Styles, schemas, `extractMany`, or MCP sessions that almost work
 
   - type: textarea
     id: additional
     attributes:
-      label: Additional Context
-      description: Any other context, examples, or references
+      label: Extra context
+      description: Examples, related issues, or API sketches
