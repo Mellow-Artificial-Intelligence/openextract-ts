@@ -19,6 +19,10 @@ The local Next.js UI lives in `web/`. From the repo root: `npm install --prefix 
 1. Create a new branch from `main`
 2. Make your changes
 3. Ensure tests pass and `npm run typecheck` is clean
-4. Submit a pull request
+4. Open a pull request with `.github/PULL_REQUEST_TEMPLATE.md`
 
-Keep changes focused. Public API lives in `src/index.ts`.
+Keep changes focused. Public API lives in `src/index.ts`. Agent conventions are in [AGENTS.md](AGENTS.md); product direction is in [VISION.md](VISION.md).
+
+## Issues
+
+Use a form under `.github/ISSUE_TEMPLATE/` (bug, feature, or agent/MCP). Blank issues are disabled so reports stay structured.

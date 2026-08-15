@@ -1,0 +1,72 @@
+name: Agent or MCP
+description: An agent got lost, blocked, or could not extract through MCP / the library
+labels: ["agent"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For coding agents and MCP clients. Read [AGENTS.md](https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/AGENTS.md) and [CLAUDE.md](https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/CLAUDE.md) first.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - Cannot discover how to extract
+        - MCP tool / schema / input failed
+        - Swarm / batch / session composition is unclear
+        - Agent docs are wrong or missing
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: caller
+    attributes:
+      label: Caller
+      options:
+        - MCP stdio (`openextract-mcp`)
+        - MCP HTTP
+        - TypeScript `extract` / `extractMany` / `extractSwarm` / `Extractor`
+        - `openextract/workflow`
+        - CLI
+        - Coding agent editing this repo
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What you were trying to extract
+      description: Schema shape, source type, and style you chose
+      placeholder: JSON Schema for invoice line items from a PDF via MCP extract, style=direct
+    validations:
+      required: true
+
+  - type: textarea
+    id: stuck
+    attributes:
+      label: Where you got stuck
+      description: Missing docs, unclear tool args, error payload, or a convention that conflicted
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What would have unblocked you
+      description: The contract, example, or tool behavior you needed
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: openextract version
+      placeholder: "0.1.0"
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Extra context
+      description: Tool name, resource URI, model id, or excerpt from AGENTS.md that misled you
