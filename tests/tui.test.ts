@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { TUI_RUNTIME_HELP, launchTui, tuiArgv, wantsTui } from "../src/tui.js";
 import {
   DEFAULT_MODEL,
@@ -31,12 +31,17 @@ describe("wantsTui", () => {
 
 describe("TUI form", () => {
   it("prefills a path source and document schema", () => {
-    const form = defaultForm({ source: "./q4.pdf", model: "xai/grok-4.6" });
+    const form = defaultForm({
+      source: "./q4.pdf",
+      model: "xai/grok-4.6",
+      instructions: "Be brief",
+      schema: "title: string",
+    });
     expect(form.sourceKind).toBe("path");
     expect(form.source).toBe("./q4.pdf");
     expect(form.model).toBe("xai/grok-4.6");
-    expect(form.schemaSpec).toBe(PRESETS.document.spec);
-    expect(presetIdForSpec(form.schemaSpec)).toBe("document");
+    expect(form.schemaSpec).toBe("title: string");
+    expect(presetIdForSpec(form.schemaSpec)).toBe("custom");
   });
 
   it("defaults the model and paste mode", () => {
@@ -46,6 +51,12 @@ describe("TUI form", () => {
     expect(defaultForm().model).toBe(DEFAULT_MODEL);
     if (previous === undefined) delete process.env.OPENEXTRACT_MODEL;
     else process.env.OPENEXTRACT_MODEL = previous;
+    process.env.OPENEXTRACT_MODEL = "xai/grok-4.6";
+    expect(defaultForm().model).toBe("xai/grok-4.6");
+    if (previous === undefined) delete process.env.OPENEXTRACT_MODEL;
+    else process.env.OPENEXTRACT_MODEL = previous;
+    const pathForm = defaultForm({ source: "./a.txt" });
+    expect(resolveTuiMediaType(pathForm)).toBeUndefined();
   });
 
   it("resolves paste input as UTF-8 bytes", () => {
@@ -63,6 +74,17 @@ describe("TUI form", () => {
     pathForm.sourceKind = "path";
     pathForm.source = "";
     expect(validateForm(pathForm)).toMatch(/local path/);
+    const pathOk = defaultForm({ source: "./a.txt", style: "nope" });
+    expect(pathOk.style).toBe("direct");
+    expect(resolveTuiInput(pathOk)).toBe("./a.txt");
+    expect(presetIdForSpec("custom: string")).toBe("custom");
+    pathOk.mediaType = "text/csv";
+    expect(resolveTuiMediaType(pathOk)).toBe("text/csv");
+    pathOk.model = "";
+    expect(validateForm(pathOk)).toMatch(/model id/);
+    pathOk.model = "openai/gpt-5.5";
+    pathOk.schemaSpec = "  ";
+    expect(validateForm(pathOk)).toMatch(/output shape/);
   });
 
   it("extracts with the form schema and reports usage", async () => {
@@ -79,6 +101,20 @@ describe("TUI form", () => {
     expect(result.output).toEqual({ name: "Ada", age: 36 });
     expect(formatResultJson(result.output)).toContain('"name": "Ada"');
     expect(formatUsage(result.usage, 1500)).toBe("10 tokens · 1.5s");
+  });
+
+  it("uses the default schema resolver", async () => {
+    const extract = await import("../src/extract.js");
+    const spy = vi.spyOn(extract, "extractWithUsage").mockResolvedValue({
+      output: { label: "ok" },
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+    });
+    const form = defaultForm();
+    form.source = "Ada is 36";
+    form.schemaSpec = "label: string";
+    await expect(runTuiExtract(form)).resolves.toMatchObject({ output: { label: "ok" } });
+    spy.mockRestore();
+    await expect(runTuiExtract(defaultForm())).rejects.toThrow(/Paste some text/);
   });
 
   it("names saved results with a stable timestamp", () => {
@@ -104,4 +140,5 @@ describe("launchTui", () => {
     }
     expect(errors.join("\n")).toContain(TUI_RUNTIME_HELP.slice(0, 40));
   });
+
 });

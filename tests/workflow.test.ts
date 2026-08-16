@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { extractWorkflow, extractManyWorkflow } from "../src/workflow.js";
 import {
   resolveWorkflowSource,
@@ -95,5 +95,56 @@ describe("workflow exports", () => {
   it("exposes startable workflow functions", () => {
     expect(typeof extractWorkflow).toBe("function");
     expect(typeof extractManyWorkflow).toBe("function");
+  });
+
+  it("passes through a named path source", () => {
+    expect(resolveWorkflowSource({ source: "./a.txt", name: "a", mediaType: "text/plain" })).toEqual({
+      source: "./a.txt",
+      mediaType: "text/plain",
+      name: "a",
+    });
+    expect(() => resolveWorkflowSource({})).toThrow(/source \(path\/URL\) or data/);
+  });
+
+  it("runs extractWorkflow through the serializable path", async () => {
+    const extract = await import("../src/extract.js");
+    const spy = vi.spyOn(extract, "extractWithUsage").mockResolvedValue({
+      output: { name: "Ada", age: 36 },
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+    });
+    try {
+      await expect(
+        extractWorkflow({
+          schema: PersonSchema,
+          model: "openai/gpt-5.5",
+          input: { data: Buffer.from("doc").toString("base64"), mediaType: "text/plain" },
+        }),
+      ).resolves.toEqual({
+        output: { name: "Ada", age: 36 },
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      });
+      await expect(
+        extractManyWorkflow({
+          schema: PersonSchema,
+          model: "openai/gpt-5.5",
+          inputs: [
+            { data: Buffer.from("a").toString("base64"), mediaType: "text/plain" },
+            { data: Buffer.from("b").toString("base64"), mediaType: "text/plain" },
+          ],
+          maxConcurrency: 1,
+        }),
+      ).resolves.toHaveLength(2);
+      spy.mockRejectedValueOnce(new Error("nope"));
+      await expect(
+        extractManyWorkflow({
+          schema: PersonSchema,
+          model: "openai/gpt-5.5",
+          inputs: [{ data: Buffer.from("a").toString("base64"), mediaType: "text/plain" }],
+          returnExceptions: true,
+        }),
+      ).resolves.toEqual([{ error: "nope", errorType: "Error" }]);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

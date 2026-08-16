@@ -31,7 +31,7 @@ export function parseRetryAfter(value: unknown): number | null {
   return Number.isFinite(remaining) && remaining >= 0 ? remaining : null;
 }
 
-function headerRetryAfter(headers?: Record<string, string>): number | null {
+export function headerRetryAfter(headers?: Record<string, string>): number | null {
   if (!headers) return null;
   for (const [key, value] of Object.entries(headers)) {
     if (key.toLowerCase() === "retry-after") return parseRetryAfter(value);

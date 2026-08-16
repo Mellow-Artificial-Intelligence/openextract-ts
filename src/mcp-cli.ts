@@ -50,8 +50,13 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   await server.connect(new StdioServerTransport());
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  main().catch((error) => {
+export function isMainModule(url: string, argv1?: string): boolean {
+  return url === pathToFileURL(argv1 ?? "").href;
+}
+
+/* v8 ignore next 6 -- process entry */
+if (isMainModule(import.meta.url, process.argv[1])) {
+  void main().catch((error) => {
     console.error(toError(error).message);
     process.exit(1);
   });

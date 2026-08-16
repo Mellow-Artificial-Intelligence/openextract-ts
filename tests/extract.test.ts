@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extract, extractWithUsage } from "../src/extract.js";
+import { extract, extractAsync, extractWithUsage, extractWithUsageAsync } from "../src/extract.js";
 import { ModelError, SchemaValidationError } from "../src/exceptions.js";
 import { routeModel } from "../src/model.js";
 import { mockModel, mockModelFn, Person } from "./helpers.js";
@@ -59,6 +59,29 @@ describe("extract", () => {
     });
     expect(result.age).toBe(36);
     expect(calls).toBe(2);
+  });
+
+  it("extracts with a defined agent via extractWithUsage", async () => {
+    const { defineAgent } = await import("../src/agent.js");
+    const agent = defineAgent({
+      description: "Person reader",
+      model: mockModel({ name: "Ada", age: 36 }, { inputTokens: 3, outputTokens: 1 }),
+      outputSchema: Person,
+    });
+    const { output, usage } = await extractWithUsage(agent, Buffer.from("doc"), {
+      mediaType: "text/plain",
+    });
+    expect(output).toEqual({ name: "Ada", age: 36 });
+    expect(usage.totalTokens).toBe(4);
+    expect(extractAsync).toBe(extract);
+    expect(extractWithUsageAsync).toBe(extractWithUsage);
+    const { writeFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+    const path = join(tmpdir(), `openextract-agent-${Date.now()}.txt`);
+    await writeFile(path, "doc");
+    await expect(extract(agent, path)).resolves.toEqual({ name: "Ada", age: 36 });
+    await expect(extractWithUsage(agent, path)).resolves.toMatchObject({ output: { name: "Ada", age: 36 } });
   });
 
   it("surfaces exhausted model errors", async () => {

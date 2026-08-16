@@ -89,7 +89,7 @@ export function isBinaryMediaType(mediaType: string): boolean {
 }
 
 export function documentFilename(mediaType: string): string {
-  const subtype = bareMediaType(mediaType).split("/").pop() ?? "plain";
+  const subtype = bareMediaType(mediaType).split("/").pop() || "plain";
   return DOCUMENT_FILENAMES[subtype] ?? "document.txt";
 }
 

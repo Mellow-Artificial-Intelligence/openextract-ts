@@ -13,6 +13,7 @@ Agents are a first-class caller. Prefer the public TypeScript API or the MCP ser
 ```bash
 npm install
 npm test
+npm run test:coverage
 npm run typecheck
 npm run build
 ```
@@ -78,7 +79,7 @@ Node.js 20+. Set `AI_GATEWAY_API_KEY` for live model calls. Tests use `MockLangu
 - Add or update a Vitest file next to the behavior you change (`tests/<area>.test.ts`).
 - Use `mockModel` / `mockModelFn` from `tests/helpers.ts`. Do not hit a live provider in unit tests.
 - Cover success, typed errors (`ModelError`, `SchemaValidationError`, `InputTooLargeError`, `UrlFetchError`), and retry/style edge cases.
-- Run `npm test` and `npm run typecheck` before finishing. For `web/` changes, also run `npm run web:typecheck`.
+- Run `npm run test:coverage` and `npm run typecheck` before finishing. For `web/` changes, also run `npm run web:typecheck`.
 
 ## Security
 

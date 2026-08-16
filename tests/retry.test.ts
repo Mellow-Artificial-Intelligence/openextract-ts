@@ -37,4 +37,19 @@ describe("retry", () => {
     ).rejects.toBeInstanceOf(ModelError);
     expect(fn).toHaveBeenCalledOnce();
   });
+
+  it("caps non-finite backoff and retries RemoteAgentError", async () => {
+    expect(retryDelay(Number.POSITIVE_INFINITY, 9, 10, null)).toBe(9);
+    const { RemoteAgentError } = await import("../src/exceptions.js");
+    let calls = 0;
+    const result = await runWithRetries(
+      async () => {
+        calls += 1;
+        if (calls === 1) throw new RemoteAgentError("busy", { statusCode: 503, retryable: true });
+        return "ok";
+      },
+      { maxRetries: 1, retryBackoff: 0, retryMaxBackoff: 0 },
+    );
+    expect(result).toBe("ok");
+  });
 });

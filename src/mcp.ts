@@ -79,6 +79,10 @@ export interface CreateOpenExtractMcpServerOptions {
   ) => ExtractorHandle;
 }
 
+export function completeStyle(value?: string): string[] {
+  return STYLES.filter((style) => style.startsWith(value ?? ""));
+}
+
 export function resolveMcpInput(input: McpInput): ExtractionInputLike {
   if (input.data != null) {
     if (!input.mediaType) throw new Error("mediaType is required when data is base64 bytes.");
@@ -468,9 +472,7 @@ export function createOpenExtractMcpServer(
     }),
   );
 
-  const styleArg = completable(z.string().optional().describe("direct, search, or code"), (value) =>
-    STYLES.filter((style) => style.startsWith(value ?? "")),
-  );
+  const styleArg = completable(z.string().optional().describe("direct, search, or code"), completeStyle);
 
   server.registerPrompt(
     "extract-document",
@@ -569,7 +571,7 @@ export function startOpenExtractMcpHttpServer(
   options: CreateOpenExtractMcpServerOptions & { host?: string; port?: number } = {},
 ): Server {
   const host = options.host ?? "127.0.0.1";
-  const port = options.port ?? 3000;
+  const port = options.port ?? /* v8 ignore next */ 3000;
   const httpServer = createServer((req, res) => {
     void handleHttp(req, res, options);
   });
@@ -598,7 +600,7 @@ async function handleHttp(
       res.writeHead(500, { "content-type": "application/json" }).end(
         JSON.stringify({
           jsonrpc: "2.0",
-          error: { code: -32603, message: error instanceof Error ? error.message : "Internal server error" },
+          error: { code: -32603, message: error instanceof Error ? error.message : /* v8 ignore next */ "Internal server error" },
           id: null,
         }),
       );
