@@ -9,6 +9,7 @@ export const ExtractionStyle = {
   DIRECT: "direct",
   SEARCH: "search",
   CODE: "code",
+  SANDBOX: "sandbox",
 } as const;
 
 export type ExtractionStyle = (typeof ExtractionStyle)[keyof typeof ExtractionStyle];
@@ -61,6 +62,20 @@ const DOCUMENT_FILENAMES: Record<string, string> = {
   xml: "document.xml",
   yaml: "document.yaml",
 };
+const BINARY_FILENAMES: Record<string, string> = {
+  gif: "document.gif",
+  jpeg: "document.jpg",
+  jpg: "document.jpg",
+  mp3: "document.mp3",
+  mp4: "document.mp4",
+  mpeg: "document.mp3",
+  pdf: "document.pdf",
+  png: "document.png",
+  wav: "document.wav",
+  webm: "document.webm",
+  webp: "document.webp",
+  zip: "document.zip",
+};
 
 export function normalizeStyle(style: ExtractionStyle | string): ExtractionStyle {
   const values = Object.values(ExtractionStyle);
@@ -91,6 +106,15 @@ export function isBinaryMediaType(mediaType: string): boolean {
 export function documentFilename(mediaType: string): string {
   const subtype = bareMediaType(mediaType).split("/").pop() || "plain";
   return DOCUMENT_FILENAMES[subtype] ?? "document.txt";
+}
+
+export function workspaceFilename(mediaType: string): string {
+  const subtype = bareMediaType(mediaType).split("/").pop() || "plain";
+  return (
+    DOCUMENT_FILENAMES[subtype] ??
+    BINARY_FILENAMES[subtype] ??
+    (isBinaryMediaType(mediaType) ? `document.${subtype.replace(/[^a-z0-9]+/gi, "") || "bin"}` : "document.txt")
+  );
 }
 
 export function decodeTextDocument(

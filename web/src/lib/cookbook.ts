@@ -2,7 +2,9 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { generateText, Output, gateway } from "ai";
 import { z } from "zod";
+import { type RunnableAgent, type RunnableSystem } from "@/lib/agent-system";
 import {
+  COOKBOOK_DOCS,
   COOKBOOK_RECIPES,
   FALLBACK_COOKBOOK_MODELS,
   clampCookbookSize,
@@ -15,6 +17,9 @@ import {
   type CookbookReduce,
   type Invoice,
 } from "@/lib/cookbook-catalog";
+import { isCodingAgentId } from "@/lib/models";
+import { STYLE_DETAILS } from "@/lib/presets";
+import { extractWithCodingAgent } from "@/workflows/extract-sandbox";
 
 export {
   COOKBOOK_RECIPES,
@@ -49,6 +54,7 @@ const AuditSchema = z.object({
 });
 
 const DOCS_DIR = join(process.cwd(), "src/cookbook/docs");
+const COOKBOOK_DOC_NAMES = new Set(COOKBOOK_DOCS);
 const PAYABLE =
   "Extract one payable record from this vendor invoice: vendor, invoice number, currency, line items, and the labeled total. Do not invent fields.";
 const AUDIT =
@@ -89,7 +95,20 @@ function instructionsFor(recipe: CookbookRecipeMeta, index: number, size: number
 }
 
 function isFixture(name: string, allowed: ReadonlySet<string>): boolean {
-  return allowed.has(name) && !name.includes("/") && !name.includes("\\") && !name.includes("..");
+  return allowed.has(name) && isCookbookDoc(name);
+}
+
+export function isCookbookDoc(name: string): boolean {
+  return COOKBOOK_DOC_NAMES.has(name) && !name.includes("/") && !name.includes("\\") && !name.includes("..");
+}
+
+export async function readCookbookDoc(name: string): Promise<string | null> {
+  if (!isCookbookDoc(name)) return null;
+  try {
+    return await readFile(join(DOCS_DIR, name), "utf8");
+  } catch {
+    return null;
+  }
 }
 
 function majority<T>(values: T[]): T {
@@ -186,6 +205,115 @@ async function extractObject<T>(
   return result.output;
 }
 
+function agentSystemPrompt(agent: RunnableAgent): string {
+  return [
+    agent.instructions,
+    `Extraction style: ${agent.style}. ${STYLE_DETAILS[agent.style].description}`,
+  ].join("\n\n");
+}
+
+async function extractAgent<T>(
+  agent: RunnableAgent,
+  text: string,
+  schema: z.ZodType<T>,
+  name: string,
+  description: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  const system = agentSystemPrompt(agent);
+  if (isCodingAgentId(agent.model)) {
+    return extractWithCodingAgent({
+      model: agent.model,
+      prompt: text,
+      system,
+      text,
+      files: [],
+      schema,
+      coding: agent.coding,
+    });
+  }
+  return extractObject(agent.model, text, system, schema, name, description, signal);
+}
+
+export async function runExtractionSystem(options: {
+  system: RunnableSystem;
+  emit: (event: CookbookEvent) => void;
+  signal?: AbortSignal;
+}): Promise<void> {
+  const docs = options.system.docs.filter((name) => isCookbookDoc(name));
+  if (docs.length === 0) throw new Error("Select at least one document.");
+  const agents = options.system.agents;
+  if (agents.length === 0) throw new Error("Add at least one agent.");
+  const audit = options.system.schema === "audit";
+  for (const [index, source] of docs.entries()) {
+    if (options.signal?.aborted) return;
+    options.emit({ type: "doc", source, index, total: docs.length });
+    const text = await readFile(join(DOCS_DIR, source), "utf8");
+    const outputs: Array<CookbookOutput | undefined> = Array.from({ length: agents.length });
+    await Promise.all(
+      agents.map(async (agent, agentIndex) => {
+        if (options.signal?.aborted) return;
+        options.emit({
+          type: "agent-start",
+          source,
+          agentIndex,
+          agentTotal: agents.length,
+          role: agent.role,
+        });
+        const started = Date.now();
+        try {
+          const output = audit
+            ? await extractAgent(
+                agent,
+                text,
+                AuditSchema,
+                "Audit",
+                "Completeness, policy, and math findings with a verdict.",
+                options.signal,
+              )
+            : await extractAgent(
+                agent,
+                text,
+                InvoiceSchema,
+                "Invoice",
+                "Vendor, invoice number, currency, line items, and labeled total.",
+                options.signal,
+              );
+          outputs[agentIndex] = output;
+          options.emit({
+            type: "agent",
+            source,
+            agentIndex,
+            agentTotal: agents.length,
+            role: agent.role,
+            output,
+            duration: Date.now() - started,
+          });
+        } catch (error) {
+          if (options.signal?.aborted) return;
+          options.emit({
+            type: "agent",
+            source,
+            agentIndex,
+            agentTotal: agents.length,
+            role: agent.role,
+            error: error instanceof Error ? error.message : "Agent failed",
+            duration: Date.now() - started,
+          });
+        }
+      }),
+    );
+    if (options.signal?.aborted) return;
+    const ok = outputs.filter((item): item is CookbookOutput => item != null);
+    if (ok.length === 0) throw new Error(`Every agent failed on ${source}.`);
+    const output = audit
+      ? reduceAudits(ok as Audit[])
+      : reduceInvoices(ok as Invoice[], options.system.reduce);
+    options.emit({ type: "result", source, output, reduce: options.system.reduce });
+  }
+  options.emit({ type: "done" });
+}
+
 export async function runCookbook(options: {
   recipeId: string;
   model: string;
@@ -201,69 +329,15 @@ export async function runCookbook(options: {
   if (docs.length === 0) throw new Error("Select at least one document.");
   const size = clampCookbookSize(recipe, options.size);
   const roles = cookbookRoles(recipe, size);
-  const audit = recipe.schema === "audit";
-  for (const [index, source] of docs.entries()) {
-    if (options.signal?.aborted) return;
-    options.emit({ type: "doc", source, index, total: docs.length });
-    const text = await readFile(join(DOCS_DIR, source), "utf8");
-    const outputs: Array<CookbookOutput | undefined> = Array.from({ length: size });
-    await Promise.all(
-      Array.from({ length: size }, async (_, agentIndex) => {
-        if (options.signal?.aborted) return;
-        const role = roles[agentIndex] ?? `Agent ${agentIndex + 1}`;
-        options.emit({ type: "agent-start", source, agentIndex, agentTotal: size, role });
-        const started = Date.now();
-        try {
-          const output = audit
-            ? await extractObject(
-                options.model,
-                text,
-                instructionsFor(recipe, agentIndex, size),
-                AuditSchema,
-                "Audit",
-                "Completeness, policy, and math findings with a verdict.",
-                options.signal,
-              )
-            : await extractObject(
-                options.model,
-                text,
-                instructionsFor(recipe, agentIndex, size),
-                InvoiceSchema,
-                "Invoice",
-                "Vendor, invoice number, currency, line items, and labeled total.",
-                options.signal,
-              );
-          outputs[agentIndex] = output;
-          options.emit({
-            type: "agent",
-            source,
-            agentIndex,
-            agentTotal: size,
-            role,
-            output,
-            duration: Date.now() - started,
-          });
-        } catch (error) {
-          if (options.signal?.aborted) return;
-          options.emit({
-            type: "agent",
-            source,
-            agentIndex,
-            agentTotal: size,
-            role,
-            error: error instanceof Error ? error.message : "Agent failed",
-            duration: Date.now() - started,
-          });
-        }
-      }),
-    );
-    if (options.signal?.aborted) return;
-    const ok = outputs.filter((item): item is CookbookOutput => item != null);
-    if (ok.length === 0) throw new Error(`Every agent failed on ${source}.`);
-    const output = audit
-      ? reduceAudits(ok as Audit[])
-      : reduceInvoices(ok as Invoice[], recipe.reduce);
-    options.emit({ type: "result", source, output, reduce: recipe.reduce });
-  }
-  options.emit({ type: "done" });
+  const agents: RunnableAgent[] = Array.from({ length: size }, (_, agentIndex) => ({
+    role: roles[agentIndex] ?? `Agent ${agentIndex + 1}`,
+    model: options.model,
+    style: "direct",
+    instructions: instructionsFor(recipe, agentIndex, size),
+  }));
+  await runExtractionSystem({
+    system: { schema: recipe.schema, reduce: recipe.reduce, sandbox: false, docs, agents },
+    emit: options.emit,
+    signal: options.signal,
+  });
 }

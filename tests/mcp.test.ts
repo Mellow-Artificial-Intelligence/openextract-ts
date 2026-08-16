@@ -217,7 +217,7 @@ describe("MCP server", () => {
     sessions.push(session);
     const resource = await session.client.readResource({ uri: "openextract://capabilities" });
     const body = JSON.parse(resource.contents[0]!.text as string);
-    expect(body.styles).toEqual(["direct", "search", "code"]);
+    expect(body.styles).toEqual(["direct", "search", "code", "sandbox"]);
     expect(body.tools).toContain("extract");
     const prompt = await session.client.getPrompt({
       name: "extract-document",
@@ -457,7 +457,7 @@ describe("MCP server", () => {
     });
     expect(String((doc.messages[0]?.content as { text?: string }).text)).toContain("Style: direct");
     expect(completeStyle("se")).toEqual(["search"]);
-    expect(completeStyle()).toEqual(["direct", "search", "code"]);
+    expect(completeStyle()).toEqual(["direct", "search", "code", "sandbox"]);
   });
 });
 

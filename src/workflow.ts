@@ -20,7 +20,7 @@ export interface ExtractWorkflowInput {
   model: string;
   input: ExtractWorkflowSource;
   instructions?: string;
-  style?: "direct" | "search" | "code";
+  style?: "direct" | "search" | "code" | "sandbox";
   maxInputBytes?: number;
   maxRetries?: number;
   retryBackoff?: number;

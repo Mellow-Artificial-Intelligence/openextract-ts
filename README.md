@@ -14,6 +14,12 @@
 npm install openextract zod
 ```
 
+For Claude Code or Codex extraction, also install the optional peer:
+
+```bash
+npm install @vercel/sandbox
+```
+
 Requires Node.js 20+. Set `AI_GATEWAY_API_KEY` (or deploy on Vercel with OIDC).
 
 ## Quick start
@@ -51,7 +57,14 @@ await extract(PdfInfo, "openai/gpt-5.5", "notes.txt", { style: "search" });
 await extract(PdfInfo, "openai/gpt-5.5", "notes.txt", { style: ExtractionStyle.CODE });
 ```
 
-`search` and `code` require UTF-8 text (`text/*`, JSON, XML, YAML, and similar). PDFs, Office documents, images, audio, and video stay on `direct`.
+`search` and `code` require UTF-8 text (`text/*`, JSON, XML, YAML, and similar). PDFs, Office documents, images, audio, and video stay on `direct`, or use `sandbox` with Claude Code or Codex.
+
+```ts
+await extract(PdfInfo, "claude-code", "./reports/q4.pdf");
+await extract(PdfInfo, "codex", "./reports/q4.pdf");
+```
+
+`claude-code` and `codex` run inside a Vercel Sandbox (`style: "sandbox"` is selected automatically). Install optional peer `@vercel/sandbox`. Set `AI_GATEWAY_API_KEY`, and for local runs `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, and `VERCEL_PROJECT_ID`. Optionally pin a pre-warmed image with `OPENEXTRACT_SANDBOX_SNAPSHOT_ID`. Nested models work as `claude-code/anthropic/claude-sonnet-4.6` or `codex/openai/gpt-5.6`.
 
 ## Reusable sessions
 
@@ -211,7 +224,7 @@ cp web/.env.example web/.env.local
 npm run web
 ```
 
-The web UI is a cookbook: pick a recipe in the left rail. **Table extract** is the default (describe columns, edit the schema, extract rows from a source). **AP inbox** takes a folder of vendor invoices and returns one payable each. **File audit** runs completeness, policy, and math agents on each packet and merges a verdict. Disputed payable and invoice math sit next to those.
+The web UI has two tabs. **Extract** is a one-off table: describe columns, then run a team of specialists (gateway models and, optionally, Claude Code or Codex in a sandbox). Each coding agent has harness settings — especially which model it should use. **Agents** is a system builder: start from a template or a blank roster, mix gateway models with coding agents, and extract against bundled fixtures.
 
 ![File audit recipe with completeness, policy, and math agents](docs/images/web-file-audit.png)
 
@@ -251,7 +264,7 @@ stdio by default (Cursor, Claude Desktop). `--http --port 3000` serves Streamabl
 }
 ```
 
-Tools cover the full API: `extract`, `extract_many`, `extract_swarm`, and reusable `create_extractor` / `extractor_extract` / `close_extractor` sessions. Pass a JSON Schema (or `module:exportName`) plus a path, URL, or base64 bytes. Importable agents use `agent` / `agents` as a directory, file, or `module:exportName`. Styles (`direct`, `search`, `code`), retries, usage, batch, and swarm options are all available.
+Tools cover the full API: `extract`, `extract_many`, `extract_swarm`, and reusable `create_extractor` / `extractor_extract` / `close_extractor` sessions. Pass a JSON Schema (or `module:exportName`) plus a path, URL, or base64 bytes. Importable agents use `agent` / `agents` as a directory, file, or `module:exportName`. Styles (`direct`, `search`, `code`, `sandbox`), retries, usage, batch, and swarm options are all available.
 
 ```ts
 import { createOpenExtractMcpServer } from "openextract/mcp";
@@ -281,7 +294,7 @@ const run = await start(extractWorkflow, [
 const { output, usage } = await run.returnValue;
 ```
 
-`extractManyWorkflow` runs each input as its own step. In Next.js, wrap the config with `withWorkflow()` from `workflow/next` and set `transpilePackages: ["openextract"]` so the `"use workflow"` / `"use step"` directives compile. See `examples/workflow/extract-route.ts`. The local web UI (`npm run web`) starts table extraction through the same runtime from the Table extract recipe.
+`extractManyWorkflow` runs each input as its own step. In Next.js, wrap the config with `withWorkflow()` from `workflow/next` and set `transpilePackages: ["openextract"]` so the `"use workflow"` / `"use step"` directives compile. See `examples/workflow/extract-route.ts`. The local web UI (`npm run web`) starts table extraction through the same runtime from the Extract tab.
 
 ## Error handling
 
@@ -320,6 +333,9 @@ try {
 | `OPENEXTRACT_MAX_REDIRECTS` | `10` | Maximum redirect hops |
 | `OPENEXTRACT_ALLOW_PRIVATE_URLS` | unset | Set `1` / `true` / `yes` to allow private hosts |
 | `OPENEXTRACT_MAX_INPUT_BYTES` | `52428800` | Per-input byte cap |
+| `OPENEXTRACT_SANDBOX_TIMEOUT` | `300` | Claude Code / Codex sandbox lifetime (seconds) |
+| `OPENEXTRACT_SANDBOX_SNAPSHOT_ID` | — | Optional Vercel Sandbox snapshot with the CLIs preinstalled |
+| `VERCEL_TOKEN` / `VERCEL_TEAM_ID` / `VERCEL_PROJECT_ID` | — | Sandbox auth for local runs (OIDC on Vercel) |
 
 ## Development
 

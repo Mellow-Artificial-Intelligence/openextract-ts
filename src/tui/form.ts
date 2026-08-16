@@ -7,7 +7,7 @@ import type { z } from "zod";
 export const SOURCE_KINDS = ["path", "paste"] as const;
 export type SourceKind = (typeof SOURCE_KINDS)[number];
 
-export const STYLES = ["direct", "search", "code"] as const;
+export const STYLES = ["direct", "search", "code", "sandbox"] as const;
 export type StyleName = (typeof STYLES)[number];
 
 export const PRESETS = {
@@ -116,7 +116,7 @@ export function validateForm(form: TuiForm): string | null {
   } catch (error) {
     return toError(error).message;
   }
-  if (!form.model.trim()) return "Enter an AI Gateway model id (e.g. openai/gpt-5.5).";
+  if (!form.model.trim()) return "Enter an AI Gateway model id, or claude-code / codex.";
   if (!form.schemaSpec.trim()) return "Describe the output shape, or pick a preset.";
   return null;
 }

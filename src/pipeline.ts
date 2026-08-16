@@ -3,8 +3,15 @@ import { withExtractionErrors } from "./errors.js";
 import { getMedia } from "./media.js";
 import { runExtraction, type LanguageModel } from "./model.js";
 import { runWithRetries } from "./retry.js";
+import { resolveSandboxStyle, runSandboxExtraction } from "./sandbox.js";
 import { ExtractionStyle, normalizeStyle, withStyleWorkspace } from "./styles.js";
-import { RetryPolicy, type ExtractOptions, type ExtractionInputLike, type Usage } from "./types.js";
+import {
+  RetryPolicy,
+  type ExtractOptions,
+  type ExtractionInputLike,
+  type SandboxOptions,
+  type Usage,
+} from "./types.js";
 import type { z } from "zod";
 
 export interface ResolvedExtractOptions {
@@ -17,6 +24,7 @@ export interface ResolvedExtractOptions {
   instructions?: string;
   mediaType?: string;
   instrument?: boolean;
+  sandbox?: SandboxOptions;
 }
 
 export function resolveExtractOptions(options: ExtractOptions = {}): ResolvedExtractOptions {
@@ -35,6 +43,7 @@ export function resolveExtractOptions(options: ExtractOptions = {}): ResolvedExt
     instructions: options.instructions,
     mediaType: options.mediaType,
     instrument: options.instrument,
+    sandbox: options.sandbox,
   };
 }
 
@@ -45,7 +54,33 @@ export async function runLoadedExtraction<T>(
   mediaType: string,
   options: ResolvedExtractOptions,
 ): Promise<{ output: T; usage: Usage; attempts: number }> {
-  return withStyleWorkspace(options.style, data, mediaType, async (prepared) => {
+  const style = resolveSandboxStyle(options.style, model);
+  if (style === ExtractionStyle.SANDBOX) {
+    let attempts = 0;
+    const result = await runWithRetries(
+      () => {
+        attempts += 1;
+        return withExtractionErrors(() =>
+          runSandboxExtraction({
+            schema,
+            model,
+            data,
+            mediaType,
+            instructions: options.instructions,
+            timeoutMs: options.timeoutMs,
+            sandbox: options.sandbox,
+          }),
+        );
+      },
+      {
+        maxRetries: options.maxRetries,
+        retryBackoff: options.retryBackoff,
+        retryMaxBackoff: options.retryMaxBackoff,
+      },
+    );
+    return { ...result, attempts };
+  }
+  return withStyleWorkspace(style, data, mediaType, async (prepared) => {
     let attempts = 0;
     const result = await runWithRetries(
       () => {

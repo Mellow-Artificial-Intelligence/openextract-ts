@@ -2,7 +2,15 @@ import type { ReactNode } from "react";
 
 export const GITHUB_URL = "https://github.com/Mellow-Artificial-Intelligence/openextract";
 
-export function AppHeader({ title, children }: { title: string; children?: ReactNode }) {
+export function AppHeader({
+  title,
+  nav,
+  children,
+}: {
+  title: string;
+  nav?: ReactNode;
+  children?: ReactNode;
+}) {
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border/50 bg-background/80 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-lg sm:h-14 sm:gap-3 sm:px-6">
       <div className="flex min-w-0 items-center gap-2">
@@ -11,6 +19,7 @@ export function AppHeader({ title, children }: { title: string; children?: React
         </span>
         <span className="truncate font-mono text-sm">{title}</span>
       </div>
+      {nav}
       <nav className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
         {children}
         <a

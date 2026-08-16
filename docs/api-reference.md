@@ -6,7 +6,7 @@
 
 ## Local web UI
 
-`npm run web` starts the Next.js cookbook in `web/`. **Table extract** (the default recipe) describes columns, streams a schema, then runs table extraction as a Vercel Workflow (`WorkflowAgent` in `web/src/workflows/extract.ts`); `POST /api/extract` starts the run and returns the structured rows. Other recipes (`POST /api/cookbook`) cover AP inbox, file audit, disputed payable, and invoice math on bundled fixtures. Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC. Pull-request preview deploys are skipped. Inspect table runs with `npx workflow web`. The table recipe can run several agents in parallel, attach a model to each agent, and merge unique rows. CLI `--models` assigns one model per agent.
+`npm run web` starts the Next.js UI in `web/`. **Extract** describes columns, streams a schema, then runs a team of specialists on one source (`POST /api/extract`). Team size, per-member models, **Workflows**, and **Sandboxes** live in the Team sheet. Gateway models use `direct` / `search` / `code`; Claude Code and Codex join as independent sandbox members when Sandboxes is on. Each coding agent has harness settings: inner model id, Claude Code max turns, or Codex reasoning effort (`POST` `model` like `claude-code/claude-sonnet-4-6` plus optional `coding`). Workflows on starts `extractTableWorkflow`; off runs in-process. **Agents** (`POST /api/cookbook`) is a system builder: templates or a blank roster of specialists (gateway models, Claude Code, Codex) with per-agent style, instructions, and reduce (`merge` / `vote` / `first`). Send `{ system: { schema, reduce, sandbox, docs, agents } }`. Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC. Pull-request preview deploys are skipped. Inspect durable table runs with `npx workflow web`. CLI `--models` assigns one model per agent.
 
 ## Extraction
 
@@ -49,18 +49,19 @@ Reusable session that stores schema, model, style, retry policy, and timeout.
 ## Common options
 
 - `instructions` — optional natural-language guidance
-- `style` — `direct` (default), `search`, or `code`
+- `style` — `direct` (default), `search`, `code`, or `sandbox`
 - `mediaType` — required for bytes/streams
 - `maxInputBytes` — per-input cap (default 50 MiB)
 - `maxRetries` / `retryBackoff` / `retryMaxBackoff`
 - `timeout` — model call timeout in seconds
+- `sandbox` — `{ snapshotId?, timeout? }` for Claude Code / Codex
 - `maxConcurrency` — batch and swarm (default 5)
 - `size` / `reduce` — swarm only (`merge` | `vote` | `first`)
 - `onAgentStart` / `onAgent` — swarm only; start fires when an agent begins, `onAgent` when it finishes
 - `models` — swarm agent model ids (CLI `--models`, MCP `models`)
 - `agent` / `agents` — directory, file, or `module:exportName` (CLI `--agent` / `--agents`, MCP `agent` / `agents`)
 
-`model` is an AI Gateway id (`openai/gpt-5.5`) or a `LanguageModel` instance. Colon-prefixed ids (`openai:gpt-5.5`) are accepted.
+`model` is an AI Gateway id (`openai/gpt-5.5`), a `LanguageModel` instance, or a coding agent (`claude-code`, `codex`). Colon-prefixed ids (`openai:gpt-5.5`) are accepted. Coding-agent models run in a Vercel Sandbox.
 
 ## MCP
 

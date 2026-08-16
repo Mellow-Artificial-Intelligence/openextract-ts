@@ -51,12 +51,20 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 import { fetchExtractRows } from "@/lib/extract-stream";
 import {
   DEFAULT_MODEL,
+  GATEWAY_MODELS,
   MODELS,
-  resizeAgentModels,
-  setAgentModelAt,
+  isCodingAgentId,
+  isModelId,
   type ModelId,
   type SwarmSize,
 } from "@/lib/models";
+import {
+  composeExtractModel,
+  extractCodingOptions,
+  resizeAgentSpecs,
+  specForModel,
+  type AgentSpec,
+} from "@/lib/harness";
 import { EXAMPLES, type StyleName } from "@/lib/presets";
 import { swarmAgentInstructions } from "@/lib/system-prompt";
 import {
@@ -135,8 +143,10 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
   const [step, setStep] = useState<FlowStep>("describe");
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [style, setStyle] = useState<StyleName>("direct");
+  const [sandbox, setSandbox] = useState(true);
+  const [workflow, setWorkflow] = useState(true);
   const [agents, setAgents] = useState<SwarmSize>(1);
-  const [agentModels, setAgentModels] = useState<ModelId[]>([DEFAULT_MODEL]);
+  const [team, setTeam] = useState<AgentSpec[]>([{ id: DEFAULT_MODEL }]);
   const [swarmAgents, setSwarmAgents] = useState<SwarmAgentState[]>([]);
   const [swarmError, setSwarmError] = useState<Error | null>(null);
   const swarmAbort = useRef<AbortController | null>(null);
@@ -228,7 +238,11 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
       setTitle("Table");
       setTableKey(nanoid());
       setStep("schema");
-      submitSchema({ query: trimmed, source: nextSource, model });
+      submitSchema({
+        query: trimmed,
+        source: nextSource,
+        model: isCodingAgentId(model) ? DEFAULT_MODEL : model,
+      });
     },
     [busy, clearExtract, model, query, source, stopExtract, stopSwarm, submitSchema],
   );
@@ -239,7 +253,7 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
     if (!query.trim() && !source.trim() && files.length === 0) return;
     stopSchema();
     setSourceOpen(false);
-    const models = agentModels.length > 0 ? agentModels : [model];
+    const members = team.length > 0 ? team : [specForModel(model)];
     extractAbort.current?.abort();
     swarmAbort.current?.abort();
     const controller = new AbortController();
@@ -248,7 +262,8 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
     setExtractError(null);
     setSwarmError(null);
     setRows([]);
-    if (models.length === 1) {
+    if (members.length === 1) {
+      const spec = members[0] ?? specForModel(model);
       setSwarmAgents([]);
       setExtracting(true);
       try {
@@ -258,9 +273,12 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
             source,
             files,
             columns: displayColumns,
-            model: models[0],
+            model: composeExtractModel(spec),
             style,
             instructions,
+            sandbox,
+            workflow,
+            coding: extractCodingOptions(spec),
           },
           controller.signal,
         );
@@ -275,23 +293,32 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
       return;
     }
     setExtracting(false);
-    setSwarmAgents(models.map((id) => ({ model: id, status: "running" as const, rows: 0 })));
-    const groups: Array<Array<Record<string, unknown>>> = models.map(() => []);
+    setSwarmAgents(members.map((spec) => ({ model: composeExtractModel(spec), status: "running" as const, rows: 0 })));
+    const groups: Array<Array<Record<string, unknown>>> = members.map(() => []);
     const publish = () => {
       const merged = unionRows(groups);
       setRows(merged.map((values, index) => ({ id: `swarm-${index}`, values })));
     };
     const outcomes = await Promise.allSettled(
-      models.map(async (agentModel, index) => {
+      members.map(async (spec, index) => {
+        const extractModel = composeExtractModel(spec);
         const extracted = await fetchExtractRows(
           {
             query,
             source,
             files,
             columns: displayColumns,
-            model: agentModel,
+            model: extractModel,
             style,
-            instructions: swarmAgentInstructions(instructions, index, models.length),
+            instructions: swarmAgentInstructions({
+              instructions,
+              index,
+              total: members.length,
+              model: extractModel,
+            }),
+            sandbox,
+            workflow,
+            coding: extractCodingOptions(spec),
           },
           controller.signal,
         );
@@ -314,7 +341,7 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
       setSwarmError(new Error("Every swarm agent failed."));
     }
     if (swarmAbort.current === controller) swarmAbort.current = null;
-  }, [agentModels, busy, displayColumns, instructions, model, query, source, sourceFiles, stopSchema, style]);
+  }, [busy, displayColumns, instructions, model, query, sandbox, source, sourceFiles, stopSchema, style, team, workflow]);
 
   const submitQuery = useCallback(
     (message: PromptInputMessage) => {
@@ -351,7 +378,7 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
     setTableKey(nanoid());
     setSourceKey((key) => key + 1);
     setAgents(1);
-    setAgentModels([model]);
+    setTeam((prev) => [specForModel(model, prev[0])]);
     setSourceOpen(true);
   }, [clearExtract, clearSchema, model, stopExtract, stopSchema, stopSwarm]);
 
@@ -375,10 +402,10 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
 
   const modelPicker = (
     <ModelPicker
-      models={MODELS}
+      models={sandbox ? MODELS : GATEWAY_MODELS}
       onSelect={(id) => {
         setModel(id);
-        setAgentModels((prev) => (agents === 1 ? [id] : prev));
+        setTeam((prev) => (agents === 1 ? [specForModel(id, prev[0])] : prev));
       }}
       trigger="prompt"
       value={model}
@@ -402,7 +429,7 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
       >
         <SlidersHorizontalIcon />
         <span className="hidden capitalize sm:inline">
-          {agents > 1 ? `${agents} agents` : style}
+          {agents > 1 ? `${agents} agents` : sandbox && isCodingAgentId(model) ? "sandbox" : style}
         </span>
       </Button>
     </>
@@ -428,22 +455,38 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
       <Sheet onOpenChange={setSettingsOpen} open={settingsOpen}>
         <SheetContent className="w-full gap-0 data-[side=right]:w-full sm:max-w-sm" side="right">
           <SheetHeader>
-            <SheetTitle>Extraction</SheetTitle>
-            <SheetDescription>Agents, style, and instructions for this run.</SheetDescription>
+            <SheetTitle>Team</SheetTitle>
+            <SheetDescription>
+              Orchestrate gateway models and coding agents on one source.
+            </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <ExtractSettings
-              agentModels={agentModels}
               agents={agents}
               instructions={instructions}
-              onAgentModel={(index, id) => setAgentModels((prev) => setAgentModelAt(prev, index, id))}
               onAgents={(count) => {
                 setAgents(count);
-                setAgentModels((prev) => resizeAgentModels(prev, count, model));
+                setTeam((prev) =>
+                  resizeAgentSpecs(prev, count, specForModel(model, prev[0]), sandbox ? MODELS : GATEWAY_MODELS),
+                );
               }}
               onInstructions={setInstructions}
+              onMember={(index, spec) => {
+                setTeam((prev) => prev.map((item, i) => (i === index ? spec : item)));
+                if (agents === 1 && isModelId(spec.id)) setModel(spec.id);
+              }}
+              onSandbox={(next) => {
+                setSandbox(next);
+                if (next) return;
+                setModel((current) => (isCodingAgentId(current) ? DEFAULT_MODEL : current));
+                setTeam((current) => current.map((spec) => (isCodingAgentId(spec.id) ? { id: DEFAULT_MODEL } : spec)));
+              }}
               onStyle={setStyle}
+              onWorkflow={setWorkflow}
+              sandbox={sandbox}
               style={style}
+              team={team}
+              workflow={workflow}
             />
           </div>
         </SheetContent>

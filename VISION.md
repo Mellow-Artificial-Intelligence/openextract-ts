@@ -10,7 +10,7 @@ The product is not “another LLM wrapper.” It is the extraction layer agents 
 
 **Swarms are available when you need them.** Simple documents stay single-shot. Hard jobs — many files, mixed media, several schemas, or a document that must be searched then computed — fan out across agents that share the same extract primitive. The swarm is optional infrastructure, not a different product.
 
-**The kind of extraction is easy to vary.** Style (`direct`, `search`, `code`), schema, model, instructions, and concurrency are knobs, not forks. Adding a new extraction mode should be a new style or a new schema, not a new library.
+**The kind of extraction is easy to vary.** Style (`direct`, `search`, `code`, `sandbox`), schema, model, instructions, and concurrency are knobs, not forks. Adding a new extraction mode should be a new style or a new schema, not a new library.
 
 ## Why this exists
 
@@ -71,7 +71,7 @@ The caller should be able to change any of these without rewriting I/O, retries,
 ## Current foundation
 
 - Shared pipeline: media → style workspace → retries → structured model output (`runDocumentExtraction` / `runLoadedExtraction`).
-- Styles: `direct`, `search`, `code`.
+- Styles: `direct`, `search`, `code`, `sandbox`.
 - Surfaces: library, CLI, OpenTUI, Next.js UI, MCP, Vercel Workflows.
 - Batch (`extractMany`) for many inputs; `extractSwarm` for many agents on one input (`merge` / `vote` / `first`).
 - Importable extract agents in the eve pattern: `defineAgent` / `defineRemoteAgent`, `outputSchema`, and `subagents/` discovery.

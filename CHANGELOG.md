@@ -13,7 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `extractSwarm` `onAgentStart` / `onAgent` callbacks fire when each parallel agent begins and finishes.
 - `npm run test:coverage` with 100% line, function, statement, and branch thresholds on `src/`. CI runs it in place of `npm test`.
 - Importable extract agents in the eve pattern: default-export `defineAgent` / `defineRemoteAgent` (no `name`), `outputSchema` on the definition, and specialists under `subagents/`. `loadAgent` accepts a directory (`agent.ts` + `subagents/` + optional `instructions.md`), a file, or `module:exportName`. `extract(agent, input)` uses `outputSchema`. Auth from `openextract/agents/auth` (`bearer`, `basic`, `vercelOidc`). Remote agents POST loaded bytes to `{url}{path}` (default `/extract`). CLI `--agent` / `--agents` and MCP `agent` / `agents`. Failures raise `RemoteAgentError`.
-- Local web UI is a cookbook (`npm run web`): table extract is the default recipe; AP inbox, file audit, disputed payable, and invoice math share the same rail. Table extraction still runs as a `WorkflowAgent` workflow (`POST /api/extract`).
+- Cookbook swarm recipes show the selected source document beside extract output.
+- Web UI splits into **Extract** (one-off table) and **Agents** (extraction system builder) tabs.
+- Extract teams can mix gateway models with Claude Code / Codex. Sandboxes and durable workflows are toggles; coding agents run as independent specialists.
+- The web **Agents** tab is a system builder: start from a template (or blank), mix gateway models with Claude Code / Codex, set per-agent style and instructions, then reduce.
+- Coding-agent members expose harness settings: inner model id (`createClaudeCode({ model })` / `createCodex({ model })`), Claude Code max turns, and Codex reasoning effort.
+- Sandbox coding agents: `style: "sandbox"` runs Claude Code or Codex in a Vercel Sandbox (`model` `claude-code` or `codex`). Optional peer `@vercel/sandbox`.
 
 ### Changed
 

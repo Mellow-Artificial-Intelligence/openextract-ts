@@ -187,7 +187,7 @@ export async function runApp(
     showDescription: false,
     showUnderline: true,
     wrapSelection: true,
-    tabWidth: 10,
+    tabWidth: 9,
     backgroundColor: theme.panel,
     focusedBackgroundColor: theme.inputFocus,
     selectedBackgroundColor: theme.inputFocus,
@@ -222,7 +222,7 @@ export async function runApp(
     alignItems: "flex-start",
   });
   modelInput.flexGrow = 1;
-  styleSelect.width = 34;
+  styleSelect.width = 36;
   settingsRow.add(modelInput);
   settingsRow.add(styleSelect);
 

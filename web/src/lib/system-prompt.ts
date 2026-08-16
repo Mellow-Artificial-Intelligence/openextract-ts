@@ -1,4 +1,5 @@
 import { STYLE_DETAILS, type StyleName } from "./presets";
+import { isCodingAgentId, modelLabel } from "./models";
 import type { TableColumn } from "./table-schema";
 
 export function schemaSystemPrompt(): string {
@@ -39,11 +40,19 @@ export function schemaUserPrompt(query: string, source?: string): string {
     : `Table request:\n${query}`;
 }
 
-export function swarmAgentInstructions(instructions: string, index: number, total: number): string {
+export function swarmAgentInstructions(options: {
+  instructions: string;
+  index: number;
+  total: number;
+  model: string;
+}): string {
+  const specialist = isCodingAgentId(options.model)
+    ? `${modelLabel(options.model)} in a Vercel Sandbox`
+    : modelLabel(options.model);
   const role =
-    `You are extraction agent ${index + 1} of ${total}. ` +
+    `You are specialist ${options.index + 1} of ${options.total} (${specialist}). ` +
     "Work independently. Prefer recall: extract every matching row you can justify from the source.";
-  const extra = instructions.trim();
+  const extra = options.instructions.trim();
   return extra ? `${extra}\n\n${role}` : role;
 }
 

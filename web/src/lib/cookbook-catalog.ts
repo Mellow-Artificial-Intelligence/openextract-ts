@@ -1,4 +1,4 @@
-import { DEFAULT_MODEL, MODELS } from "@/lib/models";
+import { DEFAULT_MODEL, MODELS } from "./models";
 
 export interface Invoice {
   vendor: string;
@@ -30,7 +30,7 @@ export function isAudit(value: CookbookOutput): value is Audit {
 
 export type CookbookReduce = "merge" | "vote" | "first";
 
-export type CookbookRecipeKind = "table" | "swarm";
+export type CookbookRecipeKind = "swarm";
 
 export type CookbookSchema = "invoice" | "audit";
 
@@ -50,19 +50,9 @@ export interface CookbookRecipeMeta {
 const INVOICE_DOCS = ["acme-invoice.txt", "globex-invoice.txt", "initech-invoice.txt"] as const;
 const AUDIT_DOCS = ["acme-invoice.txt", "northwind-expense.txt", "umbrella-msa.txt"] as const;
 
+export const COOKBOOK_DOCS = [...new Set([...INVOICE_DOCS, ...AUDIT_DOCS, "contoso-invoice.txt"])];
+
 export const COOKBOOK_RECIPES: CookbookRecipeMeta[] = [
-  {
-    id: "table",
-    kind: "table",
-    title: "Table extract",
-    blurb: "Turn a file or paste into a working table",
-    defaultSize: 1,
-    lockSize: true,
-    roles: [],
-    docs: [],
-    reduce: "merge",
-    schema: "invoice",
-  },
   {
     id: "ap-inbox",
     kind: "swarm",

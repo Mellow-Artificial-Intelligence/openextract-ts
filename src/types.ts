@@ -3,6 +3,34 @@ import type { ExtractionStyle } from "./styles.js";
 
 export type MediaSource = string | URL | Uint8Array | NodeJS.ReadableStream;
 
+export interface SandboxClient {
+  writeFiles(files: { path: string; content: string | Uint8Array }[]): Promise<void>;
+  runCommand(
+    command: string,
+    args?: string[],
+    opts?: { timeoutMs?: number },
+  ): Promise<{
+    exitCode: number;
+    stdout(): Promise<string>;
+    stderr(): Promise<string>;
+  }>;
+  readFileToBuffer(file: { path: string }): Promise<Buffer | null>;
+  stop(): Promise<unknown>;
+}
+
+export interface SandboxCreateOptions {
+  timeout: number;
+  snapshotId?: string;
+  env: Record<string, string>;
+}
+
+export interface SandboxOptions {
+  snapshotId?: string;
+  /** Sandbox session timeout in seconds. Defaults to 300 or OPENEXTRACT_SANDBOX_TIMEOUT. */
+  timeout?: number;
+  create?: (options: SandboxCreateOptions) => Promise<SandboxClient>;
+}
+
 export interface ExtractOptions {
   instructions?: string;
   style?: ExtractionStyle | string;
@@ -13,6 +41,7 @@ export interface ExtractOptions {
   retryMaxBackoff?: number;
   timeout?: number;
   instrument?: boolean;
+  sandbox?: SandboxOptions;
 }
 
 export interface ExtractionInput {

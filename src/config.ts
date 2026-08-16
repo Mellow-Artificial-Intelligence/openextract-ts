@@ -7,6 +7,9 @@ export const URL_TIMEOUT_ENV = "OPENEXTRACT_URL_TIMEOUT";
 export const MAX_REDIRECTS_ENV = "OPENEXTRACT_MAX_REDIRECTS";
 export const ALLOW_PRIVATE_URLS_ENV = "OPENEXTRACT_ALLOW_PRIVATE_URLS";
 export const MAX_INPUT_BYTES_ENV = "OPENEXTRACT_MAX_INPUT_BYTES";
+export const DEFAULT_SANDBOX_TIMEOUT = 300;
+export const SANDBOX_TIMEOUT_ENV = "OPENEXTRACT_SANDBOX_TIMEOUT";
+export const SANDBOX_SNAPSHOT_ENV = "OPENEXTRACT_SANDBOX_SNAPSHOT_ID";
 
 function envPositiveFloat(name: string, fallback: number): number {
   const raw = process.env[name]?.trim();
@@ -86,4 +89,12 @@ export function validateTimeout(value: number, name: string): number {
     throw new Error(`${name} must be a finite positive number of seconds.`);
   }
   return value;
+}
+
+export function resolveSandboxTimeoutSeconds(timeout?: number): number {
+  if (timeout !== undefined) return validateTimeout(timeout, "sandbox.timeout");
+  const raw = process.env[SANDBOX_TIMEOUT_ENV]?.trim();
+  if (!raw) return DEFAULT_SANDBOX_TIMEOUT;
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_SANDBOX_TIMEOUT;
 }

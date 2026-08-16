@@ -141,8 +141,7 @@ describe("runApp", () => {
     renderer.keyInput.emit("keypress", { name: "tab", shift: false, preventDefault() {}, ctrl: false });
     renderer.keyInput.emit("keypress", { name: "tab", shift: false, preventDefault() {}, ctrl: false });
     renderer.keyInput.emit("keypress", { name: "e", ctrl: true, preventDefault() {} });
-    await Promise.resolve();
-    expect(extract).toHaveBeenCalled();
+    await vi.waitFor(() => expect(extract).toHaveBeenCalled());
 
     const sourceKind = renderer.widgets.find((item) =>
       (item.options.options as Array<{ value?: string }> | undefined)?.some((option) => option.value === "paste"),
@@ -170,8 +169,9 @@ describe("runApp", () => {
     paste?.onSubmit?.();
 
     renderer.keyInput.emit("keypress", { name: "s", ctrl: true, preventDefault() {} });
-    await Promise.resolve();
-    expect(await readFile(saved, "utf8")).toContain("Ada");
+    await vi.waitFor(async () => {
+      expect(await readFile(saved, "utf8")).toContain("Ada");
+    });
     const resultEditor = renderer.widgets.find((item) => item.options.placeholder === "Extracted JSON will land here.");
     if (resultEditor) resultEditor.plainText = '{"name":"Ada"}\n';
     renderer.keyInput.emit("keypress", { name: "s", ctrl: true, preventDefault() {} });

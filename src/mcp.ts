@@ -22,7 +22,12 @@ import { ExtractionStyle } from "./styles.js";
 import { RetryPolicy, type ExtractionInputLike, type Usage } from "./types.js";
 import type { ExtractManyOptions } from "./batch.js";
 
-const STYLES = [ExtractionStyle.DIRECT, ExtractionStyle.SEARCH, ExtractionStyle.CODE] as const;
+const STYLES = [
+  ExtractionStyle.DIRECT,
+  ExtractionStyle.SEARCH,
+  ExtractionStyle.CODE,
+  ExtractionStyle.SANDBOX,
+] as const;
 const SERVER_VERSION = "0.1.0";
 
 const inputFields = {
@@ -37,9 +42,14 @@ const sharedFields = {
     .union([z.string(), z.record(z.string(), z.unknown())])
     .optional()
     .describe("JSON Schema object/string, or module:exportName. Optional when agent has outputSchema."),
-  model: z.string().optional().describe("AI Gateway id, e.g. openai/gpt-5.5. Defaults to OPENEXTRACT_MODEL."),
+  model: z
+    .string()
+    .optional()
+    .describe(
+      "AI Gateway id, e.g. openai/gpt-5.5, or coding agent claude-code / codex. Defaults to OPENEXTRACT_MODEL.",
+    ),
   instructions: z.string().optional().describe("Natural-language extraction guidance"),
-  style: z.enum(STYLES).optional().describe("direct (default), search, or code"),
+  style: z.enum(STYLES).optional().describe("direct (default), search, code, or sandbox"),
   maxInputBytes: z.number().int().positive().optional(),
   maxRetries: z.number().int().nonnegative().optional(),
   retryBackoff: z.number().nonnegative().optional(),
@@ -156,6 +166,7 @@ function capabilities(): Record<string, unknown> {
       "retryBackoff",
       "retryMaxBackoff",
       "timeout",
+      "sandbox",
       "maxConcurrency",
       "returnExceptions",
       "includeUsage",
@@ -173,6 +184,11 @@ function capabilities(): Record<string, unknown> {
       "OPENEXTRACT_MAX_REDIRECTS",
       "OPENEXTRACT_ALLOW_PRIVATE_URLS",
       "OPENEXTRACT_MAX_INPUT_BYTES",
+      "OPENEXTRACT_SANDBOX_TIMEOUT",
+      "OPENEXTRACT_SANDBOX_SNAPSHOT_ID",
+      "VERCEL_TOKEN",
+      "VERCEL_TEAM_ID",
+      "VERCEL_PROJECT_ID",
     ],
     errors: [
       "ExtractionError",
@@ -225,6 +241,7 @@ export function createOpenExtractMcpServer(
         "Use extract for one document, extract_many for batches, and extract_swarm to run parallel agents on one input. " +
         "Pass a JSON Schema (or module:exportName) plus a path, URL, or base64 bytes. " +
         "Importable agents use agent / agents as module:exportName defineAgent exports. " +
+        "Use model claude-code or codex with style sandbox to extract inside a Vercel Sandbox. " +
         "create_extractor stores schema/model/options for repeated extractor_extract calls.",
       capabilities: { tools: {}, resources: {}, prompts: {}, completions: {} },
     },
@@ -462,7 +479,7 @@ export function createOpenExtractMcpServer(
             "# openextract MCP",
             "",
             "Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`.",
-            "Styles: `direct` (any media), `search` and `code` (UTF-8 text only).",
+            "Styles: `direct` (any media), `search` and `code` (UTF-8 text only), `sandbox` (Claude Code or Codex in a Vercel Sandbox).",
             "Schema: JSON Schema object/string, or `module:exportName` for a local Zod export.",
             "Agents: `agent` / `agents` as a directory (`agent.ts` + `subagents/`), file, or `module:exportName`.",
             "Input: `source` (path or URL) or `data` (base64) plus `mediaType`.",
@@ -472,7 +489,10 @@ export function createOpenExtractMcpServer(
     }),
   );
 
-  const styleArg = completable(z.string().optional().describe("direct, search, or code"), completeStyle);
+  const styleArg = completable(
+    z.string().optional().describe("direct, search, code, or sandbox"),
+    completeStyle,
+  );
 
   server.registerPrompt(
     "extract-document",
