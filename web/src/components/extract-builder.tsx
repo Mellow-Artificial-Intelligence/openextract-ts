@@ -64,7 +64,7 @@ export function ExtractBuilder() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sourceFiles, setSourceFiles] = useState<FileUIPart[]>([]);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
-  const [dragging, setDragging] = useState(false);
+  const [dragMode, setDragMode] = useState<"copy" | "move" | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
@@ -128,9 +128,9 @@ export function ExtractBuilder() {
   }, [stopSchema]);
 
   const onDragOverList = (event: DragEvent<HTMLDivElement>) => {
-    if (![...event.dataTransfer.types].some((type) => type === KIND_MIME || type === INDEX_MIME)) return;
+    if (!dragMode) return;
     event.preventDefault();
-    event.dataTransfer.dropEffect = event.dataTransfer.types.includes(KIND_MIME) ? "copy" : "move";
+    event.dataTransfer.dropEffect = dragMode;
     const list = listRef.current;
     if (list) setDropIndex(Math.max(1, slotFromPoint(list, event.clientY)));
   };
@@ -144,7 +144,7 @@ export function ExtractBuilder() {
     if (isAddableKind(kind)) addKind(kind, slot);
     else if (from !== "") setSteps((prev) => moveStepTo(prev, Number(from), slot));
     setDropIndex(null);
-    setDragging(false);
+    setDragMode(null);
   };
 
   const run = useCallback(async () => {
@@ -276,13 +276,13 @@ export function ExtractBuilder() {
                   draggable
                   onClick={() => addKind(kind)}
                   onDragEnd={() => {
-                    setDragging(false);
+                    setDragMode(null);
                     setDropIndex(null);
                   }}
                   onDragStart={(event) => {
                     event.dataTransfer.setData(KIND_MIME, kind);
                     event.dataTransfer.effectAllowed = "copy";
-                    setDragging(true);
+                    setDragMode("copy");
                   }}
                   type="button"
                 >
@@ -304,7 +304,7 @@ export function ExtractBuilder() {
           <div
             className={cn(
               "min-h-0 flex-1 overflow-y-auto px-3 pb-4 sm:px-4",
-              dragging && "bg-muted/30",
+              dragMode && "bg-muted/30",
             )}
             onDragLeave={(event) => {
               if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropIndex(null);
@@ -334,13 +334,13 @@ export function ExtractBuilder() {
                       )}
                       draggable={step.kind !== "source"}
                       onDragEnd={() => {
-                        setDragging(false);
+                        setDragMode(null);
                         setDropIndex(null);
                       }}
                       onDragStart={(event) => {
                         event.dataTransfer.setData(INDEX_MIME, String(index));
                         event.dataTransfer.effectAllowed = "move";
-                        setDragging(true);
+                        setDragMode("move");
                       }}
                       type="button"
                     >
