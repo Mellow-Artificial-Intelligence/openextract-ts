@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Overline } from "@/components/ui/overline";
 import {
   Tooltip,
   TooltipContent,
@@ -32,7 +33,7 @@ export const ArtifactHeader = ({
 }: ArtifactHeaderProps) => (
   <div
     className={cn(
-      "flex items-center justify-between border-b border-black/5 bg-card px-4 py-2.5",
+      "flex items-center justify-between border-b border-border/50 bg-card px-4 py-2.5",
       className
     )}
     {...props}
@@ -66,13 +67,7 @@ export const ArtifactClose = ({
 export type ArtifactTitleProps = HTMLAttributes<HTMLParagraphElement>;
 
 export const ArtifactTitle = ({ className, ...props }: ArtifactTitleProps) => (
-  <p
-    className={cn(
-      "font-mono text-[10px] text-muted-foreground uppercase tracking-wider",
-      className
-    )}
-    {...props}
-  />
+  <Overline className={className} {...props} />
 );
 
 export type ArtifactDescriptionProps = HTMLAttributes<HTMLParagraphElement>;

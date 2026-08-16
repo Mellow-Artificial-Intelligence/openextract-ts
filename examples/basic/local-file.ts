@@ -7,7 +7,7 @@ if (!inputFile) {
   process.exit(1);
 }
 
-const result = await extract(DocumentInfo, "openai/gpt-5.5", inputFile, {
+const result = await extract(DocumentInfo, "xai/grok-4.6", inputFile, {
   instructions: "Read the document and return its title, a two-sentence summary, and the primary language.",
 });
 

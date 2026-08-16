@@ -15,7 +15,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "openextract",
-  description: "Extract structured data from documents, images, audio, and video using LLMs.",
+  description: "Cookbook for extracting structured data from documents, images, audio, and video.",
 };
 
 export const viewport: Viewport = {

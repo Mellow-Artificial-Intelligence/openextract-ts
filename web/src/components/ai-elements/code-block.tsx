@@ -329,7 +329,7 @@ export const CodeBlockHeader = ({
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex items-center justify-between border-b border-black/5 bg-card px-3 py-2 font-mono text-[10px] text-muted-foreground uppercase tracking-wider",
+      "flex items-center justify-between border-b border-border/50 bg-card px-3 py-2 font-mono text-[10px] text-muted-foreground uppercase tracking-wider",
       className
     )}
     {...props}

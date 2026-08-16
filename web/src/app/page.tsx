@@ -1,5 +1,5 @@
-import { ExtractApp } from "@/components/extract-app";
+import { CookbookApp } from "@/components/cookbook-app";
 
 export default function Home() {
-  return <ExtractApp />;
+  return <CookbookApp />;
 }

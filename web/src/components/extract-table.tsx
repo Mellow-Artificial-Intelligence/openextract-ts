@@ -3,6 +3,7 @@
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Overline } from "@/components/ui/overline";
 import {
   Select,
   SelectContent,
@@ -223,7 +224,7 @@ export function ExtractTable({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 flex-col gap-2 border-b border-black/5 px-3 py-2 sm:flex-row sm:items-center sm:px-4">
+      <div className="flex shrink-0 flex-col gap-2 border-b border-border/50 px-3 py-2 sm:flex-row sm:items-center sm:px-4">
         <div className="min-w-0 flex-1">
           {schemaLoading ? (
             <Shimmer as="span" className="text-sm">
@@ -271,7 +272,7 @@ export function ExtractTable({
 
       {columns.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center sm:p-8">
-          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Table</p>
+          <Overline>Table</Overline>
           <h3 className="font-medium text-sm">{title || "Table"}</h3>
           <p className="max-w-sm text-muted-foreground text-sm">{emptyHint}</p>
         </div>

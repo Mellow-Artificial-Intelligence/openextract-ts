@@ -50,9 +50,10 @@ Node.js 20+. Set `AI_GATEWAY_API_KEY` for live model calls. Tests use `MockLangu
 | `src/mcp.ts` | MCP tools, resources, prompts |
 | `src/cli.ts` | `openextract` CLI |
 | `src/tui/` | OpenTUI app |
-| `web/` | Next.js extract UI (Vercel root = `web/`) |
+| `web/` | Next.js cookbook UI (Vercel root = `web/`) |
 | `tests/` | Vitest. Mocks live in `tests/helpers.ts` |
 | `examples/` | Runnable samples |
+| `examples/cookbook/` | OpenTUI recipes with fixtures (start with `npm run cookbook`) |
 
 ## Conventions
 

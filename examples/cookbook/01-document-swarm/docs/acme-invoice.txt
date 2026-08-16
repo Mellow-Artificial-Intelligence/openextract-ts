@@ -1,0 +1,20 @@
+ACCOUNTS PAYABLE — VENDOR INVOICE
+
+Vendor: Acme Supplies
+Invoice #: ACM-1042
+PO #: PO-1882
+Date: 2026-03-12
+Due: 2026-04-11  (net 30)
+Bill To: Mellow AI, Accounts Payable
+
+Line items
+- Laser printer toner (black)     85.00
+- Copy paper, 10 reams            42.50
+- USB-C hubs, qty 4               96.00
+
+Subtotal                         223.50
+Tax (8%)                          17.88
+Total due USD                    241.38
+
+Remit to: Acme Supplies, Box 410, Austin TX
+Packet complete: PO match, receiving slip on file, no exceptions.

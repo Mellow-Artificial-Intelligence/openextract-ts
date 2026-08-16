@@ -39,6 +39,12 @@ export interface ExtractSwarmOptions extends ExtractOptions {
   size?: number;
   maxConcurrency?: number;
   reduce?: SwarmReduce | string;
+  onAgentStart?: (event: { index: number; total: number }) => void;
+  onAgent?: (event: {
+    index: number;
+    total: number;
+    result: ExtractionResult<unknown> | Error;
+  }) => void;
 }
 
 export interface SwarmResult<T> {
@@ -121,6 +127,7 @@ async function runSwarm<T>(
       if (index >= members.length) return;
       const member = members[index]!;
       const started = performance.now();
+      options.onAgentStart?.({ index, total: members.length });
       try {
         const opts = memberOptions(options, member, index, members.length);
         const result =
@@ -140,6 +147,7 @@ async function runSwarm<T>(
       } catch (error) {
         results[index] = toError(error);
       }
+      options.onAgent?.({ index, total: members.length, result: results[index]! });
     }
   };
   await Promise.all(Array.from({ length: Math.min(maxConcurrency, members.length) }, () => worker()));

@@ -1,0 +1,18 @@
+ACCOUNTS PAYABLE — VENDOR INVOICE
+
+Vendor: Globex Corp.
+Invoice #: GX-7781
+PO #: PO-1904
+Issued: 2026-04-02
+Due: on receipt
+Bill To: Mellow AI, Accounts Payable
+
+Description                         Amount
+------------------------------------------
+On-site network audit              1200.00
+Cat6 cable, 500 ft                  180.00
+Patch panel (24-port)                95.00
+
+Total due: $1,475.00 USD
+Terms: due on receipt
+Remit ACH: Globex Operating, routing on file.

@@ -11,25 +11,12 @@ import {
   Attachments,
 } from "@/components/ai-elements/attachments";
 import {
-  ModelSelector,
-  ModelSelectorContent,
-  ModelSelectorEmpty,
-  ModelSelectorGroup,
-  ModelSelectorInput,
-  ModelSelectorItem,
-  ModelSelectorList,
-  ModelSelectorLogo,
-  ModelSelectorName,
-  ModelSelectorTrigger,
-} from "@/components/ai-elements/model-selector";
-import {
   PromptInput,
   PromptInputActionAddAttachments,
   PromptInputActionMenu,
   PromptInputActionMenuContent,
   PromptInputActionMenuTrigger,
   PromptInputBody,
-  PromptInputButton,
   PromptInputFooter,
   PromptInputHeader,
   PromptInputSubmit,
@@ -39,7 +26,11 @@ import {
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
+import { AppHeader } from "@/components/app-header";
+import { ModelPicker } from "@/components/model-picker";
 import { Button } from "@/components/ui/button";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { Overline } from "@/components/ui/overline";
 import {
   Sheet,
   SheetContent,
@@ -50,12 +41,10 @@ import {
 import { useObject } from "@ai-sdk/react";
 import type { FileUIPart } from "ai";
 import {
-  CheckIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   PlusIcon,
   SlidersHorizontalIcon,
-  TriangleAlertIcon,
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
@@ -79,8 +68,6 @@ import {
   type TableRow,
 } from "@/lib/table-schema";
 import { cn } from "@/lib/utils";
-
-const GITHUB_URL = "https://github.com/Mellow-Artificial-Intelligence/openextract";
 
 function sourceSummary(source: string, files: FileUIPart[]) {
   const chars = source.trim().length;
@@ -138,16 +125,15 @@ async function withDataUrls(files: FileUIPart[]): Promise<FileUIPart[]> {
 
 function StepFooter({ children }: { children: React.ReactNode }) {
   return (
-    <div className="shrink-0 border-t border-black/5 bg-background px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
+    <div className="shrink-0 border-t border-border/50 bg-background px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
       <div className="mx-auto flex w-full max-w-3xl items-center gap-2">{children}</div>
     </div>
   );
 }
 
-export function ExtractApp() {
+export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
   const [step, setStep] = useState<FlowStep>("describe");
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
-  const [modelOpen, setModelOpen] = useState(false);
   const [style, setStyle] = useState<StyleName>("direct");
   const [agents, setAgents] = useState<SwarmSize>(1);
   const [agentModels, setAgentModels] = useState<ModelId[]>([DEFAULT_MODEL]);
@@ -196,7 +182,6 @@ export function ExtractApp() {
     setExtractError(null);
   }, []);
 
-  const selected = MODELS.find((item) => item.id === model) ?? MODELS[0]!;
   const swarming = swarmAgents.some((agent) => agent.status === "pending" || agent.status === "running");
   const busy = schemaLoading || extracting || swarming;
   const error = schemaError ?? extractError ?? swarmError;
@@ -389,79 +374,49 @@ export function ExtractApp() {
   );
 
   const modelPicker = (
-    <ModelSelector onOpenChange={setModelOpen} open={modelOpen}>
-      <ModelSelectorTrigger asChild>
-        <PromptInputButton className="max-w-[min(100%,11rem)]">
-          <ModelSelectorLogo provider={selected.provider} />
-          <ModelSelectorName>{selected.name}</ModelSelectorName>
-        </PromptInputButton>
-      </ModelSelectorTrigger>
-      <ModelSelectorContent className="w-[calc(100vw-2rem)] max-w-md">
-        <ModelSelectorInput placeholder="Search models…" />
-        <ModelSelectorList>
-          <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-          <ModelSelectorGroup heading="AI Gateway">
-            {MODELS.map((item) => (
-              <ModelSelectorItem
-                key={item.id}
-                onSelect={() => {
-                  setModel(item.id);
-                  setAgentModels((prev) => (agents === 1 ? [item.id] : prev));
-                  setModelOpen(false);
-                }}
-                value={item.id}
-              >
-                <ModelSelectorLogo provider={item.provider} />
-                <ModelSelectorName>{item.name}</ModelSelectorName>
-                {model === item.id ? <CheckIcon className="ml-auto size-4" /> : null}
-              </ModelSelectorItem>
-            ))}
-          </ModelSelectorGroup>
-        </ModelSelectorList>
-      </ModelSelectorContent>
-    </ModelSelector>
+    <ModelPicker
+      models={MODELS}
+      onSelect={(id) => {
+        setModel(id);
+        setAgentModels((prev) => (agents === 1 ? [id] : prev));
+      }}
+      trigger="prompt"
+      value={model}
+    />
+  );
+
+  const actions = (
+    <>
+      {step !== "describe" || query || source ? (
+        <Button onClick={startOver} size="sm" type="button" variant="outline">
+          <PlusIcon />
+          <span className="hidden sm:inline">New</span>
+        </Button>
+      ) : null}
+      <Button
+        aria-label="Extraction settings"
+        onClick={() => setSettingsOpen(true)}
+        size="sm"
+        type="button"
+        variant="outline"
+      >
+        <SlidersHorizontalIcon />
+        <span className="hidden capitalize sm:inline">
+          {agents > 1 ? `${agents} agents` : style}
+        </span>
+      </Button>
+    </>
   );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-black/5 bg-background/80 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-lg sm:h-14 sm:gap-3 sm:px-6">
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="flex size-7 items-center justify-center bg-foreground sm:size-8">
-            <span className="font-bold font-mono text-background text-[10px] sm:text-xs">OE</span>
-          </span>
-          <span className="hidden font-mono text-muted-foreground text-sm sm:inline">
-            openextract
-          </span>
+      {embedded ? (
+        <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border/50 px-3 py-2 sm:px-4">
+          {actions}
         </div>
-        <nav className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-          {step !== "describe" || query || source ? (
-            <Button onClick={startOver} size="sm" type="button" variant="outline">
-              <PlusIcon />
-              <span className="hidden sm:inline">New</span>
-            </Button>
-          ) : null}
-          <Button
-            aria-label="Extraction settings"
-            onClick={() => setSettingsOpen(true)}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <SlidersHorizontalIcon />
-            <span className="hidden capitalize sm:inline">
-              {agents > 1 ? `${agents} agents` : style}
-            </span>
-          </Button>
-          <a
-            className="font-mono text-muted-foreground text-xs transition-colors hover:text-foreground"
-            href={GITHUB_URL}
-            rel="noreferrer"
-            target="_blank"
-          >
-            GitHub
-          </a>
-        </nav>
-      </header>
+      ) : (
+        <AppHeader title="openextract">{actions}</AppHeader>
+      )}
 
       <ExtractSteps
         extractReady={extractReady}
@@ -498,9 +453,7 @@ export function ExtractApp() {
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex min-h-full w-full max-w-lg flex-col gap-4 p-4 sm:justify-center sm:p-6">
             <div className="space-y-1">
-              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-                Step 1
-              </p>
+              <Overline>Step 1</Overline>
               <h1 className="font-medium text-lg sm:text-xl">What should the table contain?</h1>
               <p className="text-muted-foreground text-sm">
                 Describe the columns you want. We&apos;ll generate a schema you can edit before extracting.
@@ -516,7 +469,7 @@ export function ExtractApp() {
                   value={query}
                 />
               </PromptInputBody>
-              <PromptInputFooter className="gap-2 border-t border-black/5">
+              <PromptInputFooter className="gap-2 border-t border-border/50">
                 <PromptInputTools className="min-w-0 flex-1 overflow-hidden">
                   {modelPicker}
                 </PromptInputTools>
@@ -532,9 +485,7 @@ export function ExtractApp() {
               </PromptInputFooter>
             </PromptInput>
             <div className="space-y-2">
-              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-                Try an example
-              </p>
+              <Overline>Try an example</Overline>
               <Suggestions>
                 {EXAMPLES.map((example) => (
                   <Suggestion
@@ -545,12 +496,7 @@ export function ExtractApp() {
                 ))}
               </Suggestions>
             </div>
-            {error ? (
-              <div className="flex items-start gap-2 border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
-                <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-                <span className="min-w-0 flex-1">That run failed. Try again in a moment.</span>
-              </div>
-            ) : null}
+            {error ? <ErrorBanner>That run failed. Try again in a moment.</ErrorBanner> : null}
           </div>
         </div>
       ) : null}
@@ -592,7 +538,7 @@ export function ExtractApp() {
       {step === "extract" ? (
         <>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="shrink-0 border-b border-black/5">
+            <div className="shrink-0 border-b border-border/50">
               <div className="mx-auto w-full max-w-3xl">
                 <button
                   aria-expanded={sourceOpen}
@@ -601,9 +547,9 @@ export function ExtractApp() {
                   type="button"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                    <Overline as="span" className="block">
                       Source
-                    </span>
+                    </Overline>
                     <span className="block truncate text-muted-foreground text-xs">
                       {sourceSummary(source, sourceFiles)}
                     </span>
@@ -625,7 +571,7 @@ export function ExtractApp() {
                       void extract();
                     }}
                   >
-                    <PromptInputHeader className="border-b border-black/5">
+                    <PromptInputHeader className="border-b border-border/50">
                       <PromptAttachments />
                       <SourceFiles onFiles={setSourceFiles} />
                     </PromptInputHeader>
@@ -638,7 +584,7 @@ export function ExtractApp() {
                         value={source}
                       />
                     </PromptInputBody>
-                    <PromptInputFooter className="gap-2 border-t border-black/5">
+                    <PromptInputFooter className="gap-2 border-t border-border/50">
                       <PromptInputTools>
                         <PromptInputActionMenu>
                           <PromptInputActionMenuTrigger />
@@ -651,10 +597,9 @@ export function ExtractApp() {
                   </PromptInput>
                 </div>
                 {error ? (
-                  <div className="flex items-start gap-2 px-3 pb-3 text-destructive text-sm sm:px-4">
-                    <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-                    <span className="min-w-0 flex-1">That run failed. Try again in a moment.</span>
-                  </div>
+                  <ErrorBanner className="mx-3 mb-3 sm:mx-4">
+                    That run failed. Try again in a moment.
+                  </ErrorBanner>
                 ) : null}
                 <ExtractSwarmStatus agents={swarmAgents} />
               </div>
