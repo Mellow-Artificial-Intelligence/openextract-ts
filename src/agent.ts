@@ -170,7 +170,7 @@ export async function loadAgent(spec: unknown): Promise<DefinedAgent> {
 }
 
 export async function loadAgents(spec: string | readonly string[]): Promise<DefinedAgent[]> {
-  const items = Array.isArray(spec) ? spec : spec.split(",").map((item) => item.trim()).filter(Boolean);
+  const items = typeof spec === "string" ? spec.split(",").map((item) => item.trim()).filter(Boolean) : spec;
   if (items.length === 0) throw new Error("agents must include at least one module:exportName path.");
   return Promise.all(items.map((item) => loadAgent(item)));
 }

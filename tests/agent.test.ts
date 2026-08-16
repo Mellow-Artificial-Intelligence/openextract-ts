@@ -49,9 +49,9 @@ describe("defineAgent", () => {
   });
 
   it("rejects a subagent cycle", () => {
-    const children: import("../src/agent.js").AgentInput[] = [];
-    const a = defineAgent({ description: "A", subagents: children });
-    children.push(defineAgent({ description: "B", subagents: [a] }));
+    const a = defineAgent({ description: "A", model: "openai/gpt-5.5" });
+    const b = defineAgent({ description: "B", subagents: [a] });
+    (a.subagents as import("../src/agent.js").AgentInput[]).push(b);
     expect(() => flattenAgent(a)).toThrow(/cycle/);
   });
 });
