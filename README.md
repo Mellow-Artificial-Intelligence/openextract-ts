@@ -127,6 +127,12 @@ const { output, usage, agents } = await extractSwarmWithResults(PdfInfo, [
 
 The source is loaded once. Failed agents are skipped as long as one succeeds. In the web UI, set **Agents** and attach a model to each one. On the CLI, pass `--models openai/gpt-5.6-luna,xai/grok-4.6`.
 
+A folder of AP invoices, a file-audit packet, and a disputed payable live in [`examples/cookbook`](examples/cookbook):
+
+```bash
+npm run cookbook
+```
+
 ## Importable agents
 
 Agents follow the eve authoring pattern: default-export `defineAgent` / `defineRemoteAgent`, no `name` field, `outputSchema` on the definition, and specialists under `subagents/`.
@@ -203,7 +209,7 @@ cp web/.env.example web/.env.local
 npm run web
 ```
 
-The web UI is a three-step flow: describe the table, stream and edit the schema, then extract rows from a source into a sortable shadcn table. Extraction settings can run a swarm of agents in parallel.
+The web UI is a cookbook: pick a recipe in the left rail. **Table extract** is the default (describe columns, edit the schema, extract rows from a source). **AP inbox** takes a folder of vendor invoices and returns one payable each. **File audit** runs completeness, policy, and math agents on each packet and merges a verdict. Disputed payable and invoice math sit next to those.
 
 On Vercel, set the Git root directory to `web/`. Production uses AI Gateway via OIDC; locally set `AI_GATEWAY_API_KEY`. Pull-request preview deploys are off.
 
@@ -271,7 +277,7 @@ const run = await start(extractWorkflow, [
 const { output, usage } = await run.returnValue;
 ```
 
-`extractManyWorkflow` runs each input as its own step. In Next.js, wrap the config with `withWorkflow()` from `workflow/next` and set `transpilePackages: ["openextract"]` so the `"use workflow"` / `"use step"` directives compile. See `examples/workflow/extract-route.ts`. The local web UI (`npm run web`) starts table extraction through the same runtime.
+`extractManyWorkflow` runs each input as its own step. In Next.js, wrap the config with `withWorkflow()` from `workflow/next` and set `transpilePackages: ["openextract"]` so the `"use workflow"` / `"use step"` directives compile. See `examples/workflow/extract-route.ts`. The local web UI (`npm run web`) starts table extraction through the same runtime from the Table extract recipe.
 
 ## Error handling
 

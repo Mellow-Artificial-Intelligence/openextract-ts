@@ -1,0 +1,20 @@
+UMBRELLA CORP — MASTER SERVICES AGREEMENT (draft)
+
+Customer: Mellow AI
+Vendor: Umbrella Corp
+Effective: 1 Sep 2026
+Term: 12 months, auto-renews for successive 12-month terms
+Fees: $8,500 per month, net 45
+Annual value: $102,000 USD
+
+Liability: Vendor liability is unlimited. No cap. No mutual indemnity.
+Termination for convenience: [section left blank]
+Data: Customer data may be stored in any region, including non-adequate jurisdictions.
+Insurance certificates: not attached
+Security addendum: missing
+
+Signatories
+- Vendor: signed 12 Aug 2026
+- Customer: signature missing
+
+Legal hold: do not execute until liability cap, termination, and data residency are filled in.

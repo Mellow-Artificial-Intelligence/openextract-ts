@@ -9,7 +9,7 @@ if (!inputFile) {
 
 const { output, usage, agents } = await extractSwarmWithResults(
   DocumentInfo,
-  "openai/gpt-5.5",
+  "xai/grok-4.6",
   inputFile,
   {
     size: 3,

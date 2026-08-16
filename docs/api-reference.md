@@ -6,7 +6,7 @@
 
 ## Local web UI
 
-`npm run web` starts the Next.js app in `web/`. Table extraction runs as a Vercel Workflow (`WorkflowAgent` in `web/src/workflows/extract.ts`); `POST /api/extract` starts the run and returns the structured rows. Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC. Pull-request preview deploys are skipped. Inspect runs with `npx workflow web`. The UI can run several agents in parallel, attach a model to each agent, and merge unique rows. CLI `--models` assigns one model per agent.
+`npm run web` starts the Next.js cookbook in `web/`. **Table extract** (the default recipe) describes columns, streams a schema, then runs table extraction as a Vercel Workflow (`WorkflowAgent` in `web/src/workflows/extract.ts`); `POST /api/extract` starts the run and returns the structured rows. Other recipes (`POST /api/cookbook`) cover AP inbox, file audit, disputed payable, and invoice math on bundled fixtures. Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC. Pull-request preview deploys are skipped. Inspect table runs with `npx workflow web`. The table recipe can run several agents in parallel, attach a model to each agent, and merge unique rows. CLI `--models` assigns one model per agent.
 
 ## Extraction
 
@@ -56,6 +56,7 @@ Reusable session that stores schema, model, style, retry policy, and timeout.
 - `timeout` — model call timeout in seconds
 - `maxConcurrency` — batch and swarm (default 5)
 - `size` / `reduce` — swarm only (`merge` | `vote` | `first`)
+- `onAgentStart` / `onAgent` — swarm only; start fires when an agent begins, `onAgent` when it finishes
 - `models` — swarm agent model ids (CLI `--models`, MCP `models`)
 - `agent` / `agents` — directory, file, or `module:exportName` (CLI `--agent` / `--agents`, MCP `agent` / `agents`)
 

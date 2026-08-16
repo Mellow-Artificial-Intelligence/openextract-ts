@@ -1,0 +1,21 @@
+NORTHWIND TRADERS — EMPLOYEE EXPENSE REPORT
+
+Employee: Sam Malik    Dept: Sales
+Period: 3–7 Aug 2026
+Report #: EXP-2091
+Cost center: 440-Sales
+
+- Client dinner, Chicago          186.40   (no itemized receipt)
+- Uber, airport loop               54.00
+- Hotel, 2 nights                 412.00   (folio attached)
+- "Team gifts"                     90.00   (Amazon order, no business purpose)
+
+Total claimed USD                 742.40
+
+Manager approval: blank
+Card last four: 4412
+
+Policy
+- Meals over $75 require an itemized receipt.
+- Gifts require written pre-approval from Finance.
+- Reports over $500 need a manager signature before reimbursement.

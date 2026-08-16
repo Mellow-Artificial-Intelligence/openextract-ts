@@ -144,7 +144,7 @@ function StepFooter({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ExtractApp() {
+export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
   const [step, setStep] = useState<FlowStep>("describe");
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [modelOpen, setModelOpen] = useState(false);
@@ -422,46 +422,58 @@ export function ExtractApp() {
     </ModelSelector>
   );
 
+  const actions = (
+    <>
+      {step !== "describe" || query || source ? (
+        <Button onClick={startOver} size="sm" type="button" variant="outline">
+          <PlusIcon />
+          <span className="hidden sm:inline">New</span>
+        </Button>
+      ) : null}
+      <Button
+        aria-label="Extraction settings"
+        onClick={() => setSettingsOpen(true)}
+        size="sm"
+        type="button"
+        variant="outline"
+      >
+        <SlidersHorizontalIcon />
+        <span className="hidden capitalize sm:inline">
+          {agents > 1 ? `${agents} agents` : style}
+        </span>
+      </Button>
+    </>
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-black/5 bg-background/80 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-lg sm:h-14 sm:gap-3 sm:px-6">
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="flex size-7 items-center justify-center bg-foreground sm:size-8">
-            <span className="font-bold font-mono text-background text-[10px] sm:text-xs">OE</span>
-          </span>
-          <span className="hidden font-mono text-muted-foreground text-sm sm:inline">
-            openextract
-          </span>
+      {embedded ? (
+        <div className="flex shrink-0 items-center justify-end gap-2 border-b border-black/5 px-3 py-2 sm:px-4">
+          {actions}
         </div>
-        <nav className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-          {step !== "describe" || query || source ? (
-            <Button onClick={startOver} size="sm" type="button" variant="outline">
-              <PlusIcon />
-              <span className="hidden sm:inline">New</span>
-            </Button>
-          ) : null}
-          <Button
-            aria-label="Extraction settings"
-            onClick={() => setSettingsOpen(true)}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <SlidersHorizontalIcon />
-            <span className="hidden capitalize sm:inline">
-              {agents > 1 ? `${agents} agents` : style}
+      ) : (
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-black/5 bg-background/80 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-lg sm:h-14 sm:gap-3 sm:px-6">
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="flex size-7 items-center justify-center bg-foreground sm:size-8">
+              <span className="font-bold font-mono text-background text-[10px] sm:text-xs">OE</span>
             </span>
-          </Button>
-          <a
-            className="font-mono text-muted-foreground text-xs transition-colors hover:text-foreground"
-            href={GITHUB_URL}
-            rel="noreferrer"
-            target="_blank"
-          >
-            GitHub
-          </a>
-        </nav>
-      </header>
+            <span className="hidden font-mono text-muted-foreground text-sm sm:inline">
+              openextract
+            </span>
+          </div>
+          <nav className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+            {actions}
+            <a
+              className="font-mono text-muted-foreground text-xs transition-colors hover:text-foreground"
+              href={GITHUB_URL}
+              rel="noreferrer"
+              target="_blank"
+            >
+              GitHub
+            </a>
+          </nav>
+        </header>
+      )}
 
       <ExtractSteps
         extractReady={extractReady}

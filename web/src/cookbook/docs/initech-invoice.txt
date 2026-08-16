@@ -1,0 +1,16 @@
+ACCOUNTS PAYABLE — VENDOR INVOICE
+
+Vendor: Initech
+Invoice #: 8841-B
+PO #: PO-1911
+Date: 2026-05-12
+Due: 2026-06-11
+Sold to: Mellow AI / Accounts Payable
+
+Qty  Item                              Price
+1    TPS report binder set             36.00
+3    Cover sheets (Flair)              12.00
+2    Stapler, red                      28.00
+
+Please remit $76.00 USD.
+Office supplies, GL 6100. No exceptions noted.

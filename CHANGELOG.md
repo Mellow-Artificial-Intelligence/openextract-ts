@@ -8,8 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Cookbook OpenTUI (`npm run cookbook`) for interactive recipes: AP inbox (one payable per invoice), file audit (completeness / policy / math), disputed payable vote, and invoice math. The output pane lists each agent’s role, phase, extract, and elapsed time.
+- `extractSwarm` `onAgentStart` / `onAgent` callbacks fire when each parallel agent begins and finishes.
 - `npm run test:coverage` with 100% line, function, statement, and branch thresholds on `src/`. CI runs it in place of `npm test`.
 - Importable extract agents in the eve pattern: default-export `defineAgent` / `defineRemoteAgent` (no `name`), `outputSchema` on the definition, and specialists under `subagents/`. `loadAgent` accepts a directory (`agent.ts` + `subagents/` + optional `instructions.md`), a file, or `module:exportName`. `extract(agent, input)` uses `outputSchema`. Auth from `openextract/agents/auth` (`bearer`, `basic`, `vercelOidc`). Remote agents POST loaded bytes to `{url}{path}` (default `/extract`). CLI `--agent` / `--agents` and MCP `agent` / `agents`. Failures raise `RemoteAgentError`.
+- Local web UI is a cookbook (`npm run web`): table extract is the default recipe; AP inbox, file audit, disputed payable, and invoice math share the same rail. Table extraction still runs as a `WorkflowAgent` workflow (`POST /api/extract`).
+
+### Changed
+
+- Cookbook TUI loads language models from AI Gateway (`gateway.getAvailableModels()`), keeps the output pane and footer status empty until extract, and updates per-agent invoice cards in place as work starts and finishes.
 
 ## [0.2.0] - 2026-08-15
 

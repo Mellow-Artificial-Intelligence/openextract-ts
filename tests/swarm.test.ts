@@ -132,6 +132,29 @@ describe("extractSwarm", () => {
     expect(swarm.agents[0]).not.toBeInstanceOf(Error);
   });
 
+  it("notifies as each agent starts and finishes", async () => {
+    const started: number[] = [];
+    const finished: number[] = [];
+    await extractSwarmWithResults(
+      Person,
+      [mockModel({ name: "Ada", age: 1 }), mockModel({ name: "Ada", age: 2 })],
+      Buffer.from("doc"),
+      {
+        mediaType: "text/plain",
+        onAgentStart: ({ index, total }) => {
+          started.push(index);
+          expect(total).toBe(2);
+        },
+        onAgent: ({ index, total }) => {
+          finished.push(index);
+          expect(total).toBe(2);
+        },
+      },
+    );
+    expect(started.sort()).toEqual([0, 1]);
+    expect(finished.sort()).toEqual([0, 1]);
+  });
+
   it("keeps going when one agent fails", async () => {
     const swarm = await extractSwarmWithResults(
       Person,

@@ -7,7 +7,7 @@ if (!inputFile) {
   process.exit(1);
 }
 
-const { output, usage } = await extractWithUsage(DocumentInfo, "openai/gpt-5.5", inputFile, {
+const { output, usage } = await extractWithUsage(DocumentInfo, "xai/grok-4.6", inputFile, {
   maxRetries: 3,
   instructions: "Summarize the document and report its language.",
 });

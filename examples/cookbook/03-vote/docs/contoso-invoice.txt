@@ -1,0 +1,19 @@
+CONTOSO LTD — INVOICE
+
+Vendor: Contoso Ltd
+Invoice number: CT-4401
+PO #: PO-2044 (standard, not rush)
+Date: 8 June 2026
+Bill to: Mellow AI, Accounts Payable
+
+Line items
+- On-call support, May                 400.00
+- After-hours surcharge                75.00
+- Travel                               40.00
+
+Subtotal                               515.00
+Rush fee (handwritten in the margin)   50.00
+TOTAL DUE USD                          515.00
+
+Please pay $565.00 if expedited.
+Accounting notes: the payable total is 515.00. Ignore the rush scribble unless the PO is marked rush. PO-2044 is not rush.
