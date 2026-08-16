@@ -133,9 +133,10 @@ Agents are modules, same idea as eve `defineAgent` / `defineRemoteAgent`. Import
 
 ```ts
 import { defineAgent, defineRemoteAgent, bearer, extract } from "openextract";
+import { Invoice } from "./schemas.js";
 import { search } from "./agents/search.js";
 
-export const invoice = defineAgent({
+export const invoiceAgent = defineAgent({
   description: "Extracts invoice totals and line items.",
   model: "openai/gpt-5.5",
   style: "direct",
@@ -148,10 +149,10 @@ export const remoteOcr = defineRemoteAgent({
   auth: bearer(() => process.env.OCR_AGENT_TOKEN ?? ""),
 });
 
-const result = await extract(Invoice, invoice, "./bill.pdf");
+const result = await extract(Invoice, invoiceAgent, "./bill.pdf");
 ```
 
-`description` is required. A local agent needs `model` or `subagents`. Nested `subagents` flatten into a swarm (local models, member objects, or remote agents). `extract(schema, agent, input)` runs a single local agent in one shot, or a swarm when the agent has subagents or is remote.
+`extract` is still `schema`, then how to run, then the source. `Invoice` is the Zod schema; `invoiceAgent` is the worker (`model` / `style` / `subagents`). `description` is required. A local agent needs `model` or `subagents`. Nested `subagents` flatten into a swarm (local models, member objects, or remote agents). A single local agent runs in one shot; subagents or a remote agent run as a swarm.
 
 A remote agent POSTs the already-loaded source to `{url}{path}` (default `/extract`) as JSON Schema plus base64 `data` / `mediaType`. The URL is trusted configuration (http/https only); it is not subject to document SSRF private-host blocking. Auth helpers: `bearer`, `basic`, `vercelOidc`.
 
