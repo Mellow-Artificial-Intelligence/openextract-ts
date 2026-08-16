@@ -16,7 +16,7 @@ type TabId = (typeof TABS)[number]["id"];
 export function WebApp() {
   const [tab, setTab] = useState<TabId>("extract");
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <AppHeader
         nav={
           <div className="ml-3 flex items-center gap-3 sm:ml-6">
@@ -38,7 +38,9 @@ export function WebApp() {
         }
         title="openextract"
       />
-      {tab === "extract" ? <ExtractApp embedded /> : <AgentsApp />}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {tab === "extract" ? <ExtractApp embedded /> : <AgentsApp />}
+      </div>
     </div>
   );
 }

@@ -8,7 +8,7 @@ cp web/.env.example web/.env.local
 npm run web
 ```
 
-Open http://localhost:3000. **Extract** is the one-off table: describe columns, generate a schema, then extract from pasted text or an attached file (`POST /api/schema`, `POST /api/extract`). **Agents** is a system builder — compose specialists (gateway models, Claude Code, Codex) from a template or a blank roster, then run them on bundled fixtures (`POST /api/cookbook` with a `system` body).
+Open http://localhost:3000. **Extract** is the one-off table: describe columns, generate a schema, then extract from pasted text or an attached file (`POST /api/schema`, `POST /api/extract`). **Agents** is a system builder — compose specialists (gateway models, Claude Code, Codex) from a named system or a blank roster, then run them on bundled fixtures (`POST /api/cookbook` with a `system` body).
 
 Inspect durable table runs with `npx workflow web`.
 

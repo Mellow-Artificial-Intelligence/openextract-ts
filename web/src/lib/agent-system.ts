@@ -28,7 +28,7 @@ export interface SystemAgent extends AgentSpec {
 }
 
 export interface ExtractionSystem {
-  templateId: string;
+  starterId: string;
   name: string;
   schema: CookbookSchema;
   reduce: CookbookReduce;
@@ -37,7 +37,7 @@ export interface ExtractionSystem {
   agents: SystemAgent[];
 }
 
-export interface SystemTemplate {
+export interface SystemStarter {
   id: string;
   name: string;
   blurb: string;
@@ -55,9 +55,9 @@ function fromRecipe(
   agents: SystemAgent[],
 ): ExtractionSystem {
   const recipe = COOKBOOK_RECIPES.find((item) => item.id === id);
-  if (!recipe) throw new Error(`Unknown template '${id}'.`);
+  if (!recipe) throw new Error(`Unknown system '${id}'.`);
   return {
-    templateId: recipe.id,
+    starterId: recipe.id,
     name: recipe.title,
     schema: recipe.schema,
     reduce: recipe.reduce,
@@ -67,7 +67,7 @@ function fromRecipe(
   };
 }
 
-export const SYSTEM_TEMPLATES: SystemTemplate[] = [
+export const SYSTEM_STARTERS: SystemStarter[] = [
   { id: "ap-inbox", name: "AP inbox", blurb: "One payable specialist per invoice" },
   { id: "audit", name: "File audit", blurb: "Completeness, policy, and math on each file" },
   { id: "vote", name: "Disputed payable", blurb: "Several extractors vote on a messy invoice" },
@@ -75,7 +75,7 @@ export const SYSTEM_TEMPLATES: SystemTemplate[] = [
   { id: "custom", name: "Blank", blurb: "Compose gateway models and coding agents" },
 ];
 
-export function systemFromTemplate(id: string): ExtractionSystem {
+export function systemFromStarter(id: string): ExtractionSystem {
   if (id === "audit") {
     return fromRecipe("audit", [
       agent("Completeness", `${AUDIT} You are the completeness auditor. Flag missing dates, POs, signatures, receipts, and blank sections.`),
@@ -98,7 +98,7 @@ export function systemFromTemplate(id: string): ExtractionSystem {
   }
   if (id === "custom") {
     return {
-      templateId: "custom",
+      starterId: "custom",
       name: "Custom system",
       schema: "invoice",
       reduce: "merge",
@@ -122,7 +122,7 @@ export function addSystemAgent(system: ExtractionSystem, pool: readonly { id: st
   const id = unused?.id ?? DEFAULT_MODEL;
   return {
     ...system,
-    templateId: "custom",
+    starterId: "custom",
     agents: [...system.agents, agent(`Specialist ${system.agents.length + 1}`, PAYABLE, "direct", id)],
   };
 }
@@ -131,7 +131,7 @@ export function removeSystemAgent(system: ExtractionSystem, index: number): Extr
   if (system.agents.length <= 1) return system;
   return {
     ...system,
-    templateId: "custom",
+    starterId: "custom",
     agents: system.agents.filter((_, i) => i !== index),
   };
 }
@@ -139,7 +139,7 @@ export function removeSystemAgent(system: ExtractionSystem, index: number): Extr
 export function replaceSystemAgent(system: ExtractionSystem, index: number, next: SystemAgent): ExtractionSystem {
   return {
     ...system,
-    templateId: "custom",
+    starterId: "custom",
     agents: system.agents.map((item, i) => (i === index ? next : item)),
   };
 }

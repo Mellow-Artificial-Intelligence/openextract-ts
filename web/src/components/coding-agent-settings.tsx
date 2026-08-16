@@ -23,11 +23,13 @@ export function CodingAgentSettings({
   settings,
   idPrefix,
   onChange,
+  compact = false,
 }: {
   kind: CodingKind;
   settings: CodingSettings;
   idPrefix: string;
   onChange: (next: CodingSettings) => void;
+  compact?: boolean;
 }) {
   const models = kind === "codex" ? CODEX_MODELS : CLAUDE_CODE_MODELS;
   const listId = `${idPrefix}-models`;
@@ -51,11 +53,13 @@ export function CodingAgentSettings({
             <option key={id} value={id} />
           ))}
         </datalist>
-        <p className="text-muted-foreground text-[11px]">
-          {kind === "codex"
-            ? "Passed to createCodex({ model }). OpenAI or gateway ids are accepted."
-            : "Passed to createClaudeCode({ model }). Anthropic or gateway ids are accepted."}
-        </p>
+        {compact ? null : (
+          <p className="text-muted-foreground text-[11px]">
+            {kind === "codex"
+              ? "Passed to createCodex({ model }). OpenAI or gateway ids are accepted."
+              : "Passed to createClaudeCode({ model }). Anthropic or gateway ids are accepted."}
+          </p>
+        )}
       </div>
       {kind === "codex" ? (
         <div className="space-y-1">

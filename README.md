@@ -224,7 +224,7 @@ cp web/.env.example web/.env.local
 npm run web
 ```
 
-The web UI has two tabs. **Extract** is a one-off table: describe columns, then run a team of specialists (gateway models and, optionally, Claude Code or Codex in a sandbox). Each coding agent has harness settings — especially which model it should use. **Agents** is a system builder: start from a template or a blank roster, mix gateway models with coding agents, and extract against bundled fixtures.
+The web UI has two tabs. **Extract** is a one-off table: describe columns, then run a team of specialists (gateway models and, optionally, Claude Code or Codex in a sandbox). Each coding agent has harness settings — especially which model it should use. **Agents** is a system builder: start from a named system or a blank roster, mix gateway models with coding agents, and extract against bundled fixtures.
 
 ![File audit recipe with completeness, policy, and math agents](docs/images/web-file-audit.png)
 

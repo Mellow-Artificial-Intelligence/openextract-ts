@@ -16,7 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Cookbook swarm recipes show the selected source document beside extract output.
 - Web UI splits into **Extract** (one-off table) and **Agents** (extraction system builder) tabs.
 - Extract teams can mix gateway models with Claude Code / Codex. Sandboxes and durable workflows are toggles; coding agents run as independent specialists.
-- The web **Agents** tab is a system builder: start from a template (or blank), mix gateway models with Claude Code / Codex, set per-agent style and instructions, then reduce.
+- The web **Agents** tab is a system builder: start from a named system or a blank roster, mix gateway models with Claude Code / Codex, set per-agent style and instructions, then reduce.
 - Coding-agent members expose harness settings: inner model id (`createClaudeCode({ model })` / `createCodex({ model })`), Claude Code max turns, and Codex reasoning effort.
 - Sandbox coding agents: `style: "sandbox"` runs Claude Code or Codex in a Vercel Sandbox (`model` `claude-code` or `codex`). Optional peer `@vercel/sandbox`.
 

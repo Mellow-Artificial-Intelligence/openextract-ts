@@ -3,20 +3,20 @@ import {
   addSystemAgent,
   dropCodingAgents,
   parseRunnableSystem,
-  systemFromTemplate,
+  systemFromStarter,
   toRunnable,
 } from "../web/src/lib/agent-system.ts";
 
 describe("extraction systems", () => {
-  it("builds templates with distinct specialists", () => {
-    const audit = systemFromTemplate("audit");
+  it("builds starters with distinct specialists", () => {
+    const audit = systemFromStarter("audit");
     expect(audit.agents.map((agent) => agent.role)).toEqual(["Completeness", "Policy", "Math"]);
     expect(audit.agents[2]?.style).toBe("code");
-    expect(systemFromTemplate("recon").agents.map((agent) => agent.style)).toEqual(["search", "code"]);
+    expect(systemFromStarter("recon").agents.map((agent) => agent.style)).toEqual(["search", "code"]);
   });
 
   it("lets users add a coding agent and serialize a runnable system", () => {
-    let system = systemFromTemplate("custom");
+    let system = systemFromStarter("custom");
     system = addSystemAgent(system, [{ id: "claude-code" }]);
     const coding = system.agents[1];
     expect(coding?.id).toBe("claude-code");
@@ -32,7 +32,7 @@ describe("extraction systems", () => {
 
   it("rejects coding agents when sandboxes are off", () => {
     const system = dropCodingAgents({
-      ...systemFromTemplate("custom"),
+      ...systemFromStarter("custom"),
       agents: [
         {
           id: "claude-code",
