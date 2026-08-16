@@ -74,7 +74,7 @@ The caller should be able to change any of these without rewriting I/O, retries,
 - Styles: `direct`, `search`, `code`.
 - Surfaces: library, CLI, OpenTUI, Next.js UI, MCP, Vercel Workflows.
 - Batch (`extractMany`) for many inputs; `extractSwarm` for many agents on one input (`merge` / `vote` / `first`).
-- Importable extract agents: `defineAgent` / `defineRemoteAgent` modules, optional `subagents`, and `module:exportName` loading.
+- Importable extract agents in the eve pattern: `defineAgent` / `defineRemoteAgent`, `outputSchema`, and `subagents/` discovery.
 - `Extractor` sessions and `openextract/workflow` for reused or durable runs.
 
 ## Direction

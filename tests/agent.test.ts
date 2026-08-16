@@ -16,6 +16,7 @@ import { extractSwarm, resolveSwarmMembers } from "../src/swarm.js";
 import { mockModel, Person } from "./helpers.js";
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), "fixtures/agents.ts");
+const agentApp = join(dirname(fileURLToPath(import.meta.url)), "fixtures/agent-app");
 
 describe("defineAgent", () => {
   it("creates an importable local agent", () => {
@@ -91,6 +92,25 @@ describe("loadAgent", () => {
   it("rejects a non-agent export", async () => {
     await expect(loadAgent(`${fixtures}:missing`)).rejects.toThrow(/Export 'missing'/);
   });
+
+  it("loads a default export from a file path", async () => {
+    const agent = await loadAgent(fixtures);
+    expect(agent.kind).toBe("local");
+  });
+
+  it("loads an eve-style agent directory and its subagents", async () => {
+    const agent = await loadAgent(agentApp);
+    expect(agent.kind).toBe("local");
+    if (agent.kind === "local") {
+      expect(agent.model).toBe("openai/gpt-5.5");
+      expect(agent.instructions).toBe("Pull vendor names from the source.");
+      expect(agent.subagents).toHaveLength(2);
+    }
+    const members = flattenAgent(agent);
+    expect(members[0]?.kind).toBe("local");
+    expect(members.filter((member) => member.kind === "local")).toHaveLength(2);
+    expect(members.filter((member) => member.kind === "remote")).toHaveLength(1);
+  });
 });
 
 describe("auth helpers", () => {
@@ -118,20 +138,22 @@ describe("extract with agents", () => {
     const agent = defineAgent({
       description: "Person reader",
       model: mockModel({ name: "Ada", age: 36 }),
+      outputSchema: Person,
     });
-    await expect(extract(Person, agent, Buffer.from("doc"), { mediaType: "text/plain" })).resolves.toEqual({
+    await expect(extract(agent, Buffer.from("doc"), { mediaType: "text/plain" })).resolves.toEqual({
       name: "Ada",
       age: 36,
     });
   });
 
   it("runs subagents as a swarm", async () => {
+    const Profile = Person.extend({ age: Person.shape.age.nullable() });
     const team = defineAgent({
       description: "Team",
+      outputSchema: Profile,
       subagents: [mockModel({ name: "Ada", age: null }), mockModel({ name: "", age: 36 })],
     });
-    const Profile = Person.extend({ age: Person.shape.age.nullable() });
-    await expect(extract(Profile, team, Buffer.from("doc"), { mediaType: "text/plain" })).resolves.toEqual({
+    await expect(extract(team, Buffer.from("doc"), { mediaType: "text/plain" })).resolves.toEqual({
       name: "Ada",
       age: 36,
     });

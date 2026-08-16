@@ -36,7 +36,7 @@ Node.js 20+. Set `AI_GATEWAY_API_KEY` for live model calls. Tests use `MockLangu
 | `src/extract.ts` | One-shot `extract` / `extractWithUsage` |
 | `src/batch.ts` | Concurrent `extractMany*` |
 | `src/swarm.ts` | `extractSwarm*` — parallel agents on one input |
-| `src/agent.ts` | Importable `defineAgent` / `defineRemoteAgent` + `loadAgent` |
+| `src/agent.ts` | Eve-shaped `defineAgent` / `defineRemoteAgent`, `loadAgent` (directory / file / `module:exportName`) |
 | `src/reduce.ts` | Swarm reduce: `merge`, `vote`, `first` |
 | `src/workflow.ts` | `openextract/workflow` durable extract |
 | `src/session.ts` | Reusable `Extractor` |
@@ -103,7 +103,7 @@ When *using* this library as an agent (not just editing it):
 6. For durable Vercel Workflows, call `extractWorkflow` / `extractManyWorkflow` from `openextract/workflow` with JSON Schema (Zod is not serializable).
 7. Choose `style` from the input type; do not invent a fourth style without extending `ExtractionStyle`.
 
-MCP: `npx openextract-mcp` (stdio) or `--http --port 3000` (loopback). Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`. Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts include `extract-swarm`. Pass `agent` / `agents` as `module:exportName` `defineAgent` exports.
+MCP: `npx openextract-mcp` (stdio) or `--http --port 3000` (loopback). Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`. Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts include `extract-swarm`. Pass `agent` / `agents` as a directory, file, or `module:exportName`. Auth helpers live at `openextract/agents/auth`.
 
 ## Issues and pull requests
 

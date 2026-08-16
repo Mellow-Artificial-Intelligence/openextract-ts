@@ -1,6 +1,4 @@
-import { extract } from "../../src/index.js";
-import team from "../agents/team.js";
-import { Invoice } from "../schemas.js";
+import { extract, loadAgent } from "../../src/index.js";
 
 const inputFile = process.argv[2];
 if (!inputFile) {
@@ -8,5 +6,6 @@ if (!inputFile) {
   process.exit(1);
 }
 
-const output = await extract(Invoice, team, inputFile);
+const agent = await loadAgent(new URL("../agents", import.meta.url).pathname);
+const output = await extract(agent, inputFile);
 console.log(JSON.stringify(output, null, 2));

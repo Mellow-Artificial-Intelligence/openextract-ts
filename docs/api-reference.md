@@ -10,9 +10,9 @@
 
 ## Extraction
 
-### `extract(schema, model, inputFile, options?)`
+### `extract(schema, model, inputFile, options?)` / `extract(agent, inputFile, options?)`
 
-Extract one input and return a value matching `schema`. `model` may be an AI Gateway id, a `LanguageModel`, or a `defineAgent` / `defineRemoteAgent` export.
+Extract one input and return a value matching `schema`. `model` may be an AI Gateway id, a `LanguageModel`, or a `defineAgent` / `defineRemoteAgent` export. `extract(agent, input)` uses the agent's `outputSchema`.
 
 ### `extractWithUsage(schema, model, inputFile, options?)`
 
@@ -32,7 +32,7 @@ Async generator of `[index, result]` pairs in completion order.
 
 ### `defineAgent(config)` / `defineRemoteAgent(config)`
 
-Importable extract workers. `defineAgent` takes `description` (required) plus `model`, `style`, `instructions`, and `subagents`. `defineRemoteAgent` takes `url` (string or lazy function), `description`, optional `auth` / `headers` / `path` (default `/extract`). Load with `loadAgent` / `loadAgents` (`module:exportName`). Auth helpers: `bearer`, `basic`, `vercelOidc`.
+Eve-shaped extract workers. Default-export them; there is no `name` field. `defineAgent` takes `description` (required), `model`, `outputSchema`, plus openextract knobs `style` / `instructions`. `defineRemoteAgent` takes `url` (string or lazy function), `description`, optional `auth` / `headers` / `path` (default `/extract`) / `outputSchema`. `loadAgent` accepts a directory (`agent.ts` + `subagents/` + optional `instructions.md`), a file default export, or `module:exportName`. Auth from `openextract/agents/auth`: `bearer`, `basic`, `vercelOidc`.
 
 ### `extractSwarm(schema, agents, inputFile, options?)`
 
@@ -57,7 +57,7 @@ Reusable session that stores schema, model, style, retry policy, and timeout.
 - `maxConcurrency` — batch and swarm (default 5)
 - `size` / `reduce` — swarm only (`merge` | `vote` | `first`)
 - `models` — swarm agent model ids (CLI `--models`, MCP `models`)
-- `agent` / `agents` — `module:exportName` `defineAgent` exports (CLI `--agent` / `--agents`, MCP `agent` / `agents`)
+- `agent` / `agents` — directory, file, or `module:exportName` (CLI `--agent` / `--agents`, MCP `agent` / `agents`)
 
 `model` is an AI Gateway id (`openai/gpt-5.5`) or a `LanguageModel` instance. Colon-prefixed ids (`openai:gpt-5.5`) are accepted.
 
@@ -67,7 +67,7 @@ Reusable session that stores schema, model, style, retry policy, and timeout.
 
 Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`.
 
-`schema` is a JSON Schema object/string or a `module:exportName` path. `agent` / `agents` are `module:exportName` `defineAgent` or `defineRemoteAgent` exports. Inputs are a `source` path/URL or base64 `data` plus `mediaType`.
+`schema` is a JSON Schema object/string or a `module:exportName` path; omit it when `agent` has `outputSchema`. `agent` / `agents` are a directory, file, or `module:exportName`. Inputs are a `source` path/URL or base64 `data` plus `mediaType`.
 
 ```ts
 import { createOpenExtractMcpServer } from "openextract/mcp";

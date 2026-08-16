@@ -1,10 +1,9 @@
 import { defineAgent } from "../../src/index.js";
+import { Invoice } from "../schemas.js";
 
-export const invoice = defineAgent({
+export default defineAgent({
   description: "Extracts invoice totals and line items.",
   model: "openai/gpt-5.5",
   style: "direct",
-  instructions: "Pull vendor, totals, and line items.",
+  outputSchema: Invoice,
 });
-
-export default invoice;

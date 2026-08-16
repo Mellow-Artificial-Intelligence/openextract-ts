@@ -4,7 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
 import { z } from "zod";
-import { loadAgent, loadAgents, type ExtractAgent } from "./agent.js";
+import { loadAgent, loadAgents, resolveOutputSchema, type DefinedAgent, type ExtractAgent } from "./agent.js";
 import { extractMany, extractManyWithResults } from "./batch.js";
 import { SWARM_REDUCES } from "./reduce.js";
 import {
@@ -35,7 +35,8 @@ const inputFields = {
 const sharedFields = {
   schema: z
     .union([z.string(), z.record(z.string(), z.unknown())])
-    .describe("JSON Schema object/string, or a local module:exportName path"),
+    .optional()
+    .describe("JSON Schema object/string, or module:exportName. Optional when agent has outputSchema."),
   model: z.string().optional().describe("AI Gateway id, e.g. openai/gpt-5.5. Defaults to OPENEXTRACT_MODEL."),
   instructions: z.string().optional().describe("Natural-language extraction guidance"),
   style: z.enum(STYLES).optional().describe("direct (default), search, or code"),
@@ -44,7 +45,7 @@ const sharedFields = {
   retryBackoff: z.number().nonnegative().optional(),
   retryMaxBackoff: z.number().nonnegative().optional(),
   timeout: z.number().positive().optional().describe("Model call timeout in seconds"),
-  agent: z.string().optional().describe("module:exportName defineAgent / defineRemoteAgent export"),
+  agent: z.string().optional().describe("Agent path: directory, file, or module:exportName"),
 };
 
 export interface McpInput {
@@ -141,7 +142,7 @@ function capabilities(): Record<string, unknown> {
     styles: STYLES,
     inputs: ["local path", "http(s) URL", "base64 bytes + mediaType"],
     schemas: ["JSON Schema object", "JSON Schema string", "module:exportName"],
-    agents: ["defineAgent", "defineRemoteAgent", "module:exportName", "subagents"],
+    agents: ["defineAgent", "defineRemoteAgent", "outputSchema", "subagents/", "directory", "module:exportName"],
     options: [
       "instructions",
       "style",
@@ -203,6 +204,16 @@ export function createOpenExtractMcpServer(
     return id;
   };
 
+  const resolveSchema = async (
+    schema: unknown,
+    agents: DefinedAgent[] | undefined,
+  ): Promise<z.ZodType<unknown>> => {
+    if (schema != null) return loadSchema(schema);
+    const agent = agents?.[0];
+    if (agent) return resolveOutputSchema(agent);
+    throw new Error("schema is required unless agent has outputSchema.");
+  };
+
   const server = new McpServer(
     { name: "openextract", version: SERVER_VERSION },
     {
@@ -231,9 +242,9 @@ export function createOpenExtractMcpServer(
     },
     async (args) => {
       try {
-        const schema = await loadSchema(args.schema);
-        const input = resolveMcpInput(args);
         const model = args.agent ? await loadAgent(args.agent) : resolveModel(args.model);
+        const schema = await resolveSchema(args.schema, args.agent ? [model as DefinedAgent] : undefined);
+        const input = resolveMcpInput(args);
         const opts = extractOptions(args);
         const payload = args.includeUsage
           ? await runExtractWithUsage(schema, model, input, opts)
@@ -262,9 +273,9 @@ export function createOpenExtractMcpServer(
     },
     async (args) => {
       try {
-        const schema = await loadSchema(args.schema);
-        const inputs = args.inputs.map(resolveMcpInput);
         const model = args.agent ? await loadAgent(args.agent) : resolveModel(args.model);
+        const schema = await resolveSchema(args.schema, args.agent ? [model as DefinedAgent] : undefined);
+        const inputs = args.inputs.map(resolveMcpInput);
         const opts: ExtractManyOptions = {
           ...extractOptions(args),
           maxConcurrency: args.maxConcurrency,
@@ -305,15 +316,15 @@ export function createOpenExtractMcpServer(
     },
     async (args) => {
       try {
-        const schema = await loadSchema(args.schema);
-        const input = resolveMcpInput(args);
-        const members: Awaited<ReturnType<typeof loadAgents>> | SwarmMember[] | string = args.agents?.length
+        const loaded = args.agents?.length
           ? await loadAgents(args.agents)
-          : args.models?.length
-            ? args.models.map((model) => ({ model }))
-            : args.agent
-              ? [await loadAgent(args.agent)]
-              : resolveModel(args.model);
+          : args.agent
+            ? [await loadAgent(args.agent)]
+            : undefined;
+        const schema = await resolveSchema(args.schema, loaded);
+        const input = resolveMcpInput(args);
+        const members: DefinedAgent[] | SwarmMember[] | string = loaded
+          ?? (args.models?.length ? args.models.map((model) => ({ model })) : resolveModel(args.model));
         const opts: ExtractSwarmOptions = {
           ...extractOptions(args),
           size: args.agents?.length || args.models?.length ? undefined : args.size,
@@ -349,8 +360,9 @@ export function createOpenExtractMcpServer(
     },
     async (args) => {
       try {
-        const schema = await loadSchema(args.schema);
-        const extractor = createExtractor(schema, args.agent ? await loadAgent(args.agent) : resolveModel(args.model), {
+        const model = args.agent ? await loadAgent(args.agent) : resolveModel(args.model);
+        const schema = await resolveSchema(args.schema, args.agent ? [model as DefinedAgent] : undefined);
+        const extractor = createExtractor(schema, model, {
           instructions: args.instructions,
           style: args.style,
           timeout: args.timeout,
@@ -448,7 +460,7 @@ export function createOpenExtractMcpServer(
             "Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`.",
             "Styles: `direct` (any media), `search` and `code` (UTF-8 text only).",
             "Schema: JSON Schema object/string, or `module:exportName` for a local Zod export.",
-            "Agents: `agent` / `agents` as `module:exportName` defineAgent or defineRemoteAgent exports.",
+            "Agents: `agent` / `agents` as a directory (`agent.ts` + `subagents/`), file, or `module:exportName`.",
             "Input: `source` (path or URL) or `data` (base64) plus `mediaType`.",
           ].join("\n"),
         },

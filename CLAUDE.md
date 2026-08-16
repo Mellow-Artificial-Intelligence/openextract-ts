@@ -39,7 +39,7 @@ npx openextract-mcp
 - Input: `source` (path/URL) or base64 `data` plus `mediaType`.
 - Style: `direct` for binary media; `search` or `code` only for UTF-8 text.
 - Batch: `extract_many`. Swarm: `extract_swarm` (`size`, `models`, or importable `agents`, `reduce`: `merge` / `vote` / `first`). Session: `create_extractor` → `extractor_extract` → `close_extractor`.
-- Agents: `defineAgent` / `defineRemoteAgent` modules via `agent` / `agents` (`module:exportName`). Subagents on a definition run as a swarm.
+- Agents: eve-shaped `defineAgent` / `defineRemoteAgent` (default export, `outputSchema`, `subagents/` directory). `extract(agent, input)` or `agent` / `agents` on MCP/CLI.
 - Durable: `extractWorkflow` / `extractManyWorkflow` from `openextract/workflow` with JSON Schema.
 
 In-process, the same rules apply: `extract(schema, model, input)` and share one `Extractor` when the schema is stable.

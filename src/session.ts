@@ -1,4 +1,9 @@
-import { type ExtractAgent } from "./agent.js";
+import {
+  isDefinedAgent,
+  resolveOutputSchema,
+  type DefinedAgent,
+  type ExtractAgent,
+} from "./agent.js";
 import { extract, extractWithUsage } from "./extract.js";
 import { validateTimeout } from "./config.js";
 import { RetryPolicy, type ExtractOptions, type ExtractionInputLike, type Usage } from "./types.js";
@@ -18,10 +23,22 @@ export class Extractor<T> {
   private readonly options: ExtractOptions;
   private closed = false;
 
-  constructor(schema: z.ZodType<T>, model: ExtractAgent, options: ExtractorOptions = {}) {
+  constructor(schema: z.ZodType<T>, model: ExtractAgent, options?: ExtractorOptions);
+  constructor(agent: DefinedAgent, options?: ExtractorOptions);
+  constructor(
+    schemaOrAgent: z.ZodType<T> | DefinedAgent,
+    modelOrOptions?: ExtractAgent | ExtractorOptions,
+    options: ExtractorOptions = {},
+  ) {
+    if (isDefinedAgent(schemaOrAgent)) {
+      this.schema = resolveOutputSchema(schemaOrAgent) as z.ZodType<T>;
+      this.model = schemaOrAgent;
+      options = (modelOrOptions as ExtractorOptions | undefined) ?? {};
+    } else {
+      this.schema = schemaOrAgent;
+      this.model = modelOrOptions as ExtractAgent;
+    }
     const retry = options.retryPolicy ?? new RetryPolicy();
-    this.schema = schema;
-    this.model = model;
     this.options = {
       instructions: options.instructions,
       style: options.style,

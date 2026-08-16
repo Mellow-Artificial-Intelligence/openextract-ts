@@ -1,11 +1,15 @@
 import { defineAgent, defineRemoteAgent } from "../../src/agent.js";
+import { z } from "zod";
 
 export const invoice = defineAgent({
   description: "Extracts invoice totals and line items.",
   model: "openai/gpt-5.5",
   style: "direct",
   instructions: "Pull totals.",
+  outputSchema: z.object({ vendor: z.string() }),
 });
+
+export default invoice;
 
 export const search = defineAgent({
   description: "Searches UTF-8 text for invoice fields.",

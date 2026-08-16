@@ -2,7 +2,7 @@
 import { pathToFileURL } from "node:url";
 import { extract, extractWithUsage } from "./extract.js";
 import { extractMany } from "./batch.js";
-import { loadAgent, loadAgents, type DefinedAgent } from "./agent.js";
+import { loadAgent, loadAgents, resolveOutputSchema, type DefinedAgent } from "./agent.js";
 import { extractSwarm, extractSwarmWithResults } from "./swarm.js";
 import { SWARM_REDUCES, type SwarmReduce } from "./reduce.js";
 import { toError } from "./errors.js";
@@ -48,7 +48,7 @@ function usage(code = 1): never {
 
 Options:
   --tui                 Open the interactive TUI
-  --schema              Zod schema export path (module:exportName)
+  --schema              Zod schema export path (module:exportName); optional when --agent has outputSchema
   --model               AI Gateway model id (e.g. openai/gpt-5.5)
   --instructions        Optional natural-language guidance
   --style               direct | search | code (default: direct)
@@ -62,8 +62,8 @@ Options:
   --retry-max-backoff   Max backoff seconds (default: 60)
   --swarm               Parallel agents on one input (default: 1)
   --models              Comma-separated model ids, one per swarm agent
-  --agent               Importable agent export (module:exportName)
-  --agents              Comma-separated agent exports (module:exportName)
+  --agent               Agent path (directory, file, or module:exportName)
+  --agents              Comma-separated agent paths
   --reduce              merge | vote | first (swarm only, default: merge)`);
   process.exit(code);
 }
@@ -211,7 +211,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     });
   }
   const args = parseArgs(argv);
-  if (!args.schema || args.inputFiles.length === 0) usage();
+  if (args.inputFiles.length === 0) usage();
+  if (!args.schema && !args.agent && args.agents.length === 0) usage();
   if (args.agent && args.agents.length > 0) {
     console.error("error: use --agent or --agents, not both");
     return 1;
@@ -227,7 +228,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (!args.model && args.models.length === 0 && importedAgents.length === 0) usage();
   let schema: z.ZodType<unknown>;
   try {
-    schema = await loadSchema(args.schema);
+    schema = args.schema ? await loadSchema(args.schema) : resolveOutputSchema(importedAgents[0]!);
   } catch (error) {
     printError(error);
     return 1;
