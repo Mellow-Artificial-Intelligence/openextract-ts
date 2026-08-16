@@ -154,7 +154,7 @@ cp web/.env.example web/.env.local
 npm run web
 ```
 
-The web UI is a three-step flow: describe the table, stream and edit the schema, then extract rows from a source into a sortable shadcn table. Extraction settings can run a swarm of agents in parallel.
+The web UI is a three-step flow: describe the table, stream and edit the schema, then extract rows from a source into a sortable shadcn table. Extraction settings can run a swarm of agents in parallel. `/builder` is a drag-and-drop pipeline: add schema, extract, swarm, or custom steps, reorder them, and run each step through the same extract API.
 
 On Vercel, set the Git root directory to `web/`. Production uses AI Gateway via OIDC; locally set `AI_GATEWAY_API_KEY`. Pull-request preview deploys are off.
 
