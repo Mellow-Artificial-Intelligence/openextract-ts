@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Overline } from "@/components/ui/overline";
 import { cn } from "@/lib/utils";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
@@ -37,7 +38,7 @@ export function ExtractSteps({
   };
 
   return (
-    <nav aria-label="Extraction steps" className="shrink-0 border-b border-black/5">
+    <nav aria-label="Extraction steps" className="shrink-0 border-b border-border/50">
       <div className="flex items-center gap-2 px-3 py-2 sm:hidden">
         <Button
           aria-label="Previous step"
@@ -51,9 +52,9 @@ export function ExtractSteps({
         </Button>
         <div className="min-w-0 flex-1 text-center">
           <p className="truncate font-medium text-sm">{meta.label}</p>
-          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+          <Overline>
             Step {meta.n} of {FLOW_STEPS.length}
-          </p>
+          </Overline>
           <div className="mx-auto mt-1.5 flex max-w-24 gap-1">
             {FLOW_STEPS.map((id, i) => (
               <span
@@ -86,7 +87,7 @@ export function ExtractSteps({
             !current &&
             ((id === "schema" && !schemaReady) || (id === "extract" && !extractReady));
           return (
-            <li className="border-black/5 not-last:border-r" key={id}>
+            <li className="border-border/50 not-last:border-r" key={id}>
               <button
                 className={cn(
                   "flex w-full items-center gap-2 px-4 py-2.5 text-left transition-colors",
@@ -100,7 +101,7 @@ export function ExtractSteps({
                 <span
                   className={cn(
                     "flex size-5 shrink-0 items-center justify-center font-mono text-[10px]",
-                    current ? "bg-foreground text-background" : "border border-black/15 text-muted-foreground",
+                    current ? "bg-foreground text-background" : "border text-muted-foreground",
                   )}
                 >
                   {item.n}

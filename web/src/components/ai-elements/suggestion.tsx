@@ -45,7 +45,7 @@ export const Suggestion = ({
   return (
     <Button
       className={cn(
-        "cursor-pointer border-black/10 bg-card px-4 font-mono text-muted-foreground hover:border-black/20 hover:text-foreground",
+        "cursor-pointer border-border bg-card px-4 font-mono text-muted-foreground hover:border-ring hover:text-foreground",
         className
       )}
       onClick={handleClick}

@@ -1,5 +1,6 @@
 "use client";
 
+import { ModelPicker } from "@/components/model-picker";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -10,7 +11,6 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { ModelSelectorLogo } from "@/components/ai-elements/model-selector";
 import { MODELS, SWARM_SIZES, type ModelId, type SwarmSize } from "@/lib/models";
 import { STYLES, STYLE_DETAILS, type StyleName } from "@/lib/presets";
 
@@ -95,21 +95,12 @@ export function ExtractSettings({
                 <span className="w-5 shrink-0 font-mono text-[11px] text-muted-foreground">
                   {index + 1}
                 </span>
-                <Select onValueChange={(value) => onAgentModel(index, value as ModelId)} value={id}>
-                  <SelectTrigger className="w-full" id={index === 0 ? "agent-model-0" : undefined}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MODELS.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        <span className="flex items-center gap-2">
-                          <ModelSelectorLogo provider={item.provider} />
-                          {item.name}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <ModelPicker
+                  models={MODELS}
+                  onSelect={(model) => onAgentModel(index, model)}
+                  triggerId={index === 0 ? "agent-model-0" : undefined}
+                  value={id}
+                />
               </li>
             ))}
           </ol>

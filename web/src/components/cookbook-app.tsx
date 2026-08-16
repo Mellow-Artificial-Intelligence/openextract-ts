@@ -7,24 +7,18 @@ import {
   ArtifactHeader,
   ArtifactTitle,
 } from "@/components/ai-elements/artifact";
-import {
-  ModelSelector,
-  ModelSelectorContent,
-  ModelSelectorEmpty,
-  ModelSelectorGroup,
-  ModelSelectorInput,
-  ModelSelectorItem,
-  ModelSelectorList,
-  ModelSelectorLogo,
-  ModelSelectorName,
-  ModelSelectorTrigger,
-} from "@/components/ai-elements/model-selector";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Task, TaskContent, TaskItem, TaskTrigger } from "@/components/ai-elements/task";
+import { AppHeader } from "@/components/app-header";
+import { ExtractApp } from "@/components/extract-app";
+import { ModelPicker } from "@/components/model-picker";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { Overline } from "@/components/ui/overline";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { StatusDot } from "@/components/ui/status-dot";
 import {
   COOKBOOK_RECIPES,
   FALLBACK_COOKBOOK_MODELS,
@@ -45,11 +39,8 @@ import {
   type CookbookReduce,
 } from "@/lib/cookbook-catalog";
 import { cn } from "@/lib/utils";
-import { ExtractApp } from "@/components/extract-app";
-import { CheckIcon, MinusIcon, PlusIcon, TriangleAlertIcon } from "lucide-react";
+import { MinusIcon, PlusIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-const GITHUB_URL = "https://github.com/Mellow-Artificial-Intelligence/openextract";
 
 type AgentPhase = "queued" | "running" | "done" | "error";
 
@@ -67,13 +58,6 @@ interface DocCard {
   reduce?: CookbookReduce;
   output?: CookbookOutput;
   agents: AgentView[];
-}
-
-function phaseMark(phase: AgentPhase): string {
-  if (phase === "running") return "◐";
-  if (phase === "done") return "●";
-  if (phase === "error") return "×";
-  return "○";
 }
 
 function agentSummary(agent: AgentView): string {
@@ -175,7 +159,6 @@ export function CookbookApp() {
   const [size, setSize] = useState(COOKBOOK_RECIPES[0]!.defaultSize);
   const [models, setModels] = useState<CookbookModel[]>(FALLBACK_COOKBOOK_MODELS);
   const [model, setModel] = useState(() => pickCookbookModel(FALLBACK_COOKBOOK_MODELS));
-  const [modelOpen, setModelOpen] = useState(false);
   const [cards, setCards] = useState<DocCard[]>([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -185,7 +168,6 @@ export function CookbookApp() {
 
   const recipe = COOKBOOK_RECIPES.find((item) => item.id === recipeId) ?? COOKBOOK_RECIPES[0]!;
   const roles = useMemo(() => cookbookRoles(recipe, size), [recipe, size]);
-  const selected = models.find((item) => item.id === model) ?? models[0] ?? FALLBACK_COOKBOOK_MODELS[0]!;
 
   useEffect(() => {
     let cancelled = false;
@@ -274,37 +256,20 @@ export function CookbookApp() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-black/5 bg-background/80 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-lg sm:h-14 sm:gap-3 sm:px-6">
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="flex size-7 items-center justify-center bg-foreground sm:size-8">
-            <span className="font-bold font-mono text-background text-[10px] sm:text-xs">OE</span>
-          </span>
-          <span className="font-mono text-sm">Cookbook</span>
-        </div>
-        <nav className="ml-auto flex shrink-0 items-center gap-3">
-          <a
-            className="font-mono text-muted-foreground text-xs transition-colors hover:text-foreground"
-            href={GITHUB_URL}
-            rel="noreferrer"
-            target="_blank"
-          >
-            GitHub
-          </a>
-        </nav>
-      </header>
+      <AppHeader title="Cookbook" />
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <aside className="flex w-full shrink-0 flex-col gap-4 border-b border-black/5 p-4 lg:w-72 lg:border-r lg:border-b-0">
+        <aside className="flex w-full shrink-0 flex-col gap-4 border-b border-border/50 p-4 lg:w-72 lg:border-r lg:border-b-0">
           <section className="space-y-1">
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Recipe</p>
-            <div className="border border-black/10">
+            <Overline>Recipe</Overline>
+            <div className="flex snap-x gap-2 overflow-x-auto pb-1 lg:snap-none lg:flex-col lg:gap-0 lg:overflow-visible lg:border lg:pb-0">
               {COOKBOOK_RECIPES.map((item) => {
                 const active = item.id === recipe.id;
                 return (
                   <button
                     className={cn(
-                      "block w-full px-3 py-2 text-left transition-colors",
-                      active ? "bg-foreground text-background" : "hover:bg-muted",
+                      "w-60 shrink-0 snap-start border px-3 py-2 text-left transition-colors lg:w-full lg:border-0",
+                      active ? "border-foreground bg-foreground text-background" : "hover:bg-muted",
                     )}
                     key={item.id}
                     onClick={() => selectRecipe(item)}
@@ -326,113 +291,88 @@ export function CookbookApp() {
             </p>
           ) : (
             <>
-          <section className="space-y-2">
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Documents</p>
-            <ul className="space-y-1.5">
-              {recipe.docs.map((name) => {
-                const checked = docs.includes(name);
-                return (
-                  <li className="flex items-center gap-2" key={name}>
-                    <Checkbox
-                      checked={checked}
-                      disabled={busy}
-                      id={name}
-                      onCheckedChange={() =>
-                        setDocs((prev) =>
-                          prev.includes(name) ? prev.filter((item) => item !== name) : [...prev, name],
-                        )
-                      }
-                    />
-                    <label
-                      className="cursor-pointer font-mono text-xs leading-none"
-                      htmlFor={name}
-                    >
-                      {name}
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
+              <section className="space-y-2">
+                <Overline>Documents</Overline>
+                <ul className="flex flex-wrap gap-x-4 gap-y-1.5 lg:flex-col">
+                  {recipe.docs.map((name) => {
+                    const checked = docs.includes(name);
+                    return (
+                      <li className="flex items-center gap-2" key={name}>
+                        <Checkbox
+                          checked={checked}
+                          disabled={busy}
+                          id={name}
+                          onCheckedChange={() =>
+                            setDocs((prev) =>
+                              prev.includes(name) ? prev.filter((item) => item !== name) : [...prev, name],
+                            )
+                          }
+                        />
+                        <label className="cursor-pointer font-mono text-xs leading-none" htmlFor={name}>
+                          {name}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
 
-          <section className="space-y-2">
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Model</p>
-            <ModelSelector onOpenChange={setModelOpen} open={modelOpen}>
-              <ModelSelectorTrigger asChild>
-                <Button className="w-full justify-start" disabled={busy} size="sm" type="button" variant="outline">
-                  <ModelSelectorLogo provider={selected.provider} />
-                  <ModelSelectorName>{selected.name}</ModelSelectorName>
-                </Button>
-              </ModelSelectorTrigger>
-              <ModelSelectorContent className="w-[calc(100vw-2rem)] max-w-md">
-                <ModelSelectorInput placeholder="Search models…" />
-                <ModelSelectorList>
-                  <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-                  <ModelSelectorGroup heading="AI Gateway">
-                    {models.map((item) => (
-                      <ModelSelectorItem
-                        key={item.id}
-                        onSelect={() => {
-                          setModel(item.id);
-                          setModelOpen(false);
-                        }}
-                        value={item.id}
+              <div className="grid grid-cols-2 items-start gap-3 lg:grid-cols-1 lg:gap-4">
+                <section className="space-y-2">
+                  <Overline>Model</Overline>
+                  <ModelPicker disabled={busy} models={models} onSelect={setModel} value={model} />
+                </section>
+
+                <section className="space-y-2">
+                  <Overline>Agents</Overline>
+                  {recipe.lockSize ? (
+                    <p className="font-mono text-muted-foreground text-xs">
+                      {size} · {roles.join(" / ")}
+                    </p>
+                  ) : (
+                    <ButtonGroup>
+                      <Button
+                        disabled={busy || size <= 1}
+                        onClick={() => setSize((value) => clampCookbookSize(recipe, value - 1))}
+                        size="icon-sm"
+                        type="button"
+                        variant="outline"
                       >
-                        <ModelSelectorLogo provider={item.provider} />
-                        <ModelSelectorName>{item.name}</ModelSelectorName>
-                        {model === item.id ? <CheckIcon className="ml-auto size-4" /> : null}
-                      </ModelSelectorItem>
-                    ))}
-                  </ModelSelectorGroup>
-                </ModelSelectorList>
-              </ModelSelectorContent>
-            </ModelSelector>
-          </section>
+                        <MinusIcon />
+                      </Button>
+                      <Button disabled size="sm" type="button" variant="outline">
+                        {size}
+                      </Button>
+                      <Button
+                        disabled={busy || size >= 8}
+                        onClick={() => setSize((value) => clampCookbookSize(recipe, value + 1))}
+                        size="icon-sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        <PlusIcon />
+                      </Button>
+                    </ButtonGroup>
+                  )}
+                </section>
+              </div>
 
-          <section className="space-y-2">
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Agents</p>
-            {recipe.lockSize ? (
-              <p className="font-mono text-xs text-muted-foreground">
-                {size} · {roles.join(" / ")}
-              </p>
-            ) : (
-              <ButtonGroup>
-                <Button
-                  disabled={busy || size <= 1}
-                  onClick={() => setSize((value) => clampCookbookSize(recipe, value - 1))}
-                  size="icon-sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <MinusIcon />
-                </Button>
-                <Button disabled size="sm" type="button" variant="outline">
-                  {size}
-                </Button>
-                <Button
-                  disabled={busy || size >= 8}
-                  onClick={() => setSize((value) => clampCookbookSize(recipe, value + 1))}
-                  size="icon-sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <PlusIcon />
-                </Button>
-              </ButtonGroup>
-            )}
-          </section>
-
-          <div className="mt-auto flex gap-2">
-            {busy ? (
-              <Button className="flex-1" onClick={stop} type="button" variant="outline">
-                Stop
-              </Button>
-            ) : (
-              <Button className="flex-1" disabled={docs.length === 0} onClick={() => void extract()} type="button">
-                Extract
-              </Button>
-            )}
-          </div>
+              <div className="mt-auto flex gap-2">
+                {busy ? (
+                  <Button className="flex-1" onClick={stop} type="button" variant="outline">
+                    Stop
+                  </Button>
+                ) : (
+                  <Button
+                    className="flex-1"
+                    disabled={docs.length === 0}
+                    onClick={() => void extract()}
+                    type="button"
+                  >
+                    Extract
+                  </Button>
+                )}
+              </div>
             </>
           )}
         </aside>
@@ -442,100 +382,107 @@ export function CookbookApp() {
         </div>
 
         {recipe.kind === "table" ? null : (
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex items-baseline justify-between border-b border-black/5 px-4 py-2">
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Output</p>
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-              {displayReduce(recipe.reduce)}
-              {busy ? " · running" : cards.length ? ` · ${cards.length}` : ""}
-            </p>
-          </div>
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="space-y-3 p-4">
-              {cards.length === 0 && !error ? (
-                <p className="text-muted-foreground text-sm">Output stays empty until you extract.</p>
-              ) : null}
-              {error ? (
-                <div className="flex items-start gap-2 border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
-                  <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-                  <span className="min-w-0 flex-1">{error}</span>
-                </div>
-              ) : null}
-              {cards.map((card) => {
-                const finished = card.agents.filter(
-                  (agent) => agent.phase === "done" || agent.phase === "error",
-                ).length;
-                const output = latestOutput(card);
-                const lines = output ? outputLines(output) : [];
-                return (
-                  <Artifact key={card.source}>
-                    <ArtifactHeader>
-                      <div className="min-w-0">
-                        <ArtifactTitle>{card.source}</ArtifactTitle>
-                        <p className="truncate text-sm">
-                          {output ? outputHeading(output) : finished === 0 ? "Extracting" : "—"}
-                          {output ? (
-                            <span className="text-muted-foreground"> · {outputSubheading(output)}</span>
-                          ) : null}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-mono text-sm">{output ? outputAmount(output) : ""}</p>
-                        <ArtifactDescription>
-                          {card.agents.map((agent) => phaseMark(agent.phase)).join(" ")}{" "}
-                          {displayReduce(card.reduce ?? recipe.reduce)} {finished}/
-                          {card.agents.length || size}
-                        </ArtifactDescription>
-                      </div>
-                    </ArtifactHeader>
-                    <ArtifactContent className="space-y-3 p-3">
-                      {lines.length ? (
-                        <ul className="space-y-1 font-mono text-xs">
-                          {lines.map((item) => (
-                            <li className="flex justify-between gap-4" key={`${item.left}:${item.right}`}>
-                              <span className="min-w-0 truncate">{item.left}</span>
-                              <span className="shrink-0 text-muted-foreground">{item.right}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                      <div className="space-y-1">
-                        {card.agents.map((agent, index) => {
-                          const summary = agentSummary(agent);
-                          const elapsed = elapsedFor(agent, now);
-                          return (
-                            <Task defaultOpen={agent.phase === "error"} key={`${card.source}-${index}`}>
-                              <TaskTrigger title={agent.role}>
-                                <div className="flex w-full cursor-pointer items-center gap-2 py-1 font-mono text-xs">
-                                  <span className="w-4 shrink-0 text-muted-foreground">{index + 1}</span>
-                                  <span className="w-28 shrink-0 truncate">{agent.role}</span>
-                                  <span className="w-4 shrink-0">{phaseMark(agent.phase)}</span>
-                                  <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                                    {agent.phase === "running" ? <Shimmer className="text-xs">{summary}</Shimmer> : summary}
-                                  </span>
-                                  <span className="shrink-0 text-muted-foreground">{elapsed}</span>
-                                </div>
-                              </TaskTrigger>
-                              <TaskContent>
-                                <TaskItem>
-                                  {agent.error ??
-                                    (agent.output ? JSON.stringify(agent.output, null, 2) : "Waiting for this agent.")}
-                                </TaskItem>
-                              </TaskContent>
-                            </Task>
-                          );
-                        })}
-                      </div>
-                    </ArtifactContent>
-                  </Artifact>
-                );
-              })}
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="flex items-baseline justify-between border-b border-border/50 px-4 py-2">
+              <Overline>Output</Overline>
+              <Overline>
+                {displayReduce(recipe.reduce)}
+                {busy ? " · running" : cards.length ? ` · ${cards.length}` : ""}
+              </Overline>
             </div>
-          </ScrollArea>
-          <footer className="min-h-10 shrink-0 border-t border-black/5 px-4 py-2 font-mono text-[11px] text-muted-foreground">
-            {status}
-          </footer>
-        </main>
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="space-y-3 p-4">
+                {cards.length === 0 && !error ? (
+                  <p className="text-muted-foreground text-sm">Output stays empty until you extract.</p>
+                ) : null}
+                {error ? <ErrorBanner>{error}</ErrorBanner> : null}
+                {cards.map((card) => {
+                  const finished = card.agents.filter(
+                    (agent) => agent.phase === "done" || agent.phase === "error",
+                  ).length;
+                  const output = latestOutput(card);
+                  const lines = output ? outputLines(output) : [];
+                  return (
+                    <Artifact key={card.source}>
+                      <ArtifactHeader>
+                        <div className="min-w-0">
+                          <ArtifactTitle>{card.source}</ArtifactTitle>
+                          <p className="truncate text-sm">
+                            {output ? outputHeading(output) : finished === 0 ? "Extracting" : "—"}
+                            {output ? (
+                              <span className="text-muted-foreground"> · {outputSubheading(output)}</span>
+                            ) : null}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-mono text-sm">{output ? outputAmount(output) : ""}</p>
+                          <ArtifactDescription className="flex items-center justify-end gap-2">
+                            <span className="flex items-center gap-1">
+                              {card.agents.map((agent, index) => (
+                                <StatusDot key={index} status={agent.phase} />
+                              ))}
+                            </span>
+                            <span>
+                              {displayReduce(card.reduce ?? recipe.reduce)} {finished}/
+                              {card.agents.length || size}
+                            </span>
+                          </ArtifactDescription>
+                        </div>
+                      </ArtifactHeader>
+                      <ArtifactContent className="space-y-3 p-3">
+                        {lines.length ? (
+                          <ul className="space-y-1 font-mono text-xs">
+                            {lines.map((item) => (
+                              <li className="flex justify-between gap-4" key={`${item.left}:${item.right}`}>
+                                <span className="min-w-0 truncate">{item.left}</span>
+                                <span className="shrink-0 text-muted-foreground">{item.right}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        <div className="space-y-1">
+                          {card.agents.map((agent, index) => {
+                            const summary = agentSummary(agent);
+                            const elapsed = elapsedFor(agent, now);
+                            return (
+                              <Task defaultOpen={agent.phase === "error"} key={`${card.source}-${index}`}>
+                                <TaskTrigger title={agent.role}>
+                                  <div className="flex w-full cursor-pointer items-center gap-2 py-1 font-mono text-xs">
+                                    <span className="w-4 shrink-0 text-muted-foreground">{index + 1}</span>
+                                    <span className="w-28 shrink-0 truncate">{agent.role}</span>
+                                    <StatusDot status={agent.phase} />
+                                    <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                                      {agent.phase === "running" ? (
+                                        <Shimmer className="text-xs">{summary}</Shimmer>
+                                      ) : (
+                                        summary
+                                      )}
+                                    </span>
+                                    <span className="shrink-0 text-muted-foreground">{elapsed}</span>
+                                  </div>
+                                </TaskTrigger>
+                                <TaskContent>
+                                  <TaskItem>
+                                    {agent.error ??
+                                      (agent.output
+                                        ? JSON.stringify(agent.output, null, 2)
+                                        : "Waiting for this agent.")}
+                                  </TaskItem>
+                                </TaskContent>
+                              </Task>
+                            );
+                          })}
+                        </div>
+                      </ArtifactContent>
+                    </Artifact>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+            <footer className="min-h-10 shrink-0 border-t border-border/50 px-4 py-2 font-mono text-[11px] text-muted-foreground">
+              {status}
+            </footer>
+          </main>
         )}
       </div>
     </div>
