@@ -2,6 +2,7 @@
 import { pathToFileURL } from "node:url";
 import { extract, extractWithUsage } from "./extract.js";
 import { extractMany } from "./batch.js";
+import { loadAgent, loadAgents, resolveOutputSchema, type DefinedAgent } from "./agent.js";
 import { extractSwarm, extractSwarmWithResults } from "./swarm.js";
 import { SWARM_REDUCES, type SwarmReduce } from "./reduce.js";
 import { toError } from "./errors.js";
@@ -34,6 +35,8 @@ interface CliArgs {
   swarm: number;
   reduce: SwarmReduce;
   models: string[];
+  agent?: string;
+  agents: string[];
 }
 
 function usage(code = 1): never {
@@ -45,7 +48,7 @@ function usage(code = 1): never {
 
 Options:
   --tui                 Open the interactive TUI
-  --schema              Zod schema export path (module:exportName)
+  --schema              Zod schema export path (module:exportName); optional when --agent has outputSchema
   --model               AI Gateway model id (e.g. openai/gpt-5.5)
   --instructions        Optional natural-language guidance
   --style               direct | search | code (default: direct)
@@ -59,6 +62,8 @@ Options:
   --retry-max-backoff   Max backoff seconds (default: 60)
   --swarm               Parallel agents on one input (default: 1)
   --models              Comma-separated model ids, one per swarm agent
+  --agent               Agent path (directory, file, or module:exportName)
+  --agents              Comma-separated agent paths
   --reduce              merge | vote | first (swarm only, default: merge)`);
   process.exit(code);
 }
@@ -85,6 +90,7 @@ function parseArgs(argv: string[]): CliArgs {
     swarm: 1,
     reduce: "merge",
     models: [],
+    agents: [],
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
@@ -131,6 +137,15 @@ function parseArgs(argv: string[]): CliArgs {
       case "--models": {
         const [value, next] = takeValue(argv, i, arg);
         args.models = value.split(",").map((id) => id.trim()).filter(Boolean);
+        i = next;
+        break;
+      }
+      case "--agent":
+        [args.agent, i] = takeValue(argv, i, arg);
+        break;
+      case "--agents": {
+        const [value, next] = takeValue(argv, i, arg);
+        args.agents = value.split(",").map((id) => id.trim()).filter(Boolean);
         i = next;
         break;
       }
@@ -196,11 +211,24 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     });
   }
   const args = parseArgs(argv);
-  if (!args.schema || args.inputFiles.length === 0) usage();
-  if (!args.model && args.models.length === 0) usage();
+  if (args.inputFiles.length === 0) usage();
+  if (!args.schema && !args.agent && args.agents.length === 0) usage();
+  if (args.agent && args.agents.length > 0) {
+    console.error("error: use --agent or --agents, not both");
+    return 1;
+  }
+  let importedAgents: DefinedAgent[] = [];
+  try {
+    if (args.agent) importedAgents = [await loadAgent(args.agent)];
+    else if (args.agents.length > 0) importedAgents = await loadAgents(args.agents);
+  } catch (error) {
+    printError(error);
+    return 1;
+  }
+  if (!args.model && args.models.length === 0 && importedAgents.length === 0) usage();
   let schema: z.ZodType<unknown>;
   try {
-    schema = await loadSchema(args.schema);
+    schema = args.schema ? await loadSchema(args.schema) : resolveOutputSchema(importedAgents[0]!);
   } catch (error) {
     printError(error);
     return 1;
@@ -220,8 +248,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     console.error("error: --swarm must be a positive integer");
     return 1;
   }
-  if ((args.swarm > 1 || args.models.length > 1) && inputs.length !== 1) {
-    console.error("error: --swarm and --models apply to a single input; omit them for batch files");
+  if ((args.swarm > 1 || args.models.length > 1 || importedAgents.length > 1) && inputs.length !== 1) {
+    console.error("error: --swarm, --models, and --agents apply to a single input; omit them for batch files");
     return 1;
   }
   if (args.models.length > 1 && args.swarm > 1 && args.swarm !== args.models.length) {
@@ -242,8 +270,9 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   try {
     if (inputs.length === 1) {
       const inputFile = inputs[0]!;
-      const swarmAgents = args.models.length > 0 ? args.models : args.model!;
-      const useSwarm = args.models.length > 1 || args.swarm > 1;
+      const swarmAgents =
+        importedAgents.length > 0 ? importedAgents : args.models.length > 0 ? args.models : args.model!;
+      const useSwarm = importedAgents.length > 1 || args.models.length > 1 || args.swarm > 1;
       if (useSwarm) {
         const swarmOpts = {
           ...shared,
@@ -257,13 +286,18 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           payload = await extractSwarm(schema, swarmAgents, inputFile, swarmOpts);
         }
       } else if (args.usage) {
-        const { output, usage } = await extractWithUsage(schema, args.model ?? args.models[0]!, inputFile, shared);
+        const { output, usage } = await extractWithUsage(
+          schema,
+          importedAgents[0] ?? args.model ?? args.models[0]!,
+          inputFile,
+          shared,
+        );
         payload = { result: output, usage };
       } else {
-        payload = await extract(schema, args.model ?? args.models[0]!, inputFile, shared);
+        payload = await extract(schema, importedAgents[0] ?? args.model ?? args.models[0]!, inputFile, shared);
       }
     } else {
-      const results = await extractMany(schema, args.model ?? args.models[0]!, inputs, {
+      const results = await extractMany(schema, importedAgents[0] ?? args.model ?? args.models[0]!, inputs, {
         ...shared,
         returnExceptions: args.continueOnError,
       });

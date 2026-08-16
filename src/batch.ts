@@ -1,3 +1,4 @@
+import { flattenAgent, isDefinedAgent, isRemoteMember, type ExtractAgent } from "./agent.js";
 import { validateMaxConcurrency } from "./config.js";
 import { toError } from "./errors.js";
 import { itemSourceLabel } from "./media.js";
@@ -14,6 +15,16 @@ import {
   type ExtractionResult,
 } from "./types.js";
 import type { z } from "zod";
+
+function resolveBatchAgent(model: ExtractAgent): { model: LanguageModel; options: ExtractOptions } {
+  if (!isDefinedAgent(model)) return { model, options: {} };
+  const members = flattenAgent(model);
+  const member = members[0];
+  if (members.length !== 1 || !member || isRemoteMember(member)) {
+    throw new Error("extractMany expects a single local agent; use extract or extractSwarm.");
+  }
+  return { model: member.model, options: { style: member.style, instructions: member.instructions } };
+}
 
 export interface ExtractManyOptions extends ExtractOptions {
   maxConcurrency?: number;
@@ -52,12 +63,17 @@ async function runItem<T>(
 
 async function gather<T>(
   schema: z.ZodType<T>,
-  model: LanguageModel,
+  model: ExtractAgent,
   inputFiles: Iterable<ExtractionInputLike>,
   options: ExtractManyOptions,
   rich: boolean,
 ): Promise<Array<T | ExtractionResult<T> | Error>> {
-  const { resolved, maxConcurrency } = resolveBatchOptions(options);
+  const agent = resolveBatchAgent(model);
+  const { resolved, maxConcurrency } = resolveBatchOptions({
+    ...options,
+    style: agent.options.style ?? options.style,
+    instructions: agent.options.instructions ?? options.instructions,
+  });
   const items = [...inputFiles];
   const results: Array<T | ExtractionResult<T> | Error> = new Array(items.length);
   let next = 0;
@@ -69,7 +85,7 @@ async function gather<T>(
       if (index >= items.length) return;
       const item = items[index]!;
       try {
-        results[index] = await runItem(schema, model, item, resolved, rich);
+        results[index] = await runItem(schema, agent.model, item, resolved, rich);
       } catch (error) {
         if (options.returnExceptions) {
           results[index] = toError(error);
@@ -87,7 +103,7 @@ async function gather<T>(
 
 export async function extractMany<T>(
   schema: z.ZodType<T>,
-  model: LanguageModel,
+  model: ExtractAgent,
   inputFiles: Iterable<ExtractionInputLike>,
   options: ExtractManyOptions = {},
 ): Promise<Array<T | Error>> {
@@ -96,7 +112,7 @@ export async function extractMany<T>(
 
 export async function extractManyWithResults<T>(
   schema: z.ZodType<T>,
-  model: LanguageModel,
+  model: ExtractAgent,
   inputFiles: Iterable<ExtractionInputLike>,
   options: ExtractManyOptions = {},
 ): Promise<Array<ExtractionResult<T> | Error>> {
@@ -107,17 +123,22 @@ export async function extractManyWithResults<T>(
 
 export async function* iterExtractMany<T>(
   schema: z.ZodType<T>,
-  model: LanguageModel,
+  model: ExtractAgent,
   inputFiles: Iterable<ExtractionInputLike>,
   options: ExtractManyOptions = {},
 ): AsyncGenerator<[number, T | Error]> {
-  const { resolved, maxConcurrency } = resolveBatchOptions(options);
+  const agent = resolveBatchAgent(model);
+  const { resolved, maxConcurrency } = resolveBatchOptions({
+    ...options,
+    style: agent.options.style ?? options.style,
+    instructions: agent.options.instructions ?? options.instructions,
+  });
   const items = [...inputFiles];
   const pending = new Map<Promise<[number, T | Error]>, number>();
   let next = 0;
   const start = (index: number) => {
     const item = items[index]!;
-    const promise = runItem(schema, model, item, resolved, false)
+    const promise = runItem(schema, agent.model, item, resolved, false)
       .then((value) => [index, value as T] as [number, T | Error])
       .catch((error: unknown) => {
         const err = toError(error);

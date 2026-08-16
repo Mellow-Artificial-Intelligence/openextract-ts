@@ -1,3 +1,10 @@
+import {
+  flattenAgent,
+  isRemoteMember,
+  type AgentInput,
+  type ResolvedAgentMember,
+} from "./agent.js";
+import { runRemoteExtraction } from "./agent-remote.js";
 import { validateMaxConcurrency, validateSwarmSize } from "./config.js";
 import { toError, withExtractionErrors } from "./errors.js";
 import { getMedia, itemSourceLabel } from "./media.js";
@@ -19,7 +26,8 @@ import {
 import type { z } from "zod";
 
 export type { SwarmReduce };
-export type SwarmAgentInput = LanguageModel | SwarmMember;
+export type SwarmAgentInput = AgentInput;
+export type { ResolvedAgentMember };
 
 export interface SwarmMember {
   model: LanguageModel;
@@ -40,21 +48,14 @@ export interface SwarmResult<T> {
   reduce: SwarmReduce;
 }
 
-function isSwarmMember(value: object): value is SwarmMember {
-  return "model" in value && !("specificationVersion" in value);
-}
-
 export function resolveSwarmMembers(
   agents: SwarmAgentInput | readonly SwarmAgentInput[],
   size?: number,
-): SwarmMember[] {
+): ResolvedAgentMember[] {
   const raw = Array.isArray(agents) ? agents : [agents];
   if (raw.length === 0) throw new Error("agents must include at least one model.");
-  const members = raw.map((item) =>
-    typeof item === "object" && item !== null && isSwarmMember(item)
-      ? { model: item.model, instructions: item.instructions, style: item.style }
-      : { model: item as LanguageModel },
-  );
+  const members = raw.flatMap((item) => flattenAgent(item));
+  if (members.length === 0) throw new Error("agents must include at least one model.");
   if (members.length === 1) {
     const n = validateSwarmSize(size ?? 1);
     return Array.from({ length: n }, () => ({ ...members[0]! }));
@@ -78,7 +79,7 @@ function agentInstructions(base: string | undefined, index: number, total: numbe
 
 function memberOptions(
   options: ExtractSwarmOptions,
-  member: SwarmMember,
+  member: ResolvedAgentMember,
   index: number,
   total: number,
 ): ResolvedExtractOptions {
@@ -87,6 +88,13 @@ function memberOptions(
     style: member.style ?? options.style,
     instructions: agentInstructions(member.instructions ?? options.instructions, index, total),
   });
+}
+
+function memberLabel(member: ResolvedAgentMember): string | null {
+  if (member.kind === "remote") {
+    return typeof member.remote.url === "string" ? member.remote.url : member.remote.description;
+  }
+  return modelIdentifier(member.model);
 }
 
 async function runSwarm<T>(
@@ -114,19 +122,17 @@ async function runSwarm<T>(
       const member = members[index]!;
       const started = performance.now();
       try {
-        const result = await runLoadedExtraction(
-          schema,
-          member.model,
-          data,
-          mediaType,
-          memberOptions(options, member, index, members.length),
-        );
+        const opts = memberOptions(options, member, index, members.length);
+        const result =
+          member.kind === "remote"
+            ? await runRemoteExtraction(schema, member.remote, data, mediaType, opts)
+            : await runLoadedExtraction(schema, member.model, data, mediaType, opts);
         results[index] = {
           output: result.output,
           usage: result.usage,
           attempts: result.attempts,
           duration: (performance.now() - started) / 1000,
-          model: modelIdentifier(member.model),
+          model: memberLabel(member),
           mediaType,
           source: sourceLabel,
           warnings: [],

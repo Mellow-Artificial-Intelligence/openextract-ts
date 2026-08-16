@@ -42,6 +42,10 @@
     "./workflow": {
       "types": "./dist/workflow.d.ts",
       "import": "./dist/workflow.js"
+    },
+    "./agents/auth": {
+      "types": "./dist/agent-auth.d.ts",
+      "import": "./dist/agent-auth.js"
     }
   },
   "bin": {

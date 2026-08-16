@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { z } from "zod";
+import { isDefinedAgent } from "../src/agent.js";
 import { createOpenExtractMcpServer, resolveMcpInput } from "../src/mcp.js";
 import { ModelError } from "../src/exceptions.js";
 import type { ExtractionInputLike } from "../src/types.js";
@@ -132,6 +133,28 @@ describe("MCP server", () => {
       { name: "Ada", age: 36 },
       { error: "rate limited", errorType: "ModelError", provider: null, statusCode: 429, retryable: true, retryAfter: null },
     ]);
+  });
+
+  it("extracts with an imported agent", async () => {
+    const session = await connect({
+      extract: async (_schema, model) => {
+        expect(isDefinedAgent(model)).toBe(true);
+        return { name: "Ada", age: 36 };
+      },
+    });
+    sessions.push(session);
+    const { fileURLToPath } = await import("node:url");
+    const { dirname, join } = await import("node:path");
+    const agents = join(dirname(fileURLToPath(import.meta.url)), "fixtures/agents.ts");
+    const result = await session.client.callTool({
+      name: "extract",
+      arguments: {
+        schema: PersonSchema,
+        agent: `${agents}:invoice`,
+        source: "./notes.txt",
+      },
+    });
+    expect(textPayload(result)).toEqual({ name: "Ada", age: 36 });
   });
 
   it("runs a swarm and returns reduced output", async () => {

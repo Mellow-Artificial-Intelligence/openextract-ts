@@ -50,3 +50,20 @@ export class SchemaValidationError extends ExtractionError {
 export class UrlFetchError extends ExtractionError {
   override name = "UrlFetchError";
 }
+
+export class RemoteAgentError extends ExtractionError {
+  override name = "RemoteAgentError";
+  readonly url: string | null;
+  readonly statusCode: number | null;
+  readonly retryable: boolean;
+
+  constructor(
+    message: string,
+    options: { url?: string | null; statusCode?: number | null; retryable?: boolean } = {},
+  ) {
+    super(message);
+    this.url = options.url ?? null;
+    this.statusCode = options.statusCode ?? null;
+    this.retryable = options.retryable ?? (this.statusCode != null && isTransientStatus(this.statusCode));
+  }
+}

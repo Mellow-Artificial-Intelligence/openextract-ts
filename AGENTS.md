@@ -36,6 +36,7 @@ Node.js 20+. Set `AI_GATEWAY_API_KEY` for live model calls. Tests use `MockLangu
 | `src/extract.ts` | One-shot `extract` / `extractWithUsage` |
 | `src/batch.ts` | Concurrent `extractMany*` |
 | `src/swarm.ts` | `extractSwarm*` — parallel agents on one input |
+| `src/agent.ts` | Eve-shaped `defineAgent` / `defineRemoteAgent`, `loadAgent` (directory / file / `module:exportName`) |
 | `src/reduce.ts` | Swarm reduce: `merge`, `vote`, `first` |
 | `src/workflow.ts` | `openextract/workflow` durable extract |
 | `src/session.ts` | Reusable `Extractor` |
@@ -97,12 +98,12 @@ When *using* this library as an agent (not just editing it):
 1. Call `extract(schema, model, input, options?)` or the MCP `extract` tool.
 2. Pass a Zod schema in process, or JSON Schema / `module:exportName` over MCP and workflows.
 3. Use `extractMany` / `extract_many` for many inputs. Default concurrency is 5.
-4. Use `extractSwarm` / `extract_swarm` for several agents on one input (`size` or a model list; `reduce`: `merge`, `vote`, `first`).
+4. Use `extractSwarm` / `extract_swarm` for several agents on one input (`size`, a model list, or importable `defineAgent` / `defineRemoteAgent` modules; `reduce`: `merge`, `vote`, `first`).
 5. Reuse an `Extractor` / `create_extractor` session when schema, model, and style stay fixed.
 6. For durable Vercel Workflows, call `extractWorkflow` / `extractManyWorkflow` from `openextract/workflow` with JSON Schema (Zod is not serializable).
 7. Choose `style` from the input type; do not invent a fourth style without extending `ExtractionStyle`.
 
-MCP: `npx openextract-mcp` (stdio) or `--http --port 3000` (loopback). Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`. Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts include `extract-swarm`.
+MCP: `npx openextract-mcp` (stdio) or `--http --port 3000` (loopback). Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`. Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts include `extract-swarm`. Pass `agent` / `agents` as a directory, file, or `module:exportName`. Auth helpers live at `openextract/agents/auth`.
 
 ## Issues and pull requests
 
