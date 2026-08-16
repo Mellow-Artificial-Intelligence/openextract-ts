@@ -9,7 +9,7 @@ This file is the Claude-specific companion to [AGENTS.md](AGENTS.md). Follow tho
 
 - Read [VISION.md](VISION.md) before changing extraction APIs, styles, or agent/MCP surfaces.
 - Keep edits small. Public API lives in `src/index.ts`.
-- After code changes: `npm test` and `npm run typecheck`. After `web/` changes: `npm run web:typecheck`.
+- After code changes: `npm run test:coverage` and `npm run typecheck`. After `web/` changes: `npm run web:typecheck`.
 - File issues and PRs with the GitHub templates (bug, feature, agent/MCP, PR). Do not open a blank issue.
 
 ## Extracting as Claude

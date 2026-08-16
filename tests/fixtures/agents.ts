@@ -26,3 +26,5 @@ export const remote = defineRemoteAgent({
   url: "https://extract.example.com",
   description: "Remote OCR extraction specialist.",
 });
+
+export const notAgent = { hello: true };

@@ -74,7 +74,7 @@ function isJsonSchema(value: unknown): value is Record<string, unknown> {
   );
 }
 
-function inferType(value: unknown, path: string): SpecType {
+export function inferType(value: unknown, path: string): SpecType {
   if (value === null || value === undefined) {
     throw new Error(`Cannot infer a type for ${path}; replace null with a typed example.`);
   }
@@ -117,7 +117,7 @@ function parseObjectBody(input: string, start: number): [SpecType, number] {
     const nameStart = i;
     while (i < input.length && /[A-Za-z0-9_]/.test(input[i]!)) i += 1;
     const name = input.slice(nameStart, i);
-    if (!IDENT.test(name)) throw new Error(`Invalid field name '${name || input[i] || ""}'.`);
+    if (!IDENT.test(name)) throw new Error(`Invalid field name '${name || input[i] || /* v8 ignore next */ ""}'.`);
     i = skipWs(input, i);
     if (input[i] !== ":") throw new Error(`Expected ':' after field '${name}'.`);
     i = skipWs(input, i + 1);

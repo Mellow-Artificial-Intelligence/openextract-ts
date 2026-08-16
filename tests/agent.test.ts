@@ -1,13 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import {
   defineAgent,
   defineRemoteAgent,
   flattenAgent,
   isDefinedAgent,
   loadAgent,
+  loadAgentDirectory,
   loadAgents,
+  resolveOutputSchema,
 } from "../src/agent.js";
 import { basic, bearer, vercelOidc } from "../src/agent-auth.js";
 import { extract, extractWithUsage } from "../src/extract.js";
@@ -91,6 +95,104 @@ describe("loadAgent", () => {
 
   it("rejects a non-agent export", async () => {
     await expect(loadAgent(`${fixtures}:missing`)).rejects.toThrow(/Export 'missing'/);
+    await expect(loadAgent(`${fixtures}:notAgent`)).rejects.toThrow(/not a defineAgent/);
+  });
+
+  it("returns a defined agent as-is and rejects empty specs", async () => {
+    const agent = defineAgent({ description: "Ready", model: "openai/gpt-5.5" });
+    await expect(loadAgent(agent)).resolves.toBe(agent);
+    await expect(loadAgent("")).rejects.toThrow(/module:exportName/);
+    await expect(loadAgents("")).rejects.toThrow(/at least one agent path/);
+    await expect(loadAgents([])).rejects.toThrow(/at least one agent path/);
+  });
+
+  it("loads agent.js when agent.ts is absent", async () => {
+    const agent = await loadAgent(join(dirname(fileURLToPath(import.meta.url)), "fixtures/agent-js-only"));
+    expect(agent.kind).toBe("local");
+  });
+
+  it("loads a directory of only subagents", async () => {
+    const root = dirname(fileURLToPath(import.meta.url));
+    const single = await loadAgentDirectory(join(root, "fixtures/single-subagent"));
+    expect(single.kind).toBe("local");
+    if (single.kind === "local") expect(single.description).toBe("Only child.");
+    const multi = await loadAgentDirectory(join(root, "fixtures/multi-subagents"));
+    expect(multi.kind).toBe("local");
+    if (multi.kind === "local") {
+      expect(multi.description).toBe("multi-subagents");
+      expect(multi.subagents).toHaveLength(2);
+    }
+  });
+
+  it("keeps a remote root and skips empty instructions", async () => {
+    const root = dirname(fileURLToPath(import.meta.url));
+    const remote = await loadAgent(join(root, "fixtures/remote-root"));
+    expect(remote.kind).toBe("remote");
+    const kept = await loadAgent(join(root, "fixtures/empty-instructions"));
+    expect(kept.kind).toBe("local");
+    if (kept.kind === "local") expect(kept.instructions).toBe("Keep mine.");
+    const skipped = await loadAgent(join(root, "fixtures/skip-entries"));
+    expect(skipped.kind).toBe("local");
+    if (skipped.kind === "local") expect(skipped.subagents).toHaveLength(0);
+  });
+
+  it("rejects missing agents and non-agent files", async () => {
+    const root = dirname(fileURLToPath(import.meta.url));
+    await expect(loadAgentDirectory(join(root, "fixtures/empty-agent-dir"))).rejects.toThrow(
+      /No agent.ts or subagents/,
+    );
+    await expect(loadAgent(join(root, "fixtures/not-an-agent.mjs"))).rejects.toThrow(/must default-export/);
+    await expect(loadAgent(join(root, "fixtures/bad-root-agent"))).rejects.toThrow(/must default-export/);
+    await expect(loadAgent(join(root, "fixtures/bad-subagent"))).rejects.toThrow(/must default-export/);
+  });
+
+  it("resolves JSON Schema output and rejects invalid specs", () => {
+    const agent = defineAgent({
+      description: "JSON schema",
+      model: "openai/gpt-5.5",
+      outputSchema: {
+        type: "object",
+        properties: { name: { type: "string" } },
+        required: ["name"],
+      },
+    });
+    expect(resolveOutputSchema(agent).parse({ name: "Ada" })).toEqual({ name: "Ada" });
+    expect(() => resolveOutputSchema(defineAgent({ description: "No schema", model: "openai/gpt-5.5" }))).toThrow(
+      /missing outputSchema/,
+    );
+    expect(() =>
+      resolveOutputSchema(
+        defineAgent({
+          description: "Bad schema",
+          model: "openai/gpt-5.5",
+          outputSchema: 1 as unknown as Record<string, unknown>,
+        }),
+      ),
+    ).toThrow(/Zod schema or JSON Schema/);
+  });
+
+  it("rejects a directory with no agent files", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "openextract-empty-"));
+    await expect(loadAgentDirectory(dir)).rejects.toThrow(/No agent.ts or subagents/);
+  });
+
+  it("falls through when a path is neither a file nor a directory", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "openextract-fifo-"));
+    const fifo = join(dir, "pipe");
+    const { spawnSync } = await import("node:child_process");
+    spawnSync("mkfifo", [fifo]);
+    await expect(loadAgent(fifo)).rejects.toThrow(/module:exportName|Invalid module path/);
+  });
+
+  it("rethrows unexpected filesystem errors", async () => {
+    await expect(loadAgent(join("/tmp", "x".repeat(8000)))).rejects.toThrow();
+    const dir = await mkdtemp(join(tmpdir(), "openextract-notdir-"));
+    await writeFile(join(dir, "subagents"), "not a directory");
+    await writeFile(
+      join(dir, "agent.ts"),
+      `import { defineAgent } from ${JSON.stringify(new URL("../src/agent.js", import.meta.url).href)};\nexport default defineAgent({ description: "Tmp", model: "openai/gpt-5.5" });\n`,
+    );
+    await expect(loadAgentDirectory(dir)).rejects.toThrow();
   });
 
   it("loads a default export from a file path", async () => {
@@ -126,6 +228,24 @@ describe("auth helpers", () => {
     process.env.VERCEL_OIDC_TOKEN = "oidc";
     try {
       expect(await vercelOidc()()).toEqual({ Authorization: "Bearer oidc" });
+    } finally {
+      if (prev == null) delete process.env.VERCEL_OIDC_TOKEN;
+      else process.env.VERCEL_OIDC_TOKEN = prev;
+    }
+  });
+
+  it("resolves function credentials", async () => {
+    expect(await bearer(async () => "tok")()).toEqual({ Authorization: "Bearer tok" });
+    expect(await basic(async () => ({ username: "u", password: "p" }))()).toEqual({
+      Authorization: `Basic ${Buffer.from("u:p").toString("base64")}`,
+    });
+  });
+
+  it("rejects a missing OIDC token", async () => {
+    const prev = process.env.VERCEL_OIDC_TOKEN;
+    delete process.env.VERCEL_OIDC_TOKEN;
+    try {
+      await expect(vercelOidc()()).rejects.toThrow(/VERCEL_OIDC_TOKEN/);
     } finally {
       if (prev == null) delete process.env.VERCEL_OIDC_TOKEN;
       else process.env.VERCEL_OIDC_TOKEN = prev;
@@ -220,6 +340,107 @@ describe("remote extract", () => {
       { mediaType: "text/plain" },
     );
     expect(result).toEqual({ name: "Ada", age: 36 });
+  });
+
+  it("covers remote URL, header, and error branches", async () => {
+    const { joinAgentUrl, resolveAgentUrl, runRemoteExtraction } = await import("../src/agent-remote.js");
+    const { resolveExtractOptions } = await import("../src/pipeline.js");
+    expect(joinAgentUrl("https://extract.example.com/", "v1")).toBe("https://extract.example.com/v1");
+    await expect(resolveAgentUrl(async () => "  ")).rejects.toThrow(/non-empty string/);
+    await expect(resolveAgentUrl("not a url")).rejects.toThrow(/invalid/);
+    await expect(resolveAgentUrl("ftp://extract.example.com")).rejects.toThrow(/http or https/);
+    const opts = resolveExtractOptions({ timeout: 5, maxRetries: 0 });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("offline");
+      }),
+    );
+    await expect(
+      runRemoteExtraction(
+        Person,
+        defineRemoteAgent({ url: "https://extract.example.com", description: "Remote" }),
+        Buffer.from("doc"),
+        "text/plain",
+        opts,
+      ),
+    ).rejects.toBeInstanceOf(RemoteAgentError);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("not-json", { status: 200 })));
+    await expect(
+      runRemoteExtraction(
+        Person,
+        defineRemoteAgent({ url: "https://extract.example.com", description: "Remote" }),
+        Buffer.from("doc"),
+        "text/plain",
+        opts,
+      ),
+    ).rejects.toThrow(/non-JSON/);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 200 })));
+    await expect(
+      runRemoteExtraction(
+        Person,
+        defineRemoteAgent({ url: "https://extract.example.com", description: "Remote" }),
+        Buffer.from("doc"),
+        "text/plain",
+        opts,
+      ),
+    ).rejects.toThrow(/empty response/);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ error: "denied" }), { status: 200 })),
+    );
+    await expect(
+      runRemoteExtraction(
+        Person,
+        defineRemoteAgent({
+          url: "https://extract.example.com",
+          description: "Remote",
+          headers: async () => ({ "x-test": "1" }),
+        }),
+        Buffer.from("doc"),
+        "text/plain",
+        opts,
+      ),
+    ).rejects.toThrow(/denied/);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ nope: true }), { status: 400 })));
+    await expect(
+      runRemoteExtraction(
+        Person,
+        defineRemoteAgent({ url: "https://extract.example.com", description: "Remote" }),
+        Buffer.from("doc"),
+        "text/plain",
+        opts,
+      ),
+    ).rejects.toThrow(/status 400/);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ name: "Ada", age: 36, usage: "bad" }), { status: 200 })),
+    );
+    const parsed = await runRemoteExtraction(
+      Person,
+      defineRemoteAgent({ url: "https://extract.example.com", description: "Remote" }),
+      Buffer.from("doc"),
+      "text/plain",
+      opts,
+    );
+    expect(parsed.output).toEqual({ name: "Ada", age: 36 });
+    expect(parsed.usage.totalTokens).toBe(0);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ output: { name: "Ada", age: 36 }, usage: {} }), { status: 200 })),
+    );
+    const withHeaders = await runRemoteExtraction(
+      Person,
+      defineRemoteAgent({
+        url: "https://extract.example.com",
+        description: "Remote",
+        headers: { "x-test": "1" },
+      }),
+      Buffer.from("doc"),
+      "text/plain",
+      opts,
+    );
+    expect(withHeaders.usage.inputTokens).toBe(0);
   });
 });
 

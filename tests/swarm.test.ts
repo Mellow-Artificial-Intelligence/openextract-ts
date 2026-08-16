@@ -1,7 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ModelError } from "../src/exceptions.js";
 import { normalizeReduce, reduceOutputs } from "../src/reduce.js";
-import { extractSwarm, extractSwarmWithResults, resolveSwarmMembers } from "../src/swarm.js";
+import {
+  extractSwarm,
+  extractSwarmAsync,
+  extractSwarmWithResults,
+  extractSwarmWithResultsAsync,
+  resolveSwarmMembers,
+} from "../src/swarm.js";
 import { z } from "zod";
 import { mockModel, mockModelFn, Person } from "./helpers.js";
 
@@ -30,6 +36,14 @@ describe("resolveSwarmMembers", () => {
 
   it("rejects size with a multi-agent list", () => {
     expect(() => resolveSwarmMembers(["a", "b"], 3)).toThrow(/size cannot be combined/);
+    expect(() => resolveSwarmMembers([])).toThrow(/at least one model/);
+    const empty = Object.freeze({
+      [Symbol.for("openextract.agent")]: true,
+      kind: "local",
+      description: "Empty",
+      subagents: [],
+    });
+    expect(() => resolveSwarmMembers(empty as never)).toThrow(/at least one model/);
   });
 });
 
@@ -63,6 +77,30 @@ describe("reduceOutputs", () => {
 
   it("returns the first value", () => {
     expect(reduceOutputs(["a", "b"], "first")).toBe("a");
+    expect(reduceOutputs(["only"], "merge")).toBe("only");
+    expect(() => normalizeReduce("avg")).toThrow(/reduce must be one of/);
+    expect(() => reduceOutputs([], "first")).toThrow(/at least one value/);
+  });
+
+  it("merges and votes on nested objects and empty values", async () => {
+    const { mergeValues, voteValues } = await import("../src/reduce.js");
+    expect(mergeValues([])).toBeNull();
+    expect(mergeValues(["x"])).toBe("x");
+    expect(mergeValues([null, "", "ok"])).toBe("ok");
+    expect(mergeValues([null, ""])).toBeNull();
+    expect(mergeValues([[null], [undefined]])).toEqual([null, undefined]);
+    expect(mergeValues([[[1]], [[1], [2]]])).toEqual([[1], [2]]);
+    expect(
+      mergeValues([
+        { items: [{ id: 1 }, { id: 2 }] },
+        { items: [{ id: 2 }, { id: 3 }] },
+      ]),
+    ).toEqual({ items: [{ id: 1 }, { id: 2 }, { id: 3 }] });
+    expect(voteValues([])).toBeNull();
+    expect(voteValues(["x"])).toBe("x");
+    expect(voteValues([[1], [1, 2]])).toEqual([1, 2]);
+    expect(voteValues([null, "", null])).toBeNull();
+    expect(voteValues([null, "Ada", "Ada"])).toBe("Ada");
   });
 });
 
@@ -121,5 +159,33 @@ describe("extractSwarm", () => {
         { mediaType: "text/plain", size: 2, retryBackoff: 0, retryMaxBackoff: 0 },
       ),
     ).rejects.toBeInstanceOf(ModelError);
+  });
+
+  it("adds per-agent instructions and labels a function-url remote", async () => {
+    const { defineRemoteAgent } = await import("../src/agent.js");
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ output: { name: "Ada", age: 36 } }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const swarm = await extractSwarmWithResults(
+        Person,
+        [
+          mockModel({ name: "Ada", age: 36 }),
+          defineRemoteAgent({
+            url: () => "https://extract.example.com",
+            description: "Remote OCR",
+          }),
+        ],
+        Buffer.from("doc"),
+        { mediaType: "text/plain", instructions: "Be thorough." },
+      );
+      expect(swarm.output.name).toBe("Ada");
+      const remote = swarm.agents[1];
+      expect(remote).not.toBeInstanceOf(Error);
+      if (!(remote instanceof Error)) expect(remote.model).toBe("Remote OCR");
+      expect(extractSwarmAsync).toBe(extractSwarm);
+      expect(extractSwarmWithResultsAsync).toBe(extractSwarmWithResults);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

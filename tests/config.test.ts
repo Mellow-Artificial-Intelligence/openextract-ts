@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_MAX_INPUT_BYTES,
+  DEFAULT_MAX_REDIRECTS,
+  DEFAULT_URL_FETCH_TIMEOUT,
+  allowPrivateUrls,
+  maxRedirects,
   resolveMaxInputBytes,
+  urlFetchTimeout,
   validateMaxConcurrency,
   validateRetryOptions,
   validateSwarmSize,
@@ -56,5 +61,24 @@ describe("option validation", () => {
     expect(() => validateSwarmSize(0)).toThrow(/size/);
     expect(() => validateSwarmSize(99)).toThrow(/size/);
     expect(validateSwarmSize(4)).toBe(4);
+    expect(validateTimeout(1.5, "timeout")).toBe(1.5);
+  });
+});
+
+describe("environment helpers", () => {
+  it("reads timeouts, redirects, and private-url flags", () => {
+    expect(urlFetchTimeout()).toBe(DEFAULT_URL_FETCH_TIMEOUT);
+    expect(maxRedirects()).toBe(DEFAULT_MAX_REDIRECTS);
+    expect(allowPrivateUrls()).toBe(false);
+    process.env.OPENEXTRACT_URL_TIMEOUT = "nope";
+    process.env.OPENEXTRACT_MAX_REDIRECTS = "nope";
+    expect(urlFetchTimeout()).toBe(DEFAULT_URL_FETCH_TIMEOUT);
+    expect(maxRedirects()).toBe(DEFAULT_MAX_REDIRECTS);
+    process.env.OPENEXTRACT_URL_TIMEOUT = "12.5";
+    process.env.OPENEXTRACT_MAX_REDIRECTS = "3";
+    process.env.OPENEXTRACT_ALLOW_PRIVATE_URLS = "yes";
+    expect(urlFetchTimeout()).toBe(12.5);
+    expect(maxRedirects()).toBe(3);
+    expect(allowPrivateUrls()).toBe(true);
   });
 });

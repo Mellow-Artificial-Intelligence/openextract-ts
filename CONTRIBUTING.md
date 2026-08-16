@@ -9,6 +9,7 @@ git clone https://github.com/Mellow-Artificial-Intelligence/openextract.git
 cd openextract
 npm install
 npm test
+npm run test:coverage
 npm run typecheck
 ```
 

@@ -35,5 +35,14 @@ describe("loadSchema", () => {
 
   it("rejects a malformed path", async () => {
     await expect(loadSchema("no-colon")).rejects.toThrow(/module:exportName/);
+    await expect(loadSchema("")).rejects.toThrow(/module:exportName/);
+    const agents = join(dirname(fileURLToPath(import.meta.url)), "fixtures/agents.ts");
+    await expect(loadSchema(`${agents}:notAgent`)).rejects.toThrow(/not a Zod schema/);
+  });
+
+  it("returns a Zod schema as-is", async () => {
+    const { z } = await import("zod");
+    const schema = z.object({ ok: z.boolean() });
+    await expect(loadSchema(schema)).resolves.toBe(schema);
   });
 });

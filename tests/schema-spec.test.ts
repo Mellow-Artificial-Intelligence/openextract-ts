@@ -2,7 +2,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { isModuleExport, resolveSchemaSpec, schemaFromSpec } from "../src/schema-spec.js";
+import { inferType, isModuleExport, resolveSchemaSpec, schemaFromSpec } from "../src/schema-spec.js";
 
 function parse(spec: string) {
   return schemaFromSpec(spec);
@@ -37,6 +37,26 @@ describe("schemaFromSpec field lists", () => {
   it("rejects unknown types", () => {
     expect(() => parse("when: date")).toThrow(/Unknown type/);
   });
+
+  it("parses array-of-type syntax and separators", () => {
+    const schema = parse("tags: [string]; ok: boolean");
+    expect(schema.parse({ tags: ["a"], ok: true })).toEqual({ tags: ["a"], ok: true });
+  });
+
+  it("rejects empty, invalid JSON, and broken field lists", () => {
+    expect(() => parse("")).toThrow(/Schema is empty/);
+    expect(() => parse("{")).toThrow(/Invalid JSON schema/);
+    expect(() => parse("1name: string")).toThrow(/Invalid field name/);
+    expect(() => parse(": string")).toThrow(/Invalid field name/);
+    expect(() => parse("name string")).toThrow(/Expected ':'/);
+    expect(() => parse("items: [{ name: string }")).toThrow(/Expected '}]'/);
+    expect(() => parse("addr: { city: string")).toThrow(/Expected '}'/);
+    expect(() => parse("tags: [string")).toThrow(/Expected ']'/);
+    expect(() => parse("# only a comment")).toThrow(/at least one field/);
+    expect(isModuleExport("{\n")).toBe(false);
+    expect(isModuleExport("mod:string")).toBe(false);
+    expect(isModuleExport("mod:")).toBe(false);
+  });
 });
 
 describe("schemaFromSpec JSON", () => {
@@ -47,6 +67,24 @@ describe("schemaFromSpec JSON", () => {
       count: 2,
       tags: ["b"],
     });
+  });
+
+  it("rejects untyped JSON examples", () => {
+    expect(() => parse("{\"title\":null}")).toThrow(/replace null/);
+    expect(() => parse("{\"tags\":[]}")).toThrow(/add one example element/);
+    expect(() => parse("{}")).toThrow(/has no fields/);
+    expect(() => inferType(undefined, "root")).toThrow(/replace null/);
+    expect(() => inferType(Symbol("x"), "root")).toThrow(/Unsupported example value/);
+  });
+
+  it("treats type:object as JSON Schema", () => {
+    const schema = parse(JSON.stringify({ type: "object" }));
+    expect(schema.parse({})).toEqual({});
+  });
+
+  it("infers booleans and floats from examples", () => {
+    const schema = parse('{"ok":true,"ratio":1.5}');
+    expect(schema.parse({ ok: false, ratio: 2.25 })).toEqual({ ok: false, ratio: 2.25 });
   });
 
   it("reads a JSON Schema object", () => {

@@ -469,7 +469,7 @@ export async function runApp(
       return;
     }
     const filename = resultFilename();
-    await writeFile(filename, json.endsWith("\n") ? json : `${json}\n`, "utf8");
+    await writeFile(filename, json.replace(/\n?$/, "\n"), "utf8");
     status = `Saved ${filename}`;
     statusTone = "ok";
     paintStatus();
@@ -481,10 +481,10 @@ export async function runApp(
     const current = readForm();
     form.sourceKind = kind;
     form.source = current.source;
-    if (kind === "path") pathInput.value = current.source.split("\n", 1)[0] ?? "";
-    else setEditorText(pasteEditor, current.source);
+    pathInput.value = current.source.split("\n", 1)[0]!;
+    setEditorText(pasteEditor, current.source);
     syncSourceSlot();
-    if (focus === "source") paintFocus();
+    paintFocus();
   });
 
   presetSelect.on(TabSelectRenderableEvents.SELECTION_CHANGED, (_index, option) => {

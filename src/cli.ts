@@ -77,7 +77,7 @@ function takeValue(argv: string[], i: number, flag: string): [string, number] {
   return [value, i + 1];
 }
 
-function parseArgs(argv: string[]): CliArgs {
+export function parseArgs(argv: string[]): CliArgs {
   const inputFiles: string[] = [];
   const args: Partial<CliArgs> = {
     style: "direct",
@@ -306,7 +306,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           batchFailures += 1;
           const input = inputs[i];
           return {
-            input: typeof input === "string" ? input : "<bytes>",
+            input: typeof input === "string" ? input : /* v8 ignore next */ "<bytes>",
             error: result.message,
             errorType: result.name,
           };
@@ -334,6 +334,11 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   return 0;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  main().then((code) => process.exit(code));
+export function isMainModule(url: string, argv1?: string): boolean {
+  return url === pathToFileURL(argv1 ?? "").href;
+}
+
+/* v8 ignore next 3 -- process entry */
+if (isMainModule(import.meta.url, process.argv[1])) {
+  void main().then((code) => process.exit(code));
 }

@@ -64,7 +64,7 @@ export function safeSourceContext(source: string): string {
   if (source.startsWith("http://") || source.startsWith("https://")) {
     const parsed = new URL(source);
     const port = parsed.port ? `:${parsed.port}` : "";
-    return `URL ${parsed.protocol}//${parsed.hostname}${port}${parsed.pathname || "/"}`;
+    return `URL ${parsed.protocol}//${parsed.hostname}${port}${parsed.pathname || /* v8 ignore next */ "/"}`;
   }
   return `path '${basename(source)}'`;
 }
@@ -112,7 +112,7 @@ function ipv4ToInt(ip: string): number {
   return ((parts[0]! << 24) | (parts[1]! << 16) | (parts[2]! << 8) | parts[3]!) >>> 0;
 }
 
-function inCidr(ip: string, start: string, bits: number): boolean {
+export function inCidr(ip: string, start: string, bits: number): boolean {
   const mask = bits === 0 ? 0 : (~((1 << (32 - bits)) - 1)) >>> 0;
   return (ipv4ToInt(ip) & mask) === (ipv4ToInt(start) & mask);
 }

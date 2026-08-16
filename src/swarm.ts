@@ -144,7 +144,9 @@ async function runSwarm<T>(
   };
   await Promise.all(Array.from({ length: Math.min(maxConcurrency, members.length) }, () => worker()));
   const successes = results.filter((item): item is ExtractionResult<T> => !(item instanceof Error));
-  if (successes.length === 0) throw results[0] instanceof Error ? results[0] : new Error("Swarm produced no results.");
+  if (successes.length === 0) {
+    throw results[0] instanceof Error ? results[0] : /* v8 ignore next */ new Error("Swarm produced no results.");
+  }
   return {
     output: reduceOutputs(
       successes.map((item) => item.output),
