@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
 import { z } from "zod";
+import { loadAgent, loadAgents, type ExtractAgent } from "./agent.js";
 import { extractMany, extractManyWithResults } from "./batch.js";
 import { SWARM_REDUCES } from "./reduce.js";
 import {
@@ -14,13 +15,12 @@ import {
 } from "./swarm.js";
 import { toError } from "./errors.js";
 import { extract, extractWithUsage, type ExtractOptions } from "./extract.js";
-import { ModelError } from "./exceptions.js";
+import { ModelError, RemoteAgentError } from "./exceptions.js";
 import { loadSchema } from "./schema.js";
 import { Extractor, type ExtractorOptions } from "./session.js";
 import { ExtractionStyle } from "./styles.js";
 import { RetryPolicy, type ExtractionInputLike, type Usage } from "./types.js";
 import type { ExtractManyOptions } from "./batch.js";
-import type { LanguageModel } from "./model.js";
 
 const STYLES = [ExtractionStyle.DIRECT, ExtractionStyle.SEARCH, ExtractionStyle.CODE] as const;
 const SERVER_VERSION = "0.1.0";
@@ -44,6 +44,7 @@ const sharedFields = {
   retryBackoff: z.number().nonnegative().optional(),
   retryMaxBackoff: z.number().nonnegative().optional(),
   timeout: z.number().positive().optional().describe("Model call timeout in seconds"),
+  agent: z.string().optional().describe("module:exportName defineAgent / defineRemoteAgent export"),
 };
 
 export interface McpInput {
@@ -72,7 +73,7 @@ export interface CreateOpenExtractMcpServerOptions {
   extractSwarmWithResults?: typeof extractSwarmWithResults;
   createExtractor?: (
     schema: z.ZodType<unknown>,
-    model: LanguageModel,
+    model: ExtractAgent,
     options?: ExtractorOptions,
   ) => ExtractorHandle;
 }
@@ -119,6 +120,11 @@ function serializeError(error: unknown): Record<string, unknown> {
     payload.retryable = error.retryable;
     payload.retryAfter = error.retryAfter;
   }
+  if (error instanceof RemoteAgentError) {
+    payload.url = error.url;
+    payload.statusCode = error.statusCode;
+    payload.retryable = error.retryable;
+  }
   return payload;
 }
 
@@ -135,6 +141,7 @@ function capabilities(): Record<string, unknown> {
     styles: STYLES,
     inputs: ["local path", "http(s) URL", "base64 bytes + mediaType"],
     schemas: ["JSON Schema object", "JSON Schema string", "module:exportName"],
+    agents: ["defineAgent", "defineRemoteAgent", "module:exportName", "subagents"],
     options: [
       "instructions",
       "style",
@@ -150,6 +157,8 @@ function capabilities(): Record<string, unknown> {
       "includeResults",
       "size",
       "models",
+      "agent",
+      "agents",
       "reduce",
     ],
     env: [
@@ -167,6 +176,7 @@ function capabilities(): Record<string, unknown> {
       "ProviderNotInstalledError",
       "SchemaValidationError",
       "UrlFetchError",
+      "RemoteAgentError",
     ],
   };
 }
@@ -199,6 +209,7 @@ export function createOpenExtractMcpServer(
       instructions:
         "Use extract for one document, extract_many for batches, and extract_swarm to run parallel agents on one input. " +
         "Pass a JSON Schema (or module:exportName) plus a path, URL, or base64 bytes. " +
+        "Importable agents use agent / agents as module:exportName defineAgent exports. " +
         "create_extractor stores schema/model/options for repeated extractor_extract calls.",
       capabilities: { tools: {}, resources: {}, prompts: {}, completions: {} },
     },
@@ -222,7 +233,7 @@ export function createOpenExtractMcpServer(
       try {
         const schema = await loadSchema(args.schema);
         const input = resolveMcpInput(args);
-        const model = resolveModel(args.model);
+        const model = args.agent ? await loadAgent(args.agent) : resolveModel(args.model);
         const opts = extractOptions(args);
         const payload = args.includeUsage
           ? await runExtractWithUsage(schema, model, input, opts)
@@ -253,7 +264,7 @@ export function createOpenExtractMcpServer(
       try {
         const schema = await loadSchema(args.schema);
         const inputs = args.inputs.map(resolveMcpInput);
-        const model = resolveModel(args.model);
+        const model = args.agent ? await loadAgent(args.agent) : resolveModel(args.model);
         const opts: ExtractManyOptions = {
           ...extractOptions(args),
           maxConcurrency: args.maxConcurrency,
@@ -280,6 +291,11 @@ export function createOpenExtractMcpServer(
         ...sharedFields,
         ...inputFields,
         models: z.array(z.string()).min(1).optional().describe("Agent model ids. Overrides model+size when set."),
+        agents: z
+          .array(z.string())
+          .min(1)
+          .optional()
+          .describe("module:exportName defineAgent exports. Overrides models when set."),
         size: z.number().int().positive().optional().describe("Repeat model this many times (default 1)"),
         reduce: z.enum(SWARM_REDUCES).optional().describe("merge (default), vote, or first"),
         maxConcurrency: z.number().int().positive().optional(),
@@ -291,12 +307,16 @@ export function createOpenExtractMcpServer(
       try {
         const schema = await loadSchema(args.schema);
         const input = resolveMcpInput(args);
-        const members: SwarmMember[] | string = args.models?.length
-          ? args.models.map((model) => ({ model }))
-          : resolveModel(args.model);
+        const members: Awaited<ReturnType<typeof loadAgents>> | SwarmMember[] | string = args.agents?.length
+          ? await loadAgents(args.agents)
+          : args.models?.length
+            ? args.models.map((model) => ({ model }))
+            : args.agent
+              ? [await loadAgent(args.agent)]
+              : resolveModel(args.model);
         const opts: ExtractSwarmOptions = {
           ...extractOptions(args),
-          size: args.models?.length ? undefined : args.size,
+          size: args.agents?.length || args.models?.length ? undefined : args.size,
           reduce: args.reduce,
           maxConcurrency: args.maxConcurrency,
         };
@@ -330,7 +350,7 @@ export function createOpenExtractMcpServer(
     async (args) => {
       try {
         const schema = await loadSchema(args.schema);
-        const extractor = createExtractor(schema, resolveModel(args.model), {
+        const extractor = createExtractor(schema, args.agent ? await loadAgent(args.agent) : resolveModel(args.model), {
           instructions: args.instructions,
           style: args.style,
           timeout: args.timeout,
@@ -428,6 +448,7 @@ export function createOpenExtractMcpServer(
             "Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`.",
             "Styles: `direct` (any media), `search` and `code` (UTF-8 text only).",
             "Schema: JSON Schema object/string, or `module:exportName` for a local Zod export.",
+            "Agents: `agent` / `agents` as `module:exportName` defineAgent or defineRemoteAgent exports.",
             "Input: `source` (path or URL) or `data` (base64) plus `mediaType`.",
           ].join("\n"),
         },
@@ -487,7 +508,7 @@ export function createOpenExtractMcpServer(
             type: "text" as const,
             text:
               `Extract structured data from ${source} using the openextract extract_swarm tool. ` +
-              `Schema: ${schema}. Agents: ${size ?? "3"}.` +
+              `Schema: ${schema}. Agents: ${size ?? "3"} (or pass agents as module:exportName).` +
               (instructions ? ` Instructions: ${instructions}` : ""),
           },
         },

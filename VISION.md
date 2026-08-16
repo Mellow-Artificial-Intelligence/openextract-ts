@@ -74,6 +74,7 @@ The caller should be able to change any of these without rewriting I/O, retries,
 - Styles: `direct`, `search`, `code`.
 - Surfaces: library, CLI, OpenTUI, Next.js UI, MCP, Vercel Workflows.
 - Batch (`extractMany`) for many inputs; `extractSwarm` for many agents on one input (`merge` / `vote` / `first`).
+- Importable extract agents: `defineAgent` / `defineRemoteAgent` modules, optional `subagents`, and `module:exportName` loading.
 - `Extractor` sessions and `openextract/workflow` for reused or durable runs.
 
 ## Direction
@@ -82,6 +83,7 @@ Keep the primitive small. Grow the ways agents can *use* it:
 
 - Richer style/variability so new extraction modes plug in without new entry points.
 - Clearer swarm composition (split, map, reduce) on top of `extract` / `extractMany` / `extractSwarm`.
+- Importable specialist agents (`defineAgent`, `defineRemoteAgent`, `subagents`) that still call the same extract primitive.
 - Better agent discovery: capabilities, schemas, and examples that an MCP client can act on immediately.
 - The same contract everywhere — if a human can extract it in the TUI, an agent can extract it through MCP.
 

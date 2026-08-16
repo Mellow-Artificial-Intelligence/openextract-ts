@@ -1,11 +1,6 @@
+import { type ExtractAgent } from "./agent.js";
+import { extract, extractWithUsage } from "./extract.js";
 import { validateTimeout } from "./config.js";
-import {
-  resolveExtractOptions,
-  runDocumentExtraction,
-  selectExtractionResult,
-  type ResolvedExtractOptions,
-} from "./pipeline.js";
-import type { LanguageModel } from "./model.js";
 import { RetryPolicy, type ExtractOptions, type ExtractionInputLike, type Usage } from "./types.js";
 import type { z } from "zod";
 
@@ -19,20 +14,24 @@ export interface ExtractorOptions extends Pick<
 
 export class Extractor<T> {
   private readonly schema: z.ZodType<T>;
-  private readonly model: LanguageModel;
-  private readonly options: ResolvedExtractOptions;
+  private readonly model: ExtractAgent;
+  private readonly options: ExtractOptions;
   private closed = false;
 
-  constructor(schema: z.ZodType<T>, model: LanguageModel, options: ExtractorOptions = {}) {
+  constructor(schema: z.ZodType<T>, model: ExtractAgent, options: ExtractorOptions = {}) {
     const retry = options.retryPolicy ?? new RetryPolicy();
     this.schema = schema;
     this.model = model;
-    this.options = resolveExtractOptions({
-      ...options,
+    this.options = {
+      instructions: options.instructions,
+      style: options.style,
+      timeout: options.timeout,
+      instrument: options.instrument,
+      maxInputBytes: options.maxInputBytes,
       maxRetries: retry.maxRetries,
       retryBackoff: retry.backoff,
       retryMaxBackoff: retry.maxBackoff,
-    });
+    };
     if (options.urlTimeout != null) validateTimeout(options.urlTimeout, "urlTimeout");
   }
 
@@ -61,13 +60,10 @@ export class Extractor<T> {
     withUsage: boolean,
   ): Promise<T | { output: T; usage: Usage }> {
     if (this.closed) throw new Error("Extractor is closed and cannot be reused.");
-    return selectExtractionResult(
-      await runDocumentExtraction(this.schema, this.model, inputFile, {
-        ...this.options,
-        mediaType: options.mediaType,
-      }),
-      withUsage,
-    );
+    const opts = { ...this.options, mediaType: options.mediaType };
+    return withUsage
+      ? extractWithUsage(this.schema, this.model, inputFile, opts)
+      : extract(this.schema, this.model, inputFile, opts);
   }
 }
 

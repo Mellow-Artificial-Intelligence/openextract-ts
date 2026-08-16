@@ -23,8 +23,8 @@ describe("resolveSwarmMembers", () => {
       "xai/grok-4.6",
     ]);
     expect(members).toEqual([
-      { model: "openai/gpt-5.5", instructions: undefined, style: "search" },
-      { model: "xai/grok-4.6" },
+      { kind: "local", model: "openai/gpt-5.5", instructions: undefined, style: "search" },
+      { kind: "local", model: "xai/grok-4.6" },
     ]);
   });
 

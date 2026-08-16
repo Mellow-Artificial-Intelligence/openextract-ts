@@ -127,6 +127,39 @@ const { output, usage, agents } = await extractSwarmWithResults(PdfInfo, [
 
 The source is loaded once. Failed agents are skipped as long as one succeeds. In the web UI, set **Agents** and attach a model to each one. On the CLI, pass `--models openai/gpt-5.6-luna,xai/grok-4.6`.
 
+## Importable agents
+
+Agents are modules, same idea as eve `defineAgent` / `defineRemoteAgent`. Import them in process, or load them with `module:exportName` from the CLI and MCP.
+
+```ts
+import { defineAgent, defineRemoteAgent, bearer, extract } from "openextract";
+import { search } from "./agents/search.js";
+
+export const invoice = defineAgent({
+  description: "Extracts invoice totals and line items.",
+  model: "openai/gpt-5.5",
+  style: "direct",
+  subagents: [search],
+});
+
+export const remoteOcr = defineRemoteAgent({
+  url: () => process.env.OCR_AGENT_URL ?? "https://extract.example.com",
+  description: "Remote OCR specialist.",
+  auth: bearer(() => process.env.OCR_AGENT_TOKEN ?? ""),
+});
+
+const result = await extract(Invoice, invoice, "./bill.pdf");
+```
+
+`description` is required. A local agent needs `model` or `subagents`. Nested `subagents` flatten into a swarm (local models, member objects, or remote agents). `extract(schema, agent, input)` runs a single local agent in one shot, or a swarm when the agent has subagents or is remote.
+
+A remote agent POSTs the already-loaded source to `{url}{path}` (default `/extract`) as JSON Schema plus base64 `data` / `mediaType`. The URL is trusted configuration (http/https only); it is not subject to document SSRF private-host blocking. Auth helpers: `bearer`, `basic`, `vercelOidc`.
+
+```bash
+npx openextract ./bill.pdf --schema ./schemas.ts:Invoice --agent ./agents/team.ts:default
+npx openextract ./bill.pdf --schema ./schemas.ts:Invoice --agents ./agents/invoice.ts:default,./agents/remote.ts:default
+```
+
 ## Terminal UI
 
 ```bash
@@ -167,7 +200,7 @@ npx openextract ./reports/q4.pdf \
   --instructions "Pull totals and line items."
 ```
 
-`--schema` is a `module:exportName` path to a Zod schema. Exit codes: `0` success, `2` URL fetch, `3` schema validation, `4` model, `5` other extraction, `6` missing credentials, `7` partial batch (`--continue-on-error`).
+`--schema` is a `module:exportName` path to a Zod schema. `--agent` / `--agents` load `defineAgent` exports the same way. Exit codes: `0` success, `2` URL fetch, `3` schema validation, `4` model, `5` other extraction, `6` missing credentials, `7` partial batch (`--continue-on-error`).
 
 ## MCP
 
@@ -192,7 +225,7 @@ stdio by default (Cursor, Claude Desktop). `--http --port 3000` serves Streamabl
 }
 ```
 
-Tools cover the full API: `extract`, `extract_many`, `extract_swarm`, and reusable `create_extractor` / `extractor_extract` / `close_extractor` sessions. Pass a JSON Schema (or `module:exportName`) plus a path, URL, or base64 bytes. Styles (`direct`, `search`, `code`), retries, usage, batch, and swarm options are all available.
+Tools cover the full API: `extract`, `extract_many`, `extract_swarm`, and reusable `create_extractor` / `extractor_extract` / `close_extractor` sessions. Pass a JSON Schema (or `module:exportName`) plus a path, URL, or base64 bytes. Importable agents use `agent` / `agents` as `module:exportName` `defineAgent` exports. Styles (`direct`, `search`, `code`), retries, usage, batch, and swarm options are all available.
 
 ```ts
 import { createOpenExtractMcpServer } from "openextract/mcp";
@@ -234,6 +267,7 @@ import {
   SchemaValidationError,
   ModelError,
   ProviderNotInstalledError,
+  RemoteAgentError,
   ExtractionError,
 } from "openextract";
 
@@ -246,7 +280,8 @@ try {
   else if (error instanceof ProviderNotInstalledError) { /* AI_GATEWAY_API_KEY */ }
   else if (error instanceof ModelError) {
     console.log(error.provider, error.statusCode, error.retryable, error.retryAfter);
-  } else if (error instanceof ExtractionError) { /* fallback */ }
+  } else if (error instanceof RemoteAgentError) { /* remote defineRemoteAgent */ }
+  else if (error instanceof ExtractionError) { /* fallback */ }
 }
 ```
 
