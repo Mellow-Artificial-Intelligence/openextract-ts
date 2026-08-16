@@ -6,6 +6,8 @@
 
 `openextract` turns any document, image, audio, or video file into a typed Zod object in a single call. Point it at a local path or a URL, pass a schema, and get back validated data. Model calls go through the [Vercel AI SDK](https://ai-sdk.dev) and [AI Gateway](https://vercel.com/ai-gateway).
 
+![Table extract in the local cookbook UI](docs/images/web-table-extract.png)
+
 ## Installation
 
 ```bash
@@ -210,6 +212,8 @@ npm run web
 ```
 
 The web UI is a cookbook: pick a recipe in the left rail. **Table extract** is the default (describe columns, edit the schema, extract rows from a source). **AP inbox** takes a folder of vendor invoices and returns one payable each. **File audit** runs completeness, policy, and math agents on each packet and merges a verdict. Disputed payable and invoice math sit next to those.
+
+![File audit recipe with completeness, policy, and math agents](docs/images/web-file-audit.png)
 
 On Vercel, set the Git root directory to `web/`. Production uses AI Gateway via OIDC; locally set `AI_GATEWAY_API_KEY`. Pull-request preview deploys are off.
 

@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- README screenshots of the local cookbook UI (table extract and file audit).
 - Cookbook OpenTUI (`npm run cookbook`) for interactive recipes: AP inbox (one payable per invoice), file audit (completeness / policy / math), disputed payable vote, and invoice math. The output pane lists each agent’s role, phase, extract, and elapsed time.
 - `extractSwarm` `onAgentStart` / `onAgent` callbacks fire when each parallel agent begins and finishes.
 - `npm run test:coverage` with 100% line, function, statement, and branch thresholds on `src/`. CI runs it in place of `npm test`.
