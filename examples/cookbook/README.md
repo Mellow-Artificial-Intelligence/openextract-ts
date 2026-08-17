@@ -26,8 +26,8 @@ Unit tests cover the recipe with `MockLanguageModelV3` (`npm test`). Live runs h
 | Recipe | What it shows |
 | --- | --- |
 | [AP inbox](01-document-swarm/extract.ts) | A folder of vendor invoices. One extract per bill — a payable record each. |
-| File audit | Completeness, policy, and math agents review each file (clean invoice, messy expense, draft MSA), then merge a verdict. |
+| [File audit](04-audit/docs) | Completeness, policy, and math agents review each file (clean invoice, messy expense, draft MSA), then merge a verdict. |
 | [Disputed payable](03-vote/docs/contoso-invoice.txt) | Agents `vote` when the printed total and a rush scribble disagree. |
-| Invoice math | One `search` agent and one `code` agent on the same invoice, then `merge`. |
+| [Invoice math](recipes.ts) | One `search` agent and one `code` agent on the same invoice, then `merge`. |
 
 AP inbox is the everyday job: many documents, one output each. File audit is the swarm: several perspectives on the same packet, then a final result.

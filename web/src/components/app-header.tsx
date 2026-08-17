@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export const GITHUB_URL = "https://github.com/Mellow-Artificial-Intelligence/openextract";
+export const GITHUB_URL = "https://github.com/Mellow-Artificial-Intelligence/openextract-ts";
 
 export function AppHeader({ title, children }: { title: string; children?: ReactNode }) {
   return (

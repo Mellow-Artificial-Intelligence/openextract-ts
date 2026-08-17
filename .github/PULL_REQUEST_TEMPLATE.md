@@ -32,7 +32,7 @@
 ## Testing
 
 ```bash
-npm test
+npm run test:coverage
 npm run typecheck
 ```
 
@@ -49,6 +49,6 @@ npm run typecheck
 ## Checklist
 
 - [ ] Read [AGENTS.md](https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/AGENTS.md). Read [VISION.md](https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/VISION.md) if this changes extract APIs, styles, swarms, or MCP.
-- [ ] `npm test` and `npm run typecheck` pass
+- [ ] `npm run test:coverage` and `npm run typecheck` pass
 - [ ] `npm run web:typecheck` if `web/` changed
 - [ ] SSRF and size guards in `src/media.ts` are unchanged (or intentionally tightened)

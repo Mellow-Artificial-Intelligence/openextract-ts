@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Cookbook TUI loads language models from AI Gateway (`gateway.getAvailableModels()`), keeps the output pane and footer status empty until extract, and updates per-agent invoice cards in place as work starts and finishes.
+- Docs match this TypeScript repo: `SECURITY.md` (no Python leftovers), contributing clone URL, npm `repository` / GitHub links, landing page cookbook + agents, CLI flags, and `OPENEXTRACT_MODEL`.
 
 ## [0.2.0] - 2026-08-15
 
