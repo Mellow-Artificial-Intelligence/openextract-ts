@@ -21,7 +21,9 @@ The local Next.js cookbook lives in `web/`. From the repo root: `npm install --p
 3. Ensure `npm run test:coverage` and `npm run typecheck` are clean (`npm run web:typecheck` if you touched `web/`)
 4. Open a pull request with `.github/PULL_REQUEST_TEMPLATE.md`
 
-Keep changes focused. Public API lives in `src/index.ts`. Agent conventions are in [AGENTS.md](AGENTS.md); product direction is in [VISION.md](VISION.md).
+Keep changes focused. Public API lives in `src/index.ts`. Agent conventions are in [AGENTS.md](AGENTS.md); product direction is in [VISION.md](VISION.md). User and agent how-to lives in `docs/` (GitHub Pages).
+
+Preview docs locally with Jekyll (`docs/` as source) or by opening the Markdown files. The Pages workflow publishes `docs/` on `main`.
 
 ## Issues
 

@@ -1,3 +1,5 @@
+---
+---
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
@@ -65,7 +67,7 @@
 
     <header class="fixed top-0 w-full z-50 bg-[#fafafa]/80 backdrop-blur-lg border-b border-black/5">
       <div class="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-        <a href="#" class="flex items-center gap-2">
+        <a href="{{ '/' | relative_url }}" class="flex items-center gap-2">
           <div class="w-8 h-8 bg-black flex items-center justify-center">
             <span class="text-white font-mono font-bold text-xs">OE</span>
           </div>
@@ -73,7 +75,9 @@
         </a>
 
         <nav class="flex items-center gap-4 sm:gap-6">
-          <a href="https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/docs/api-reference.md" class="font-mono text-xs text-black/40 hover:text-black transition-colors">API</a>
+          <a href="{{ '/guide.html' | relative_url }}" class="font-mono text-xs text-black/40 hover:text-black transition-colors">Guide</a>
+          <a href="{{ '/mcp.html' | relative_url }}" class="font-mono text-xs text-black/40 hover:text-black transition-colors">MCP</a>
+          <a href="{{ '/api-reference.html' | relative_url }}" class="font-mono text-xs text-black/40 hover:text-black transition-colors">API</a>
           <a href="https://github.com/Mellow-Artificial-Intelligence/openextract-ts" class="font-mono text-xs text-black/40 hover:text-black transition-colors">GitHub</a>
         </nav>
       </div>
@@ -103,9 +107,13 @@
           </p>
 
           <div class="flex flex-col sm:flex-row gap-3 justify-center mb-10 sm:mb-14">
-            <a href="https://github.com/Mellow-Artificial-Intelligence/openextract-ts"
+            <a href="{{ '/guide.html' | relative_url }}"
+               class="h-10 px-5 bg-black text-white font-medium text-sm flex items-center justify-center hover:bg-black/80 transition-colors">
+               Read the guide
+            </a>
+            <a href="{{ '/mcp.html' | relative_url }}"
                class="h-10 px-5 bg-white border border-black/10 text-black font-medium text-sm flex items-center justify-center hover:bg-black/5 hover:border-black/20 transition-colors">
-               View Source
+               MCP for agents
             </a>
             <button onclick="copyInstall()" class="h-10 px-3 sm:px-4 bg-white border border-black/10 text-black/60 font-mono text-xs sm:text-sm flex items-center justify-center gap-2 sm:gap-3 hover:bg-black/5 hover:border-black/20 transition-all group">
               <span class="text-black/40">$</span> <span class="truncate">npm install openextract zod</span>
@@ -294,6 +302,28 @@
         </div>
       </section>
 
+      <section class="py-16 sm:py-24 border-t border-black/5">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6">
+          <p class="font-mono text-[11px] text-black/40 uppercase tracking-wider mb-3">Documentation</p>
+          <h2 class="text-2xl sm:text-3xl font-bold mb-8 sm:mb-10 text-black/90">A guide for people and agents</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <a href="{{ '/guide.html' | relative_url }}" class="p-5 border border-black/10 bg-white hover:border-black/30 transition-colors">
+              <h3 class="font-mono text-sm font-medium text-black/90 mb-2">Guide</h3>
+              <p class="text-sm text-black/60 leading-relaxed">Install, extract, styles, batch, swarms, importable agents, CLI, and errors.</p>
+            </a>
+            <a href="{{ '/mcp.html' | relative_url }}" class="p-5 border border-black/10 bg-white hover:border-black/30 transition-colors">
+              <h3 class="font-mono text-sm font-medium text-black/90 mb-2">MCP for agents</h3>
+              <p class="text-sm text-black/60 leading-relaxed">Which tool to call, schema and input rules, Cursor config, resources, and prompts.</p>
+            </a>
+            <a href="{{ '/api-reference.html' | relative_url }}" class="p-5 border border-black/10 bg-white hover:border-black/30 transition-colors">
+              <h3 class="font-mono text-sm font-medium text-black/90 mb-2">API reference</h3>
+              <p class="text-sm text-black/60 leading-relaxed">Function catalog for the library, CLI flags, MCP, and <code class="font-mono text-black/90 bg-black/5 px-1 py-0.5 text-xs">openextract/workflow</code>.</p>
+            </a>
+          </div>
+          <p class="font-mono text-xs text-black/40 mt-5">Agents can also fetch <a href="{{ '/llms.txt' | relative_url }}" class="underline underline-offset-2 hover:text-black/70">llms.txt</a>.</p>
+        </div>
+      </section>
+
       <section id="whats-new" class="py-16 sm:py-24 border-t border-black/5 scroll-mt-14">
         <div class="max-w-5xl mx-auto px-4 sm:px-6">
           <div class="flex items-baseline justify-between mb-8 sm:mb-10 flex-wrap gap-3">
@@ -366,8 +396,10 @@
       <div class="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-4">
         <span class="font-mono text-xs text-black/40">&copy; 2026 openextract. MIT License.</span>
         <div class="flex gap-6">
+          <a href="{{ '/guide.html' | relative_url }}" class="font-mono text-xs text-black/40 hover:text-black/60 transition-colors">Guide</a>
+          <a href="{{ '/mcp.html' | relative_url }}" class="font-mono text-xs text-black/40 hover:text-black/60 transition-colors">MCP</a>
+          <a href="{{ '/api-reference.html' | relative_url }}" class="font-mono text-xs text-black/40 hover:text-black/60 transition-colors">API</a>
           <a href="https://github.com/Mellow-Artificial-Intelligence/openextract-ts" class="font-mono text-xs text-black/40 hover:text-black/60 transition-colors">GitHub</a>
-          <a href="https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/docs/api-reference.md" class="font-mono text-xs text-black/40 hover:text-black/60 transition-colors">API</a>
         </div>
       </div>
     </footer>

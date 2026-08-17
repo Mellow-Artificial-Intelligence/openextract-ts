@@ -1,3 +1,10 @@
+---
+layout: docs
+title: API reference
+description: Function catalog for extract, batch, swarms, agents, MCP, and workflows.
+permalink: /api-reference.html
+---
+
 # API reference
 
 ## Terminal UI
@@ -99,7 +106,7 @@ Reusable session that stores schema, model, style, retry policy, and timeout.
 | `OPENEXTRACT_ALLOW_PRIVATE_URLS` | unset | Set `1` / `true` / `yes` to allow private hosts |
 | `OPENEXTRACT_MAX_INPUT_BYTES` | `52428800` | Per-input byte cap |
 
-URL fetch is a privileged operation. See [SECURITY.md](../SECURITY.md).
+URL fetch is a privileged operation. See [SECURITY.md](https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/SECURITY.md).
 
 ## MCP
 
@@ -115,7 +122,7 @@ import { createOpenExtractMcpServer } from "openextract/mcp";
 const server = createOpenExtractMcpServer({ model: "openai/gpt-5.5" });
 ```
 
-Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts: `extract-document`, `extract-batch`, `extract-swarm`.
+Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts: `extract-document`, `extract-batch`, `extract-swarm`. Agent-oriented contract: [MCP for agents](mcp.html).
 
 ## Vercel Workflows
 

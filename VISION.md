@@ -34,7 +34,7 @@ If extraction stays ad hoc, every agent reinvents it. openextract is that shared
 
 ## What “easy for agents” means
 
-- Discoverable: MCP resources (`openextract://capabilities`, `openextract://docs/api`) and this repo’s agent files explain the contract.
+- Discoverable: MCP resources (`openextract://capabilities`, `openextract://docs/api`), the GitHub Pages guide, and this repo’s agent files explain the contract.
 - Minimal: schema + source (+ optional style/instructions) is enough.
 - Typed: success is a validated object; failure is `UrlFetchError`, `InputTooLargeError`, `SchemaValidationError`, `ModelError`, or `ProviderNotInstalledError`.
 - Reusable: an `Extractor` holds schema, model, style, and retry policy so a swarm worker does not re-specify them per file.

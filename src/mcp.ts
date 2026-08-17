@@ -467,6 +467,7 @@ export function createOpenExtractMcpServer(
             "Agents: `agent` / `agents` as a directory (`agent.ts` + `subagents/`), file, or `module:exportName`.",
             "Swarm: `size`, `models`, or `agents`; `reduce` is `merge` (default), `vote`, or `first`.",
             "Input: `source` (path or URL) or `data` (base64) plus `mediaType`.",
+            "Guide: https://mellow-artificial-intelligence.github.io/openextract-ts/mcp.html",
           ].join("\n"),
         },
       ],

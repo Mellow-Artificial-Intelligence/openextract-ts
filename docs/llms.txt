@@ -1,0 +1,43 @@
+# openextract
+
+> One call: schema + model + source → a validated object. Do not invent a second extraction pipeline.
+
+## Docs
+
+- [Guide](guide.html): install, extract, styles, batch, swarms, importable agents, CLI, errors
+- [MCP for agents](mcp.html): tools, resources, prompts, Cursor config
+- [API reference](api-reference.html): function catalog
+
+## Call
+
+| Job | Library | MCP |
+| --- | --- | --- |
+| One input | `extract(schema, model, input)` | `extract` |
+| Many inputs | `extractMany` | `extract_many` |
+| Many agents, one input | `extractSwarm` | `extract_swarm` |
+| Reuse config | `Extractor` | `create_extractor` → `extractor_extract` |
+| Durable | `extractWorkflow` | n/a (use `openextract/workflow`) |
+
+## Style
+
+- `direct` — default. Required for PDF, Office, image, audio, video.
+- `search` — UTF-8 text file tools. No silent fallback.
+- `code` — sandboxed JS, document as `document`. UTF-8 only.
+
+## Schema
+
+- TypeScript: Zod
+- MCP / workflows: JSON Schema object or string, or `module:exportName`
+- Agent with `outputSchema`: omit schema
+
+## Input
+
+Path or http(s) URL. Bytes need `mediaType`. MCP: `source` or base64 `data` + `mediaType`. Cap 50 MiB. Private URL hosts blocked unless `OPENEXTRACT_ALLOW_PRIVATE_URLS`.
+
+## Auth
+
+`AI_GATEWAY_API_KEY` or Vercel OIDC. Default model: `OPENEXTRACT_MODEL`.
+
+```bash
+npx openextract-mcp
+```

@@ -1,4 +1,11 @@
 title: openextract
 description: Extract structured data from documents, images, audio, and video using LLMs and Zod
-baseurl: "/openextract"
 url: "https://mellow-artificial-intelligence.github.io"
+baseurl: "/openextract-ts"
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+exclude:
+  - Gemfile
+  - Gemfile.lock

@@ -1,0 +1,50 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{% if page.title %}{{ page.title }} · {% endif %}openextract</title>
+<meta name="description" content="{{ page.description | default: site.description }}" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'system-ui', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+        },
+      }
+    }
+  }
+</script>
+<style>
+  body { background-color: #fafafa; min-height: 100vh; }
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .prose h1 { font-size: 1.875rem; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 1rem; }
+  .prose h2 { font-size: 1.25rem; font-weight: 700; margin: 2.25rem 0 0.75rem; padding-top: 0.5rem; }
+  .prose h3 { font-size: 1rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; margin: 1.5rem 0 0.5rem; }
+  .prose p, .prose li { color: rgba(0,0,0,0.65); line-height: 1.65; }
+  .prose p { margin: 0.75rem 0; }
+  .prose ul, .prose ol { margin: 0.75rem 0; padding-left: 1.25rem; }
+  .prose ul { list-style: disc; }
+  .prose ol { list-style: decimal; }
+  .prose li { margin: 0.25rem 0; }
+  .prose a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+  .prose a:hover { color: #000; }
+  .prose code { font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; background: rgba(0,0,0,0.05); padding: 0.1rem 0.35rem; }
+  .prose pre { background: #fff; border: 1px solid rgba(0,0,0,0.1); padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+  .prose pre code { background: none; padding: 0; font-size: 0.75rem; line-height: 1.6; }
+  .prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; }
+  .prose th, .prose td { border: 1px solid rgba(0,0,0,0.1); padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
+  .prose th { background: #fff; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(0,0,0,0.5); }
+  .prose td { background: rgba(255,255,255,0.6); color: rgba(0,0,0,0.7); }
+  .prose blockquote { border-left: 2px solid rgba(0,0,0,0.15); padding-left: 1rem; margin: 1rem 0; color: rgba(0,0,0,0.6); }
+  .prose hr { border: 0; border-top: 1px solid rgba(0,0,0,0.08); margin: 2rem 0; }
+  .highlighter-rouge .highlight { background: transparent; }
+</style>
