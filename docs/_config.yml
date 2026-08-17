@@ -1,4 +1,4 @@
 title: openextract
-description: Extract structured data from documents, images, audio, and video using LLMs
+description: Extract structured data from documents, images, audio, and video using LLMs and Zod
 baseurl: "/openextract"
 url: "https://mellow-artificial-intelligence.github.io"

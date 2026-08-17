@@ -73,8 +73,8 @@
         </a>
 
         <nav class="flex items-center gap-4 sm:gap-6">
-          <a href="https://github.com/Mellow-Artificial-Intelligence/openextract/blob/main/docs/api-reference.md" class="font-mono text-xs text-black/40 hover:text-black transition-colors">API</a>
-          <a href="https://github.com/Mellow-Artificial-Intelligence/openextract" class="font-mono text-xs text-black/40 hover:text-black transition-colors">GitHub</a>
+          <a href="https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/docs/api-reference.md" class="font-mono text-xs text-black/40 hover:text-black transition-colors">API</a>
+          <a href="https://github.com/Mellow-Artificial-Intelligence/openextract-ts" class="font-mono text-xs text-black/40 hover:text-black transition-colors">GitHub</a>
         </nav>
       </div>
     </header>
@@ -88,7 +88,7 @@
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             <span class="font-mono text-black/40">v0.2.0</span>
             <span class="text-black/40">|</span>
-            <span class="text-black/40">Agent swarms and durable workflows</span>
+            <span class="text-black/40">Cookbook UI, importable agents, and swarms</span>
           </a>
 
           <h1 class="animate-slide-up opacity-0 [animation-delay:100ms] text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 sm:mb-6 bg-gradient-to-b from-black to-black/60 bg-clip-text text-transparent">
@@ -103,7 +103,7 @@
           </p>
 
           <div class="flex flex-col sm:flex-row gap-3 justify-center mb-10 sm:mb-14">
-            <a href="https://github.com/Mellow-Artificial-Intelligence/openextract"
+            <a href="https://github.com/Mellow-Artificial-Intelligence/openextract-ts"
                class="h-10 px-5 bg-white border border-black/10 text-black font-medium text-sm flex items-center justify-center hover:bg-black/5 hover:border-black/20 transition-colors">
                View Source
             </a>
@@ -261,7 +261,7 @@
             <div class="p-5 border border-black/10 bg-white">
               <h3 class="font-mono text-sm font-medium text-black/90 mb-2">Library</h3>
               <p class="text-sm text-black/60 leading-relaxed mb-3">
-                <code class="font-mono text-black/90 bg-black/5 px-1.5 py-0.5 text-xs">extract</code>, sessions, batch, and swarms. Styles: <code class="font-mono text-black/90 bg-black/5 px-1 py-0.5 text-xs">direct</code>, <code class="font-mono text-black/90 bg-black/5 px-1 py-0.5 text-xs">search</code>, <code class="font-mono text-black/90 bg-black/5 px-1 py-0.5 text-xs">code</code>.
+                <code class="font-mono text-black/90 bg-black/5 px-1.5 py-0.5 text-xs">extract</code>, sessions, batch, swarms, and eve-shaped <code class="font-mono text-black/90 bg-black/5 px-1 py-0.5 text-xs">defineAgent</code>. Styles: <code class="font-mono text-black/90 bg-black/5 px-1 py-0.5 text-xs">direct</code>, <code class="font-mono text-black/90 bg-black/5 px-1 py-0.5 text-xs">search</code>, <code class="font-mono text-black/90 bg-black/5 px-1 py-0.5 text-xs">code</code>.
               </p>
               <pre class="text-[11px] font-mono leading-relaxed text-black/60 bg-black/5 p-2.5 overflow-x-auto"><code>import { extract } from "openextract";</code></pre>
             </div>
@@ -269,7 +269,7 @@
             <div class="p-5 border border-black/10 bg-white">
               <h3 class="font-mono text-sm font-medium text-black/90 mb-2">CLI &amp; TUI</h3>
               <p class="text-sm text-black/60 leading-relaxed mb-3">
-                One-shot extraction or an OpenTUI app for files, URLs, and pasted text.
+                One-shot extraction, an OpenTUI app, or cookbook recipes (<code class="font-mono text-black/90 bg-black/5 px-1 py-0.5 text-xs">npm run cookbook</code>).
               </p>
               <pre class="text-[11px] font-mono leading-relaxed text-black/60 bg-black/5 p-2.5 overflow-x-auto"><code>npx openextract --tui ./reports/q4.pdf</code></pre>
             </div>
@@ -277,15 +277,15 @@
             <div class="p-5 border border-black/10 bg-white">
               <h3 class="font-mono text-sm font-medium text-black/90 mb-2">MCP</h3>
               <p class="text-sm text-black/60 leading-relaxed mb-3">
-                stdio or Streamable HTTP. Tools cover extract, batch, and reusable sessions.
+                stdio or Streamable HTTP. Tools cover extract, batch, swarm, sessions, and importable agents.
               </p>
               <pre class="text-[11px] font-mono leading-relaxed text-black/60 bg-black/5 p-2.5 overflow-x-auto"><code>npx openextract-mcp</code></pre>
             </div>
 
             <div class="p-5 border border-black/10 bg-white">
-              <h3 class="font-mono text-sm font-medium text-black/90 mb-2">Web UI</h3>
+              <h3 class="font-mono text-sm font-medium text-black/90 mb-2">Cookbook UI</h3>
               <p class="text-sm text-black/60 leading-relaxed mb-3">
-                Local Next.js app: describe a table, stream a schema, extract rows.
+                Local Next.js app: table extract, AP inbox, file audit, disputed payable, and invoice math.
               </p>
               <pre class="text-[11px] font-mono leading-relaxed text-black/60 bg-black/5 p-2.5 overflow-x-auto"><code>npm run web</code></pre>
             </div>
@@ -301,9 +301,20 @@
               <p class="font-mono text-[11px] text-black/40 uppercase tracking-wider mb-2">What&rsquo;s new</p>
               <h2 class="text-2xl sm:text-3xl font-bold text-black/90">v0.2.0</h2>
             </div>
-            <a href="https://github.com/Mellow-Artificial-Intelligence/openextract/blob/main/CHANGELOG.md" class="font-mono text-xs text-black/40 hover:text-black/90 transition-colors inline-flex items-center gap-1.5">
+            <a href="https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/CHANGELOG.md" class="font-mono text-xs text-black/40 hover:text-black/90 transition-colors inline-flex items-center gap-1.5">
               Full changelog <i data-lucide="arrow-up-right" class="w-3 h-3"></i>
             </a>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mb-6">
+            <figure class="border border-black/10 bg-white overflow-hidden">
+              <img src="images/web-table-extract.png" alt="Table extract in the local cookbook UI" class="w-full h-auto">
+              <figcaption class="px-4 py-2.5 font-mono text-[11px] text-black/40">Table extract</figcaption>
+            </figure>
+            <figure class="border border-black/10 bg-white overflow-hidden">
+              <img src="images/web-file-audit.png" alt="File audit recipe with completeness, policy, and math agents" class="w-full h-auto">
+              <figcaption class="px-4 py-2.5 font-mono text-[11px] text-black/40">File audit swarm</figcaption>
+            </figure>
           </div>
 
           <div class="p-6 border border-black/10 bg-white">
@@ -311,18 +322,18 @@
               <div class="w-9 h-9 border border-black/10 flex items-center justify-center">
                 <i data-lucide="package" class="w-4 h-4 text-black/40"></i>
               </div>
-              <span class="font-mono text-[10px] text-black/40 uppercase tracking-wider">v0.2.0 &middot; Swarms &amp; Workflows</span>
+              <span class="font-mono text-[10px] text-black/40 uppercase tracking-wider">v0.2.0 &middot; Cookbook, agents, swarms</span>
             </div>
-            <h3 class="font-mono text-base font-medium text-black/90 mb-2">Parallel agents and durable extraction</h3>
+            <h3 class="font-mono text-base font-medium text-black/90 mb-2">Cookbook UI, importable agents, and durable extraction</h3>
             <p class="text-sm text-black/60 leading-relaxed mb-4">
-              <code class="font-mono text-black/90 text-xs">extractSwarm</code> runs several agents on one input and reduces with merge, vote, or first. <code class="font-mono text-black/90 text-xs">openextract/workflow</code> wraps extraction as retryable Vercel Workflows. Both are wired through the CLI, MCP, and local web UI.
+              The local web UI is a cookbook of AP and audit recipes. <code class="font-mono text-black/90 text-xs">defineAgent</code> / <code class="font-mono text-black/90 text-xs">defineRemoteAgent</code> follow the eve pattern with <code class="font-mono text-black/90 text-xs">outputSchema</code> and <code class="font-mono text-black/90 text-xs">subagents/</code>. <code class="font-mono text-black/90 text-xs">extractSwarm</code> reduces with merge, vote, or first. <code class="font-mono text-black/90 text-xs">openextract/workflow</code> wraps extraction as retryable Vercel Workflows.
             </p>
             <div class="flex flex-wrap gap-1.5">
+              <span class="font-mono text-[11px] text-black/90 border border-black/10 px-2 py-1">Cookbook</span>
+              <span class="font-mono text-[11px] text-black/90 border border-black/10 px-2 py-1">Agents</span>
               <span class="font-mono text-[11px] text-black/90 border border-black/10 px-2 py-1">Swarm</span>
               <span class="font-mono text-[11px] text-black/90 border border-black/10 px-2 py-1">Workflow</span>
               <span class="font-mono text-[11px] text-black/90 border border-black/10 px-2 py-1">MCP</span>
-              <span class="font-mono text-[11px] text-black/90 border border-black/10 px-2 py-1">CLI</span>
-              <span class="font-mono text-[11px] text-black/90 border border-black/10 px-2 py-1">Web UI</span>
             </div>
           </div>
         </div>
@@ -355,8 +366,8 @@
       <div class="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-4">
         <span class="font-mono text-xs text-black/40">&copy; 2026 openextract. MIT License.</span>
         <div class="flex gap-6">
-          <a href="https://github.com/Mellow-Artificial-Intelligence/openextract" class="font-mono text-xs text-black/40 hover:text-black/60 transition-colors">GitHub</a>
-          <a href="https://github.com/Mellow-Artificial-Intelligence/openextract/blob/main/docs/api-reference.md" class="font-mono text-xs text-black/40 hover:text-black/60 transition-colors">API</a>
+          <a href="https://github.com/Mellow-Artificial-Intelligence/openextract-ts" class="font-mono text-xs text-black/40 hover:text-black/60 transition-colors">GitHub</a>
+          <a href="https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/docs/api-reference.md" class="font-mono text-xs text-black/40 hover:text-black/60 transition-colors">API</a>
         </div>
       </div>
     </footer>

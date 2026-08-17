@@ -72,7 +72,7 @@ The caller should be able to change any of these without rewriting I/O, retries,
 
 - Shared pipeline: media → style workspace → retries → structured model output (`runDocumentExtraction` / `runLoadedExtraction`).
 - Styles: `direct`, `search`, `code`.
-- Surfaces: library, CLI, OpenTUI, Next.js UI, MCP, Vercel Workflows.
+- Surfaces: library, CLI, OpenTUI, cookbook (`npm run cookbook` / `npm run web`), MCP, Vercel Workflows.
 - Batch (`extractMany`) for many inputs; `extractSwarm` for many agents on one input (`merge` / `vote` / `first`).
 - Importable extract agents in the eve pattern: `defineAgent` / `defineRemoteAgent`, `outputSchema`, and `subagents/` discovery.
 - `Extractor` sessions and `openextract/workflow` for reused or durable runs.

@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Documentation
-    url: https://mellow-artificial-intelligence.github.io/openextract/
-    about: Usage, API, CLI, TUI, and MCP
+    url: https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/docs/api-reference.md
+    about: Usage, API, CLI, TUI, MCP, and workflows
   - name: Agent instructions
     url: https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/AGENTS.md
     about: How coding agents should work in this repo

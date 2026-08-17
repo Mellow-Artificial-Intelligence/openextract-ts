@@ -450,7 +450,7 @@ export function createOpenExtractMcpServer(
     "openextract://docs/api",
     {
       title: "API",
-      description: "How to call extract and extract_many over MCP.",
+      description: "How to call extract, extract_many, and extract_swarm over MCP.",
       mimeType: "text/markdown",
     },
     async (uri) => ({
@@ -465,6 +465,7 @@ export function createOpenExtractMcpServer(
             "Styles: `direct` (any media), `search` and `code` (UTF-8 text only).",
             "Schema: JSON Schema object/string, or `module:exportName` for a local Zod export.",
             "Agents: `agent` / `agents` as a directory (`agent.ts` + `subagents/`), file, or `module:exportName`.",
+            "Swarm: `size`, `models`, or `agents`; `reduce` is `merge` (default), `vote`, or `first`.",
             "Input: `source` (path or URL) or `data` (base64) plus `mediaType`.",
           ].join("\n"),
         },

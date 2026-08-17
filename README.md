@@ -2,7 +2,7 @@
 
 **Extract structured data from documents, images, audio, and video using LLMs.**
 
-[Documentation](https://mellow-artificial-intelligence.github.io/openextract/) · [Vision](VISION.md) · [Agents](AGENTS.md) · [Changelog](CHANGELOG.md) · [Issues](https://github.com/Mellow-Artificial-Intelligence/openextract/issues)
+[API](docs/api-reference.md) · [Vision](VISION.md) · [Agents](AGENTS.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 
 `openextract` turns any document, image, audio, or video file into a typed Zod object in a single call. Point it at a local path or a URL, pass a schema, and get back validated data. Model calls go through the [Vercel AI SDK](https://ai-sdk.dev) and [AI Gateway](https://vercel.com/ai-gateway).
 
@@ -223,10 +223,11 @@ On Vercel, set the Git root directory to `web/`. Production uses AI Gateway via 
 npx openextract ./reports/q4.pdf \
   --schema ./schemas.ts:Invoice \
   --model xai/grok-4.6 \
+  --style direct \
   --instructions "Pull totals and line items."
 ```
 
-`--schema` is a `module:exportName` path to a Zod schema. `--agent` can be a directory, file, or `module:exportName`; omit `--schema` when the agent has `outputSchema`. Exit codes: `0` success, `2` URL fetch, `3` schema validation, `4` model, `5` other extraction, `6` missing credentials, `7` partial batch (`--continue-on-error`).
+`--schema` is a `module:exportName` path to a Zod schema. `--agent` can be a directory, file, or `module:exportName`; omit `--schema` when the agent has `outputSchema`. Swarm: `--swarm N`, `--models id,id`, `--agents path,path`, `--reduce merge|vote|first`. Exit codes: `0` success, `2` URL fetch, `3` schema validation, `4` model, `5` other extraction, `6` missing credentials, `7` partial batch (`--continue-on-error`).
 
 ## MCP
 
@@ -316,6 +317,7 @@ try {
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `AI_GATEWAY_API_KEY` | — | AI Gateway authentication |
+| `OPENEXTRACT_MODEL` | — | Default model id (CLI, TUI, MCP, cookbook) |
 | `OPENEXTRACT_URL_TIMEOUT` | `30` | URL fetch timeout (seconds) |
 | `OPENEXTRACT_MAX_REDIRECTS` | `10` | Maximum redirect hops |
 | `OPENEXTRACT_ALLOW_PRIVATE_URLS` | unset | Set `1` / `true` / `yes` to allow private hosts |
