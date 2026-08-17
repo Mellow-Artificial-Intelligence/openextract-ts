@@ -124,4 +124,4 @@ PRs: keep the change focused, run the checklist in the template, and update docs
 
 ## Docs
 
-Update [README.md](README.md) and [docs/api-reference.md](docs/api-reference.md) when the public API, CLI, MCP tools, or env vars change. Note user-facing changes in [CHANGELOG.md](CHANGELOG.md) under `[Unreleased]`.
+Update [README.md](README.md), [docs/guide.md](docs/guide.md), [docs/mcp.md](docs/mcp.md), and [docs/api-reference.md](docs/api-reference.md) when the public API, CLI, MCP tools, or env vars change. Note user-facing changes in [CHANGELOG.md](CHANGELOG.md) under `[Unreleased]`.

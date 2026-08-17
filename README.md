@@ -2,7 +2,7 @@
 
 **Extract structured data from documents, images, audio, and video using LLMs.**
 
-[API](docs/api-reference.md) · [Vision](VISION.md) · [Agents](AGENTS.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
+[Guide](https://mellow-artificial-intelligence.github.io/openextract-ts/guide.html) · [MCP](https://mellow-artificial-intelligence.github.io/openextract-ts/mcp.html) · [API](docs/api-reference.md) · [Vision](VISION.md) · [Agents](AGENTS.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 
 `openextract` turns any document, image, audio, or video file into a typed Zod object in a single call. Point it at a local path or a URL, pass a schema, and get back validated data. Model calls go through the [Vercel AI SDK](https://ai-sdk.dev) and [AI Gateway](https://vercel.com/ai-gateway).
 

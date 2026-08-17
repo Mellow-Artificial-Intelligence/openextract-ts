@@ -432,6 +432,7 @@ describe("MCP server", () => {
     const api = await session.client.readResource({ uri: "openextract://docs/api" });
     expect(String(api.contents[0]?.text)).toContain("extract_swarm");
     expect(String(api.contents[0]?.text)).toContain("reduce");
+    expect(String(api.contents[0]?.text)).toContain("openextract-ts/mcp.html");
     const swarm = await session.client.getPrompt({
       name: "extract-swarm",
       arguments: { source: "./a.pdf", schema: "{}", size: "4", instructions: "Go" },

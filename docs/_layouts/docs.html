@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  {% include head.html %}
+</head>
+<body class="text-black font-sans antialiased grid-bg">
+  {% include nav.html %}
+  <main class="pt-14">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14 grid grid-cols-1 lg:grid-cols-[13rem,minmax(0,1fr)] gap-8 lg:gap-12">
+      <aside class="lg:sticky lg:top-20 lg:self-start">
+        <p class="font-mono text-[10px] uppercase tracking-wider text-black/40 mb-3">Docs</p>
+        <nav class="flex flex-row lg:flex-col gap-3 lg:gap-1.5 font-mono text-xs">
+          <a class="{% if page.url == '/guide.html' %}text-black{% else %}text-black/40 hover:text-black{% endif %}" href="{{ '/guide.html' | relative_url }}">Guide</a>
+          <a class="{% if page.url == '/mcp.html' %}text-black{% else %}text-black/40 hover:text-black{% endif %}" href="{{ '/mcp.html' | relative_url }}">MCP for agents</a>
+          <a class="{% if page.url == '/api-reference.html' %}text-black{% else %}text-black/40 hover:text-black{% endif %}" href="{{ '/api-reference.html' | relative_url }}">API reference</a>
+          <a class="text-black/40 hover:text-black" href="{{ '/llms.txt' | relative_url }}">llms.txt</a>
+        </nav>
+      </aside>
+      <article class="prose max-w-3xl">
+        {{ content }}
+      </article>
+    </div>
+  </main>
+  {% include footer.html %}
+</body>
+</html>
