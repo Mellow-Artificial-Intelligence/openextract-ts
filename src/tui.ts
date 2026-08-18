@@ -20,7 +20,8 @@ function findBun(): string | null {
   return result.status === 0 ? "bun" : null;
 }
 
-function reexecWithBun(): number | null {
+/** Re-runs the current script under Bun when the Node renderer cannot start. */
+export function reexecWithBun(): number | null {
   if (process.versions.bun || !process.stdout.isTTY) return null;
   const bun = findBun();
   const script = process.argv[1];

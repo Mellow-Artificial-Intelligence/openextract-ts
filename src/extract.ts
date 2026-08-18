@@ -1,8 +1,8 @@
 import {
-  flattenAgent,
   isDefinedAgent,
-  isRemoteMember,
   resolveOutputSchema,
+  soleLocalMember,
+  withMemberOptions,
   type DefinedAgent,
   type ExtractAgent,
 } from "./agent.js";
@@ -18,50 +18,51 @@ import type { z } from "zod";
 
 export type { ExtractOptions };
 
-function localMember(model: ExtractAgent) {
-  if (!isDefinedAgent(model)) return null;
-  const members = flattenAgent(model);
-  const member = members[0];
-  if (members.length !== 1 || !member || isRemoteMember(member)) return null;
-  return member;
+interface ExtractCall<T> {
+  schema: z.ZodType<T>;
+  model: ExtractAgent;
+  input: ExtractionInputLike;
+  options: ExtractOptions;
 }
 
-async function extractPrepared<T>(
-  schema: z.ZodType<T>,
-  model: ExtractAgent,
-  inputFile: ExtractionInputLike,
+/** Normalizes both call shapes: (schema, model, input, options) and (agent, input, options). */
+function resolveCall<T>(
+  schemaOrAgent: z.ZodType<T> | DefinedAgent,
+  modelOrInput: ExtractAgent | ExtractionInputLike,
+  inputOrOptions: ExtractionInputLike | ExtractOptions | undefined,
   options: ExtractOptions,
-  withUsage: true,
-): Promise<{ output: T; usage: Usage }>;
-async function extractPrepared<T>(
-  schema: z.ZodType<T>,
-  model: ExtractAgent,
-  inputFile: ExtractionInputLike,
-  options: ExtractOptions,
-  withUsage: false,
-): Promise<T>;
-async function extractPrepared<T>(
-  schema: z.ZodType<T>,
-  model: ExtractAgent,
-  inputFile: ExtractionInputLike,
-  options: ExtractOptions,
+): ExtractCall<T> {
+  if (isDefinedAgent(schemaOrAgent)) {
+    return {
+      schema: resolveOutputSchema(schemaOrAgent) as z.ZodType<T>,
+      model: schemaOrAgent,
+      input: modelOrInput as ExtractionInputLike,
+      options: (inputOrOptions as ExtractOptions | undefined) ?? {},
+    };
+  }
+  return {
+    schema: schemaOrAgent,
+    model: modelOrInput as ExtractAgent,
+    input: inputOrOptions as ExtractionInputLike,
+    options,
+  };
+}
+
+async function runExtract<T>(
+  call: ExtractCall<T>,
   withUsage: boolean,
 ): Promise<T | { output: T; usage: Usage }> {
-  const member = localMember(model);
-  if (isDefinedAgent(model) && !member) {
-    const swarm = await extractSwarmWithResults(schema, model, inputFile, options);
-    return withUsage ? { output: swarm.output, usage: swarm.usage } : swarm.output;
+  const member = soleLocalMember(call.model);
+  if (isDefinedAgent(call.model) && !member) {
+    const swarm = await extractSwarmWithResults(call.schema, call.model, call.input, call.options);
+    return selectExtractionResult(swarm, withUsage);
   }
   return selectExtractionResult(
     await runDocumentExtraction(
-      schema,
-      member?.model ?? (model as LanguageModel),
-      inputFile,
-      resolveExtractOptions({
-        ...options,
-        style: member?.style ?? options.style,
-        instructions: member?.instructions ?? options.instructions,
-      }),
+      call.schema,
+      member?.model ?? (call.model as LanguageModel),
+      call.input,
+      resolveExtractOptions(withMemberOptions(call.options, member)),
     ),
     withUsage,
   );
@@ -84,22 +85,10 @@ export async function extract<T>(
   inputOrOptions?: ExtractionInputLike | ExtractOptions,
   options: ExtractOptions = {},
 ): Promise<T> {
-  if (isDefinedAgent(schemaOrAgent)) {
-    return extractPrepared(
-      resolveOutputSchema(schemaOrAgent) as z.ZodType<T>,
-      schemaOrAgent,
-      modelOrInput as ExtractionInputLike,
-      (inputOrOptions as ExtractOptions | undefined) ?? {},
-      false,
-    );
-  }
-  return extractPrepared(
-    schemaOrAgent,
-    modelOrInput as ExtractAgent,
-    inputOrOptions as ExtractionInputLike,
-    options,
+  return (await runExtract(
+    resolveCall(schemaOrAgent, modelOrInput, inputOrOptions, options),
     false,
-  );
+  )) as T;
 }
 
 export async function extractWithUsage<T>(
@@ -119,22 +108,10 @@ export async function extractWithUsage<T>(
   inputOrOptions?: ExtractionInputLike | ExtractOptions,
   options: ExtractOptions = {},
 ): Promise<{ output: T; usage: Usage }> {
-  if (isDefinedAgent(schemaOrAgent)) {
-    return extractPrepared(
-      resolveOutputSchema(schemaOrAgent) as z.ZodType<T>,
-      schemaOrAgent,
-      modelOrInput as ExtractionInputLike,
-      (inputOrOptions as ExtractOptions | undefined) ?? {},
-      true,
-    );
-  }
-  return extractPrepared(
-    schemaOrAgent,
-    modelOrInput as ExtractAgent,
-    inputOrOptions as ExtractionInputLike,
-    options,
+  return (await runExtract(
+    resolveCall(schemaOrAgent, modelOrInput, inputOrOptions, options),
     true,
-  );
+  )) as { output: T; usage: Usage };
 }
 
 export const extractAsync = extract;

@@ -1,5 +1,11 @@
-import { flattenAgent, isDefinedAgent, isRemoteMember, type ExtractAgent } from "./agent.js";
+import {
+  isDefinedAgent,
+  soleLocalMember,
+  withMemberOptions,
+  type ExtractAgent,
+} from "./agent.js";
 import { validateMaxConcurrency } from "./config.js";
+import { runPool } from "./concurrency.js";
 import { toError } from "./errors.js";
 import { itemSourceLabel } from "./media.js";
 import { modelIdentifier, type LanguageModel } from "./model.js";
@@ -10,32 +16,42 @@ import {
 } from "./pipeline.js";
 import {
   resolveItem,
+  toExtractionResult,
   type ExtractOptions,
   type ExtractionInputLike,
   type ExtractionResult,
 } from "./types.js";
 import type { z } from "zod";
 
-function resolveBatchAgent(model: ExtractAgent): { model: LanguageModel; options: ExtractOptions } {
-  if (!isDefinedAgent(model)) return { model, options: {} };
-  const members = flattenAgent(model);
-  const member = members[0];
-  if (members.length !== 1 || !member || isRemoteMember(member)) {
-    throw new Error("extractMany expects a single local agent; use extract or extractSwarm.");
-  }
-  return { model: member.model, options: { style: member.style, instructions: member.instructions } };
-}
-
 export interface ExtractManyOptions extends ExtractOptions {
   maxConcurrency?: number;
   returnExceptions?: boolean;
 }
 
-function resolveBatchOptions(options: ExtractManyOptions) {
-  const resolved = resolveExtractOptions(options);
+interface PreparedBatch {
+  model: LanguageModel;
+  options: ResolvedExtractOptions;
+  maxConcurrency: number;
+  items: ExtractionInputLike[];
+}
+
+function prepareBatch(
+  model: ExtractAgent,
+  inputFiles: Iterable<ExtractionInputLike>,
+  options: ExtractManyOptions,
+): PreparedBatch {
+  const member = soleLocalMember(model);
+  if (isDefinedAgent(model) && !member) {
+    throw new Error("extractMany expects a single local agent; use extract or extractSwarm.");
+  }
   const maxConcurrency = options.maxConcurrency ?? 5;
   validateMaxConcurrency(maxConcurrency);
-  return { resolved, maxConcurrency };
+  return {
+    model: member?.model ?? (model as LanguageModel),
+    options: resolveExtractOptions(withMemberOptions(options, member)),
+    maxConcurrency,
+    items: [...inputFiles],
+  };
 }
 
 async function runItem<T>(
@@ -49,16 +65,12 @@ async function runItem<T>(
   const started = performance.now();
   const result = await runDocumentExtraction(schema, model, source, { ...options, mediaType });
   if (!rich) return result.output;
-  return {
-    output: result.output,
-    usage: result.usage,
-    attempts: result.attempts,
-    duration: (performance.now() - started) / 1000,
+  return toExtractionResult(result, {
+    started,
     model: modelIdentifier(model),
     mediaType: mediaType ?? null,
     source: itemSourceLabel(source, name),
-    warnings: [],
-  };
+  });
 }
 
 async function gather<T>(
@@ -68,36 +80,27 @@ async function gather<T>(
   options: ExtractManyOptions,
   rich: boolean,
 ): Promise<Array<T | ExtractionResult<T> | Error>> {
-  const agent = resolveBatchAgent(model);
-  const { resolved, maxConcurrency } = resolveBatchOptions({
-    ...options,
-    style: agent.options.style ?? options.style,
-    instructions: agent.options.instructions ?? options.instructions,
-  });
-  const items = [...inputFiles];
-  const results: Array<T | ExtractionResult<T> | Error> = new Array(items.length);
-  let next = 0;
+  const batch = prepareBatch(model, inputFiles, options);
+  const results: Array<T | ExtractionResult<T> | Error> = new Array(batch.items.length);
   let firstError: unknown;
-  const worker = async () => {
-    for (;;) {
-      if (firstError) return;
-      const index = next++;
-      if (index >= items.length) return;
-      const item = items[index]!;
+  let failed = false;
+  await runPool(
+    batch.items.length,
+    batch.maxConcurrency,
+    async (index) => {
       try {
-        results[index] = await runItem(schema, agent.model, item, resolved, rich);
+        results[index] = await runItem(schema, batch.model, batch.items[index]!, batch.options, rich);
       } catch (error) {
-        if (options.returnExceptions) {
-          results[index] = toError(error);
-        } else {
+        if (options.returnExceptions) results[index] = toError(error);
+        else {
           firstError = error;
-          return;
+          failed = true;
         }
       }
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(maxConcurrency, items.length) }, () => worker()));
-  if (firstError) throw firstError;
+    },
+    () => failed,
+  );
+  if (failed) throw firstError;
   return results;
 }
 
@@ -127,18 +130,11 @@ export async function* iterExtractMany<T>(
   inputFiles: Iterable<ExtractionInputLike>,
   options: ExtractManyOptions = {},
 ): AsyncGenerator<[number, T | Error]> {
-  const agent = resolveBatchAgent(model);
-  const { resolved, maxConcurrency } = resolveBatchOptions({
-    ...options,
-    style: agent.options.style ?? options.style,
-    instructions: agent.options.instructions ?? options.instructions,
-  });
-  const items = [...inputFiles];
+  const batch = prepareBatch(model, inputFiles, options);
   const pending = new Map<Promise<[number, T | Error]>, number>();
   let next = 0;
   const start = (index: number) => {
-    const item = items[index]!;
-    const promise = runItem(schema, agent.model, item, resolved, false)
+    const promise = runItem(schema, batch.model, batch.items[index]!, batch.options, false)
       .then((value) => [index, value as T] as [number, T | Error])
       .catch((error: unknown) => {
         const err = toError(error);
@@ -147,14 +143,14 @@ export async function* iterExtractMany<T>(
       });
     pending.set(promise, index);
   };
-  while (next < items.length && pending.size < maxConcurrency) start(next++);
+  while (next < batch.items.length && pending.size < batch.maxConcurrency) start(next++);
   while (pending.size > 0) {
     const settled = await Promise.race(pending.keys());
     for (const [promise, index] of pending) {
       if (index === settled[0]) pending.delete(promise);
     }
     yield settled;
-    if (next < items.length) start(next++);
+    if (next < batch.items.length) start(next++);
   }
 }
 

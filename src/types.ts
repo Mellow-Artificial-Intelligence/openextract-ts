@@ -59,6 +59,33 @@ export class RetryPolicy {
   }
 }
 
+/** Normalizes a usage-shaped value (model result or remote agent payload) into `Usage`. */
+export function toUsage(value: unknown): Usage {
+  const usage = (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>;
+  return {
+    inputTokens: Number(usage.inputTokens) || 0,
+    outputTokens: Number(usage.outputTokens) || 0,
+    totalTokens: Number(usage.totalTokens) || 0,
+  };
+}
+
+/** Builds the rich result shape shared by batch and swarm runs. */
+export function toExtractionResult<T>(
+  result: { output: T; usage: Usage; attempts: number },
+  meta: { started: number; model: string | null; mediaType: string | null; source: string | null },
+): ExtractionResult<T> {
+  return {
+    output: result.output,
+    usage: result.usage,
+    attempts: result.attempts,
+    duration: (performance.now() - meta.started) / 1000,
+    model: meta.model,
+    mediaType: meta.mediaType,
+    source: meta.source,
+    warnings: [],
+  };
+}
+
 export function totalUsage<T>(results: Iterable<ExtractionResult<T>>): Usage {
   let inputTokens = 0;
   let outputTokens = 0;

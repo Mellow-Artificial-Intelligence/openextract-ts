@@ -343,9 +343,7 @@ export function docOptionLabel(path: string, selected: readonly string[]): strin
   return `${selected.includes(path) ? "●" : "○"} ${basename(path)}`;
 }
 
-export function hasGatewayKey(): boolean {
-  return Boolean(process.env.AI_GATEWAY_API_KEY?.trim() || process.env.VERCEL_OIDC_TOKEN?.trim());
-}
+export { hasGatewayCredentials as hasGatewayKey } from "../../src/config.js";
 
 export interface CookbookModel {
   id: string;

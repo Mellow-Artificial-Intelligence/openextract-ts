@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Internal reorganization for DRY: `src/mcp.ts`, `src/cli.ts`, and the TUI split into `src/mcp/`, `src/cli/`, and `src/tui/widgets.ts`; shared helpers moved to `src/concurrency.ts` (one bounded worker pool for batch and swarm), `src/serialized.ts` (input/options shared by MCP, workflow, and CLI), `src/types.ts` (`toUsage`, `toExtractionResult`), `src/config.ts` (`normalizeChoice`, `hasGatewayCredentials`), and `src/exceptions.ts` (`RetryableExtractionError` base for `ModelError` / `RemoteAgentError`). Public exports, CLI flags, MCP tools, and exit codes are unchanged.
 - Cookbook TUI loads language models from AI Gateway (`gateway.getAvailableModels()`), keeps the output pane and footer status empty until extract, and updates per-agent invoice cards in place as work starts and finishes.
 - GitHub Pages is a usage guide: [Guide](https://mellow-artificial-intelligence.github.io/openextract-ts/guide.html) (library, styles, swarms, CLI), [MCP for agents](https://mellow-artificial-intelligence.github.io/openextract-ts/mcp.html), [API reference](https://mellow-artificial-intelligence.github.io/openextract-ts/api-reference.html), and `llms.txt`.
 

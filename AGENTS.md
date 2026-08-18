@@ -47,9 +47,16 @@ Node.js 20+. Set `AI_GATEWAY_API_KEY` for live model calls. Tests use `MockLangu
 | `src/media.ts` | Paths, URLs, bytes, streams, SSRF guards |
 | `src/schema.ts` | Zod / JSON Schema / `module:exportName` |
 | `src/schema-spec.ts` | Field-list and JSON schema specs for TUI/CLI |
-| `src/mcp.ts` | MCP tools, resources, prompts |
-| `src/cli.ts` | `openextract` CLI |
-| `src/tui/` | OpenTUI app |
+| `src/types.ts` | Shared types plus `toUsage`, `toExtractionResult`, `resolveItem` |
+| `src/serialized.ts` | Serializable input/options shared by MCP, workflow, and CLI |
+| `src/concurrency.ts` | `runPool` — the one bounded worker pool (batch and swarm) |
+| `src/config.ts` | Env defaults, validators, `normalizeChoice` |
+| `src/exceptions.ts` | Typed errors; `RetryableExtractionError` drives `src/retry.ts` |
+| `src/mcp.ts` | `openextract/mcp` entry; implementation in `src/mcp/` |
+| `src/mcp/` | `fields`, `results`, `docs`, `server`, `http` |
+| `src/cli.ts` | `openextract` bin entry; implementation in `src/cli/` |
+| `src/cli/` | `args` (parsing/help), `run` (main), `runtime` (entry helpers shared with `mcp-cli`) |
+| `src/tui/` | OpenTUI app (`app`, `form`, `widgets`) |
 | `web/` | Next.js cookbook UI (Vercel root = `web/`) |
 | `tests/` | Vitest. Mocks live in `tests/helpers.ts` |
 | `examples/` | Runnable samples |
@@ -62,6 +69,7 @@ Node.js 20+. Set `AI_GATEWAY_API_KEY` for live model calls. Tests use `MockLangu
 - One pipeline. New extract entry points must call `runDocumentExtraction` or `runLoadedExtraction` in `src/pipeline.ts`. Do not duplicate media loading, style workspaces, or retries.
 - Keep the public surface small. Export new API from `src/index.ts`, `src/mcp.ts` (`openextract/mcp`), or `src/workflow.ts` (`openextract/workflow`).
 - Prefer concise, fast code. Reuse helpers; do not add layers for a single call site.
+- One home per concept. Before writing a helper, check `src/types.ts`, `src/serialized.ts`, `src/concurrency.ts`, `src/config.ts`, and `src/errors.ts` — style lists, usage totals, error payloads, choice validation, and the worker pool already live there.
 - Comments describe what the code does, not the product.
 - Async-first. `extractAsync` / `AsyncExtractor` are aliases, not a second implementation.
 

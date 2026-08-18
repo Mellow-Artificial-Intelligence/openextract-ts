@@ -22,6 +22,11 @@ function envPositiveInt(name: string, fallback: number): number {
   return Number.isInteger(value) && value > 0 ? value : fallback;
 }
 
+/** True when AI Gateway credentials (API key or Vercel OIDC) are present. */
+export function hasGatewayCredentials(): boolean {
+  return Boolean(process.env.AI_GATEWAY_API_KEY?.trim() || process.env.VERCEL_OIDC_TOKEN?.trim());
+}
+
 export function allowPrivateUrls(): boolean {
   return ["1", "true", "yes"].includes(
     (process.env[ALLOW_PRIVATE_URLS_ENV] ?? "").toLowerCase(),
@@ -79,6 +84,18 @@ export function validateSwarmSize(size: number): number {
     throw new Error(`size must be an integer from 1 to ${MAX_SWARM_SIZE}.`);
   }
   return size;
+}
+
+/** Validates that `value` is one of `allowed`, with a consistent message across options. */
+export function normalizeChoice<T extends string>(
+  name: string,
+  allowed: readonly T[],
+  value: string,
+): T {
+  if ((allowed as readonly string[]).includes(value)) return value as T;
+  throw new Error(
+    `${name} must be one of ${allowed.map((item) => `'${item}'`).join(", ")}; got '${value}'.`,
+  );
 }
 
 export function validateTimeout(value: number, name: string): number {
