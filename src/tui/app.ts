@@ -1,15 +1,13 @@
 import { writeFile } from "node:fs/promises";
 import {
   BoxRenderable,
-  InputRenderable,
   InputRenderableEvents,
-  TabSelectRenderable,
   TabSelectRenderableEvents,
   TextareaRenderable,
-  TextRenderable,
   createCliRenderer,
   type CliRenderer,
 } from "@opentui/core";
+import { hasGatewayCredentials } from "../config.js";
 import { toError } from "../errors.js";
 import {
   PRESETS,
@@ -28,23 +26,7 @@ import {
   type TuiForm,
   type TuiLaunchOptions,
 } from "./form.js";
-
-const theme = {
-  bg: "#0f1419",
-  panel: "#151b23",
-  border: "#2d3a4a",
-  borderFocus: "#2dd4bf",
-  title: "#e6edf3",
-  muted: "#8b9bab",
-  accent: "#5eead4",
-  inputBg: "#1c2430",
-  inputFocus: "#243044",
-  text: "#e6edf3",
-  ok: "#4ade80",
-  warn: "#fbbf24",
-  error: "#f87171",
-  cursor: "#5eead4",
-};
+import { editor as makeEditor, label, panel, row, tabs, textInput, theme } from "./widgets.js";
 
 type FocusId =
   | "sourceKind"
@@ -71,10 +53,6 @@ function setEditorText(editor: TextareaRenderable, value: string): void {
   if (editor.plainText !== value) editor.setText(value);
 }
 
-function hasGatewayKey(): boolean {
-  return Boolean(process.env.AI_GATEWAY_API_KEY?.trim() || process.env.VERCEL_OIDC_TOKEN?.trim());
-}
-
 export async function runApp(
   options: TuiLaunchOptions = {},
   existingRenderer?: CliRenderer,
@@ -83,10 +61,10 @@ export async function runApp(
   let focus: FocusId = form.source ? "schema" : "source";
   let busy = false;
   let lastJson = "";
-  let status = hasGatewayKey()
+  let status = hasGatewayCredentials()
     ? "Paste or point at a source, then Ctrl+E to extract."
     : "Set AI_GATEWAY_API_KEY (or Vercel OIDC) before extracting.";
-  let statusTone: "muted" | "ok" | "warn" | "error" = hasGatewayKey() ? "muted" : "warn";
+  let statusTone: "muted" | "ok" | "warn" | "error" = hasGatewayCredentials() ? "muted" : "warn";
 
   const renderer =
     existingRenderer ??
@@ -97,35 +75,17 @@ export async function runApp(
       backgroundColor: theme.bg,
     }));
 
-  const headerTitle = new TextRenderable(renderer, {
-    content: "openextract",
-    fg: theme.accent,
-  });
-  const headerSub = new TextRenderable(renderer, {
-    content: "  structured data from any file, URL, or pasted text",
-    fg: theme.muted,
-  });
-  const header = new BoxRenderable(renderer, {
+  const header = row(renderer, {
     height: 1,
-    flexDirection: "row",
     alignItems: "center",
     flexShrink: 0,
     backgroundColor: theme.bg,
   });
-  header.add(headerTitle);
-  header.add(headerSub);
+  header.add(label(renderer, "openextract", { fg: theme.accent }));
+  header.add(label(renderer, "  structured data from any file, URL, or pasted text"));
 
-  const sourceKindSelect = new TabSelectRenderable(renderer, {
-    height: 2,
-    showDescription: false,
-    showUnderline: true,
-    wrapSelection: true,
+  const sourceKindSelect = tabs(renderer, {
     tabWidth: 14,
-    backgroundColor: theme.panel,
-    focusedBackgroundColor: theme.inputFocus,
-    selectedBackgroundColor: theme.inputFocus,
-    selectedTextColor: theme.accent,
-    textColor: theme.muted,
     options: [
       { name: "path / url", description: "", value: "path" },
       { name: "paste text", description: "", value: "paste" },
@@ -133,26 +93,17 @@ export async function runApp(
   });
   sourceKindSelect.setSelectedIndex(form.sourceKind === "paste" ? 1 : 0);
 
-  const pathInput = new InputRenderable(renderer, {
+  const pathInput = textInput(renderer, {
     placeholder: " ./report.pdf  or  https://example.com/doc",
     value: form.sourceKind === "path" ? form.source : "",
-    backgroundColor: theme.inputBg,
-    focusedBackgroundColor: theme.inputFocus,
-    textColor: theme.text,
-    cursorColor: theme.cursor,
-    maxLength: 4000,
+    extra: { maxLength: 4000 },
   });
 
-  const pasteEditor = new TextareaRenderable(renderer, {
-    flexGrow: 1,
+  const pasteEditor = makeEditor(renderer, {
+    layout: { flexGrow: 1 },
     initialValue: form.sourceKind === "paste" ? form.source : "",
     placeholder: "Paste an email, article, receipt, transcript, or any other text…",
-    backgroundColor: theme.inputBg,
-    focusedBackgroundColor: theme.inputFocus,
-    textColor: theme.text,
-    cursorColor: theme.cursor,
     wrapMode: "word",
-    keyBindings: [{ name: "return", ctrl: true, action: "submit" }],
   });
 
   const sourceSlot = new BoxRenderable(renderer, {
@@ -161,63 +112,28 @@ export async function runApp(
     flexDirection: "column",
   });
 
-  const instructionsEditor = new TextareaRenderable(renderer, {
-    height: 2,
+  const instructionsEditor = makeEditor(renderer, {
+    layout: { height: 2 },
     initialValue: form.instructions,
     placeholder: "Instructions — what to pull, what to ignore…",
-    backgroundColor: theme.inputBg,
-    focusedBackgroundColor: theme.inputFocus,
-    textColor: theme.text,
-    cursorColor: theme.cursor,
     wrapMode: "word",
-    keyBindings: [{ name: "return", ctrl: true, action: "submit" }],
   });
 
-  const modelInput = new InputRenderable(renderer, {
+  const modelInput = textInput(renderer, {
     placeholder: "model  openai/gpt-5.5",
     value: form.model,
-    backgroundColor: theme.inputBg,
-    focusedBackgroundColor: theme.inputFocus,
-    textColor: theme.text,
-    cursorColor: theme.cursor,
   });
 
-  const styleSelect = new TabSelectRenderable(renderer, {
-    height: 2,
-    showDescription: false,
-    showUnderline: true,
-    wrapSelection: true,
+  const styleSelect = tabs(renderer, {
     tabWidth: 10,
-    backgroundColor: theme.panel,
-    focusedBackgroundColor: theme.inputFocus,
-    selectedBackgroundColor: theme.inputFocus,
-    selectedTextColor: theme.accent,
-    textColor: theme.muted,
-    options: STYLES.map((name) => ({
-      name,
-      description: "",
-      value: name,
-    })),
+    options: STYLES.map((name) => ({ name, description: "", value: name })),
   });
   styleSelect.setSelectedIndex(Math.max(0, STYLES.indexOf(form.style)));
 
-  const sourcePanel = new BoxRenderable(renderer, {
-    flexGrow: 1,
-    flexBasis: 0,
-    flexDirection: "column",
-    border: true,
-    borderStyle: "rounded",
-    borderColor: theme.border,
-    title: " Source ",
-    titleColor: theme.muted,
-    backgroundColor: theme.panel,
-    padding: 1,
-    gap: 1,
-  });
-  const settingsRow = new BoxRenderable(renderer, {
+  const sourcePanel = panel(renderer, " Source ");
+  const settingsRow = row(renderer, {
     height: 2,
     flexShrink: 0,
-    flexDirection: "row",
     gap: 1,
     alignItems: "flex-start",
   });
@@ -231,95 +147,43 @@ export async function runApp(
   sourcePanel.add(instructionsEditor);
   sourcePanel.add(settingsRow);
 
-  const presetSelect = new TabSelectRenderable(renderer, {
-    height: 2,
-    showDescription: false,
-    showUnderline: true,
-    wrapSelection: true,
+  const presetSelect = tabs(renderer, {
     tabWidth: 10,
-    backgroundColor: theme.panel,
-    focusedBackgroundColor: theme.inputFocus,
-    selectedBackgroundColor: theme.inputFocus,
-    selectedTextColor: theme.accent,
-    textColor: theme.muted,
-    options: PRESET_IDS.map((id) => ({
-      name: PRESETS[id].label,
-      description: "",
-      value: id,
-    })),
+    options: PRESET_IDS.map((id) => ({ name: PRESETS[id].label, description: "", value: id })),
   });
   presetSelect.setSelectedIndex(Math.max(0, PRESET_IDS.indexOf(presetIdForSpec(form.schemaSpec))));
 
-  const schemaEditor = new TextareaRenderable(renderer, {
-    flexGrow: 1,
+  const schemaEditor = makeEditor(renderer, {
+    layout: { flexGrow: 1 },
     initialValue: form.schemaSpec,
     placeholder: "title: string\ncount: number\nitems: [{ name: string }]",
-    backgroundColor: theme.inputBg,
-    focusedBackgroundColor: theme.inputFocus,
-    textColor: theme.text,
-    cursorColor: theme.cursor,
     wrapMode: "none",
-    keyBindings: [{ name: "return", ctrl: true, action: "submit" }],
   });
 
-  const schemaHelp = new TextRenderable(renderer, {
-    content: "Field list, JSON example, JSON Schema, or ./file.ts:Export",
-    fg: theme.muted,
+  const schemaHelp = label(renderer, "Field list, JSON example, JSON Schema, or ./file.ts:Export", {
     height: 1,
     flexShrink: 0,
   });
 
-  const schemaPanel = new BoxRenderable(renderer, {
-    flexGrow: 1,
-    flexBasis: 0,
-    flexDirection: "column",
-    border: true,
-    borderStyle: "rounded",
-    borderColor: theme.border,
-    title: " Schema ",
-    titleColor: theme.muted,
-    backgroundColor: theme.panel,
-    padding: 1,
-    gap: 1,
-  });
+  const schemaPanel = panel(renderer, " Schema ");
   schemaPanel.add(presetSelect);
   schemaPanel.add(schemaEditor);
   schemaPanel.add(schemaHelp);
 
-  const resultEditor = new TextareaRenderable(renderer, {
-    flexGrow: 1,
+  const resultEditor = makeEditor(renderer, {
+    layout: { flexGrow: 1 },
     initialValue: "",
     placeholder: "Extracted JSON will land here.",
-    backgroundColor: theme.inputBg,
-    focusedBackgroundColor: theme.inputFocus,
-    textColor: theme.text,
-    cursorColor: theme.cursor,
     wrapMode: "none",
-    keyBindings: [{ name: "return", ctrl: true, action: "submit" }],
   });
 
-  const resultMeta = new TextRenderable(renderer, { content: "", fg: theme.muted });
-  const resultPanel = new BoxRenderable(renderer, {
-    flexGrow: 1,
-    flexBasis: 0,
-    flexDirection: "column",
-    border: true,
-    borderStyle: "rounded",
-    borderColor: theme.border,
-    title: " Result ",
-    titleColor: theme.muted,
-    backgroundColor: theme.panel,
-    padding: 1,
-    gap: 1,
-  });
+  const resultMeta = label(renderer, "");
+  const resultPanel = panel(renderer, " Result ");
   resultPanel.add(resultEditor);
   resultPanel.add(resultMeta);
 
-  const footerHint = new TextRenderable(renderer, {
-    content: "tab fields   ^e extract   ^s save   ^c quit",
-    fg: theme.muted,
-  });
-  const footerStatus = new TextRenderable(renderer, { content: status, fg: theme.muted });
+  const footerHint = label(renderer, "tab fields   ^e extract   ^s save   ^c quit");
+  const footerStatus = label(renderer, status);
   const footer = new BoxRenderable(renderer, {
     height: 2,
     flexShrink: 0,
@@ -329,12 +193,7 @@ export async function runApp(
   footer.add(footerHint);
   footer.add(footerStatus);
 
-  const columns = new BoxRenderable(renderer, {
-    flexGrow: 2,
-    flexBasis: 0,
-    flexDirection: "row",
-    gap: 1,
-  });
+  const columns = row(renderer, { flexGrow: 2, flexBasis: 0, gap: 1 });
   columns.add(sourcePanel);
   columns.add(schemaPanel);
 

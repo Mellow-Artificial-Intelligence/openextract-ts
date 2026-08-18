@@ -4,7 +4,8 @@ import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import type { LanguageModel } from "./model.js";
 import { loadModuleExport } from "./module-export.js";
-import { isZodSchema } from "./schema.js";
+import { isZodSchema, jsonSchemaToZod } from "./schema.js";
+import { splitList } from "./serialized.js";
 import type { ExtractOptions } from "./types.js";
 
 const AGENT = Symbol.for("openextract.agent");
@@ -94,6 +95,27 @@ export function isRemoteMember(value: ResolvedAgentMember): value is RemoteSwarm
   return value.kind === "remote";
 }
 
+/** The sole local member of an agent, or null for a plain model, a remote agent, or a swarm. */
+export function soleLocalMember(model: ExtractAgent): LocalSwarmMember | null {
+  if (!isDefinedAgent(model)) return null;
+  const members = flattenAgent(model);
+  const member = members[0];
+  if (members.length !== 1 || !member || isRemoteMember(member)) return null;
+  return member;
+}
+
+/** Layers a member's style and instructions over call options. */
+export function withMemberOptions<T extends ExtractOptions>(
+  options: T,
+  member?: { style?: AgentStyle; instructions?: string } | null,
+): T {
+  return {
+    ...options,
+    style: member?.style ?? options.style,
+    instructions: member?.instructions ?? options.instructions,
+  };
+}
+
 function requireDescription(description: string | undefined): string {
   const text = description?.trim();
   if (!text) throw new Error("description is required.");
@@ -139,9 +161,7 @@ export function resolveOutputSchema(agent: DefinedAgent): z.ZodType<unknown> {
   const spec = agent.outputSchema;
   if (spec == null) throw new Error("agent is missing outputSchema.");
   if (isZodSchema(spec)) return spec;
-  if (typeof spec === "object") {
-    return z.fromJSONSchema(spec as Parameters<typeof z.fromJSONSchema>[0]);
-  }
+  if (typeof spec === "object") return jsonSchemaToZod(spec);
   throw new Error("outputSchema must be a Zod schema or JSON Schema object.");
 }
 
@@ -179,6 +199,15 @@ async function importDefault(filePath: string): Promise<unknown> {
   return mod.default;
 }
 
+/** Imports a module's default export and asserts it was built by defineAgent / defineRemoteAgent. */
+async function importAgent(filePath: string, subject: string): Promise<DefinedAgent> {
+  const value = await importDefault(filePath);
+  if (!isDefinedAgent(value)) {
+    throw new Error(`${subject} must default-export defineAgent or defineRemoteAgent.`);
+  }
+  return value;
+}
+
 function skipEntry(name: string): boolean {
   return name.startsWith(".") || name.endsWith(".d.ts") || name.includes(".test.");
 }
@@ -213,11 +242,7 @@ async function loadAgentFile(dir: string): Promise<DefinedAgent | undefined> {
     } catch {
       continue;
     }
-    const value = await importDefault(filePath);
-    if (!isDefinedAgent(value)) {
-      throw new Error(`'${filePath}' must default-export defineAgent or defineRemoteAgent.`);
-    }
-    return value;
+    return importAgent(filePath, `'${filePath}'`);
   }
   return undefined;
 }
@@ -240,11 +265,7 @@ async function loadSubagents(dir: string): Promise<DefinedAgent[]> {
       continue;
     }
     if (!/\.(ts|js|mts|mjs)$/.test(entry.name) || /^agent\.(ts|js|mts|mjs)$/.test(entry.name)) continue;
-    const value = await importDefault(path);
-    if (!isDefinedAgent(value)) {
-      throw new Error(`subagent '${entry.name}' must default-export defineAgent or defineRemoteAgent.`);
-    }
-    agents.push(value);
+    agents.push(await importAgent(path, `subagent '${entry.name}'`));
   }
   return agents;
 }
@@ -269,13 +290,7 @@ export async function loadAgent(spec: unknown): Promise<DefinedAgent> {
   try {
     const info = await stat(resolved);
     if (info.isDirectory()) return loadAgentDirectory(resolved);
-    if (info.isFile()) {
-      const value = await importDefault(resolved);
-      if (!isDefinedAgent(value)) {
-        throw new Error(`'${trimmed}' must default-export defineAgent or defineRemoteAgent.`);
-      }
-      return value;
-    }
+    if (info.isFile()) return importAgent(resolved, `'${trimmed}'`);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
@@ -289,7 +304,7 @@ export async function loadAgent(spec: unknown): Promise<DefinedAgent> {
 }
 
 export async function loadAgents(spec: string | readonly string[]): Promise<DefinedAgent[]> {
-  const items = typeof spec === "string" ? spec.split(",").map((item) => item.trim()).filter(Boolean) : spec;
+  const items = typeof spec === "string" ? splitList(spec) : spec;
   if (items.length === 0) throw new Error("agents must include at least one agent path.");
   return Promise.all(items.map((item) => loadAgent(item)));
 }

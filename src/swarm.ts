@@ -1,11 +1,12 @@
 import {
   flattenAgent,
-  isRemoteMember,
+  withMemberOptions,
   type AgentInput,
   type ResolvedAgentMember,
 } from "./agent.js";
 import { runRemoteExtraction } from "./agent-remote.js";
 import { validateMaxConcurrency, validateSwarmSize } from "./config.js";
+import { runPool } from "./concurrency.js";
 import { toError, withExtractionErrors } from "./errors.js";
 import { getMedia, itemSourceLabel } from "./media.js";
 import { modelIdentifier, type LanguageModel } from "./model.js";
@@ -17,6 +18,7 @@ import {
 import { normalizeReduce, reduceOutputs, type SwarmReduce } from "./reduce.js";
 import {
   resolveItem,
+  toExtractionResult,
   totalUsage,
   type ExtractOptions,
   type ExtractionInputLike,
@@ -89,10 +91,10 @@ function memberOptions(
   index: number,
   total: number,
 ): ResolvedExtractOptions {
+  const merged = withMemberOptions(options, member);
   return resolveExtractOptions({
-    ...options,
-    style: member.style ?? options.style,
-    instructions: agentInstructions(member.instructions ?? options.instructions, index, total),
+    ...merged,
+    instructions: agentInstructions(merged.instructions, index, total),
   });
 }
 
@@ -101,6 +103,18 @@ function memberLabel(member: ResolvedAgentMember): string | null {
     return typeof member.remote.url === "string" ? member.remote.url : member.remote.description;
   }
   return modelIdentifier(member.model);
+}
+
+function runMember<T>(
+  schema: z.ZodType<T>,
+  member: ResolvedAgentMember,
+  data: Uint8Array,
+  mediaType: string,
+  options: ResolvedExtractOptions,
+): Promise<{ output: T; usage: Usage; attempts: number }> {
+  return member.kind === "remote"
+    ? runRemoteExtraction(schema, member.remote, data, mediaType, options)
+    : runLoadedExtraction(schema, member.model, data, mediaType, options);
 }
 
 async function runSwarm<T>(
@@ -120,37 +134,23 @@ async function runSwarm<T>(
   );
   const sourceLabel = itemSourceLabel(source, name);
   const results: Array<ExtractionResult<T> | Error> = new Array(members.length);
-  let next = 0;
-  const worker = async () => {
-    for (;;) {
-      const index = next++;
-      if (index >= members.length) return;
-      const member = members[index]!;
-      const started = performance.now();
-      options.onAgentStart?.({ index, total: members.length });
-      try {
-        const opts = memberOptions(options, member, index, members.length);
-        const result =
-          member.kind === "remote"
-            ? await runRemoteExtraction(schema, member.remote, data, mediaType, opts)
-            : await runLoadedExtraction(schema, member.model, data, mediaType, opts);
-        results[index] = {
-          output: result.output,
-          usage: result.usage,
-          attempts: result.attempts,
-          duration: (performance.now() - started) / 1000,
-          model: memberLabel(member),
-          mediaType,
-          source: sourceLabel,
-          warnings: [],
-        };
-      } catch (error) {
-        results[index] = toError(error);
-      }
-      options.onAgent?.({ index, total: members.length, result: results[index]! });
+  await runPool(members.length, maxConcurrency, async (index) => {
+    const member = members[index]!;
+    const started = performance.now();
+    options.onAgentStart?.({ index, total: members.length });
+    try {
+      const opts = memberOptions(options, member, index, members.length);
+      results[index] = toExtractionResult(await runMember(schema, member, data, mediaType, opts), {
+        started,
+        model: memberLabel(member),
+        mediaType,
+        source: sourceLabel,
+      });
+    } catch (error) {
+      results[index] = toError(error);
     }
-  };
-  await Promise.all(Array.from({ length: Math.min(maxConcurrency, members.length) }, () => worker()));
+    options.onAgent?.({ index, total: members.length, result: results[index]! });
+  });
   const successes = results.filter((item): item is ExtractionResult<T> => !(item instanceof Error));
   if (successes.length === 0) {
     throw results[0] instanceof Error ? results[0] : /* v8 ignore next */ new Error("Swarm produced no results.");

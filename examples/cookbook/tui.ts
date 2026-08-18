@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -11,7 +10,7 @@ import {
   type CliRenderer,
 } from "@opentui/core";
 import { toError } from "../../src/errors.js";
-import { TUI_RUNTIME_HELP } from "../../src/tui.js";
+import { TUI_RUNTIME_HELP, reexecWithBun } from "../../src/tui.js";
 import { loadRepoEnv } from "./01-document-swarm/extract.js";
 import {
   RECIPES,
@@ -60,20 +59,6 @@ const selectLooks = {
 
 type FocusId = "recipe" | "docs" | "model" | "result";
 const FOCUS_ORDER: FocusId[] = ["recipe", "docs", "model", "result"];
-
-function findBun(): string | null {
-  const result = spawnSync("bun", ["--version"], { encoding: "utf8" });
-  return result.status === 0 ? "bun" : null;
-}
-
-function reexecWithBun(): number | null {
-  if (process.versions.bun || !process.stdout.isTTY) return null;
-  const bun = findBun();
-  const script = process.argv[1];
-  if (!bun || !script) return null;
-  const result = spawnSync(bun, [script, ...process.argv.slice(2)], { stdio: "inherit" });
-  return result.status ?? 1;
-}
 
 function panel(ctx: CliRenderer, title: string) {
   return new BoxRenderable(ctx, {

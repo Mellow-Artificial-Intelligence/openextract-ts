@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { toError } from "./errors.js";
-import { loadSchema } from "./schema.js";
+import { jsonSchemaToZod, loadSchema } from "./schema.js";
 
 const PRIMITIVES = {
   string: () => z.string(),
@@ -59,9 +59,7 @@ function schemaFromJson(raw: string): z.ZodType<unknown> {
   } catch (error) {
     throw new Error(`Invalid JSON schema: ${toError(error).message}`);
   }
-  if (isJsonSchema(parsed)) {
-    return z.fromJSONSchema(parsed as Parameters<typeof z.fromJSONSchema>[0]);
-  }
+  if (isJsonSchema(parsed)) return jsonSchemaToZod(parsed);
   return toZod(inferType(parsed, "root"));
 }
 

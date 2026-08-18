@@ -6,9 +6,10 @@ import {
   type LanguageModel,
 } from "ai";
 import type { z } from "zod";
-import type { Usage } from "./types.js";
+import { toUsage, type Usage } from "./types.js";
 
 export type { LanguageModel };
+export { toUsage as usageFromResult };
 
 const PREFIX_ALIASES: Record<string, string> = {
   "openai-chat": "openai",
@@ -30,18 +31,6 @@ export function routeModel(model: LanguageModel): LanguageModel {
 export function modelIdentifier(model: LanguageModel): string | null {
   if (typeof model === "string") return routeModel(model) as string;
   return "modelId" in model && typeof model.modelId === "string" ? model.modelId : null;
-}
-
-export function usageFromResult(usage: {
-  inputTokens?: number;
-  outputTokens?: number;
-  totalTokens?: number;
-}): Usage {
-  return {
-    inputTokens: usage.inputTokens ?? 0,
-    outputTokens: usage.outputTokens ?? 0,
-    totalTokens: usage.totalTokens ?? 0,
-  };
 }
 
 export async function runExtraction<T>(options: {
@@ -86,7 +75,7 @@ export async function runExtraction<T>(options: {
     const result = await agent.generate({
       prompt: options.prompt,
     });
-    return { output: result.output, usage: usageFromResult(result.totalUsage) };
+    return { output: result.output, usage: toUsage(result.totalUsage) };
   }
 
   const shared = {
@@ -99,5 +88,5 @@ export async function runExtraction<T>(options: {
   const result = messages
     ? await generateText({ ...shared, messages })
     : await generateText({ ...shared, prompt: options.prompt });
-  return { output: result.output, usage: usageFromResult(result.totalUsage) };
+  return { output: result.output, usage: toUsage(result.totalUsage) };
 }

@@ -4,7 +4,7 @@ import { toError } from "./errors.js";
 import { RemoteAgentError } from "./exceptions.js";
 import type { ResolvedExtractOptions } from "./pipeline.js";
 import { runWithRetries } from "./retry.js";
-import type { Usage } from "./types.js";
+import { toUsage, type Usage } from "./types.js";
 
 export function joinAgentUrl(base: string, path: string): string {
   const root = base.trim().replace(/\/+$/, "");
@@ -38,18 +38,6 @@ async function resolveHeaders(agent: DefinedRemoteAgent): Promise<Record<string,
     "content-type": "application/json",
     ...extra,
     ...auth,
-  };
-}
-
-function usageFrom(value: unknown): Usage {
-  if (!value || typeof value !== "object") {
-    return { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
-  }
-  const usage = value as Usage;
-  return {
-    inputTokens: Number(usage.inputTokens) || 0,
-    outputTokens: Number(usage.outputTokens) || 0,
-    totalTokens: Number(usage.totalTokens) || 0,
   };
 }
 
@@ -116,7 +104,7 @@ export async function runRemoteExtraction<T>(
       }
       return {
         output: schema.parse("output" in record ? record.output : payload),
-        usage: usageFrom(record.usage),
+        usage: toUsage(record.usage),
       };
     },
     {

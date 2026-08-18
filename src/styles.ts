@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { createContext, runInContext } from "node:vm";
 import { tool } from "ai";
 import { z } from "zod";
+import { normalizeChoice } from "./config.js";
 
 export const ExtractionStyle = {
   DIRECT: "direct",
@@ -12,6 +13,13 @@ export const ExtractionStyle = {
 } as const;
 
 export type ExtractionStyle = (typeof ExtractionStyle)[keyof typeof ExtractionStyle];
+
+/** Every style, in the order surfaces present them. */
+export const EXTRACTION_STYLES = [
+  ExtractionStyle.DIRECT,
+  ExtractionStyle.SEARCH,
+  ExtractionStyle.CODE,
+] as const;
 
 const BINARY_PREFIXES = [
   "image/",
@@ -63,9 +71,7 @@ const DOCUMENT_FILENAMES: Record<string, string> = {
 };
 
 export function normalizeStyle(style: ExtractionStyle | string): ExtractionStyle {
-  const values = Object.values(ExtractionStyle);
-  if (values.includes(style as ExtractionStyle)) return style as ExtractionStyle;
-  throw new Error(`style must be one of ${values.map((v) => `'${v}'`).join(", ")}; got '${style}'.`);
+  return normalizeChoice("style", EXTRACTION_STYLES, style);
 }
 
 function bareMediaType(mediaType: string): string {

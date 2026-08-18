@@ -1,26 +1,27 @@
-import { extractWithUsage, type ExtractOptions } from "./extract.js";
-import { toError } from "./errors.js";
+import { extractWithUsage } from "./extract.js";
+import { errorPayload } from "./errors.js";
 import { extractManyWithResults, type ExtractManyOptions } from "./batch.js";
 import type { LanguageModel } from "./model.js";
 import { loadSchema } from "./schema.js";
+import {
+  resolveSerializedInput,
+  toExtractOptions,
+  type SerializedInput,
+} from "./serialized.js";
+import type { ExtractionStyle } from "./styles.js";
 import type { ExtractionInputLike, ExtractionResult, Usage } from "./types.js";
 
 export type JsonSchema = Record<string, unknown>;
 
 /** Path/URL or base64 bytes. Zod schemas are not serializable — pass JSON Schema instead. */
-export interface ExtractWorkflowSource {
-  source?: string;
-  data?: string;
-  mediaType?: string;
-  name?: string;
-}
+export type ExtractWorkflowSource = SerializedInput;
 
 export interface ExtractWorkflowInput {
   schema: JsonSchema | string;
   model: string;
   input: ExtractWorkflowSource;
   instructions?: string;
-  style?: "direct" | "search" | "code";
+  style?: ExtractionStyle;
   maxInputBytes?: number;
   maxRetries?: number;
   retryBackoff?: number;
@@ -42,33 +43,10 @@ export interface ExtractWorkflowResult {
 export type ExtractWorkflowFailure = { error: string; errorType: string };
 export type ExtractManyWorkflowItem = ExtractWorkflowResult | ExtractWorkflowFailure;
 
-export function resolveWorkflowSource(input: ExtractWorkflowSource): ExtractionInputLike {
-  if (input.data != null) {
-    if (!input.mediaType) throw new Error("mediaType is required when data is base64 bytes.");
-    return { source: Buffer.from(input.data, "base64"), mediaType: input.mediaType, name: input.name };
-  }
-  if (!input.source) throw new Error("Each input needs source (path/URL) or data (base64).");
-  return input.mediaType || input.name
-    ? { source: input.source, mediaType: input.mediaType, name: input.name }
-    : input.source;
-}
+export const resolveWorkflowSource: (input: ExtractWorkflowSource) => ExtractionInputLike =
+  resolveSerializedInput;
 
-export function workflowExtractOptions(
-  input: Pick<
-    ExtractWorkflowInput,
-    "instructions" | "style" | "maxInputBytes" | "maxRetries" | "retryBackoff" | "retryMaxBackoff" | "timeout"
-  >,
-): ExtractOptions {
-  return {
-    instructions: input.instructions,
-    style: input.style,
-    maxInputBytes: input.maxInputBytes,
-    maxRetries: input.maxRetries,
-    retryBackoff: input.retryBackoff,
-    retryMaxBackoff: input.retryMaxBackoff,
-    timeout: input.timeout,
-  };
-}
+export const workflowExtractOptions = toExtractOptions;
 
 /** Runs extraction from serializable workflow arguments. `model` is overridable for tests. */
 export async function runSerializableExtract(
@@ -76,7 +54,7 @@ export async function runSerializableExtract(
   model: LanguageModel = input.model,
 ): Promise<ExtractWorkflowResult> {
   const schema = await loadSchema(input.schema);
-  return extractWithUsage(schema, model, resolveWorkflowSource(input.input), workflowExtractOptions(input));
+  return extractWithUsage(schema, model, resolveWorkflowSource(input.input), toExtractOptions(input));
 }
 
 export async function runSerializableExtractMany(
@@ -140,7 +118,6 @@ async function extractDocumentSettledStep(input: ExtractWorkflowInput): Promise<
   try {
     return await runSerializableExtract(input);
   } catch (error) {
-    const err = toError(error);
-    return { error: err.message, errorType: err.name };
+    return errorPayload(error);
   }
 }
