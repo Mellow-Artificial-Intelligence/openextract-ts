@@ -29,7 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Extract step 3 takes files only: up to 5 attachments at 2 MB each, replacing the paste-text box. Attachment limits and errors are surfaced inline.
 
 - Cookbook TUI loads language models from AI Gateway (`gateway.getAvailableModels()`), keeps the output pane and footer status empty until extract, and updates per-agent invoice cards in place as work starts and finishes.
-- GitHub Pages is a usage guide: [Guide](https://mellow-artificial-intelligence.github.io/openextract-ts/guide.html) (library, styles, swarms, CLI), [MCP for agents](https://mellow-artificial-intelligence.github.io/openextract-ts/mcp.html), [API reference](https://mellow-artificial-intelligence.github.io/openextract-ts/api-reference.html), and `llms.txt`.
+- Docs deploy skips GitHub Pages publish when Pages is not enabled, so `main` stays green; Jekyll still builds.
 
 ### Fixed
 

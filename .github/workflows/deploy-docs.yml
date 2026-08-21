@@ -27,23 +27,29 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    outputs:
+      pages: ${{ steps.pages.outcome == 'success' }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
-      - if: github.event_name != 'pull_request'
+      - id: pages
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      - if: github.event_name != 'pull_request' && steps.pages.outcome != 'success'
+        run: echo "::warning::GitHub Pages is not enabled. Jekyll still builds; deploy is skipped. Set Settings → Pages → Source: GitHub Actions, then re-run this workflow."
       - uses: actions/jekyll-build-pages@44a6e6beabd48582f863aeeb6cb2151cc1716697 # v1.0.13
         with:
           source: ./docs
           destination: ./_site
-      - if: github.event_name != 'pull_request'
+      - if: github.event_name != 'pull_request' && steps.pages.outcome == 'success'
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: ./_site
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && needs.build.outputs.pages == 'true'
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 10
