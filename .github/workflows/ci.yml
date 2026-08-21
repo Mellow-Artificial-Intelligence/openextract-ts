@@ -15,11 +15,17 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  NPM_CONFIG_AUDIT: "false"
+  NPM_CONFIG_FUND: "false"
+  NPM_CONFIG_PREFER_OFFLINE: "true"
+  NEXT_TELEMETRY_DISABLED: "1"
+
 jobs:
   test:
     name: Test (Node ${{ matrix.node-version }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -33,14 +39,27 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run test:coverage
-      - run: npm run build
+
+      # tsc output does not depend on the Node runtime, so typecheck, coverage,
+      # and build run once on 22. Node 20 only re-runs the suite for runtime
+      # compatibility.
+      - name: Typecheck
+        if: matrix.node-version == '22'
+        run: npm run typecheck
+      - name: Test with coverage
+        if: matrix.node-version == '22'
+        run: npm run test:coverage
+      - name: Build
+        if: matrix.node-version == '22'
+        run: npm run build
+      - name: Test
+        if: matrix.node-version != '22'
+        run: npm test
 
   web:
     name: Web
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -50,8 +69,33 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - run: npm ci
+
+      # web/node_modules is ~1.2 GB, so unpacking it costs more than fetching
+      # the tarballs. Restore the installed tree and skip npm ci outright, but
+      # only on an exact lockfile match so a stale tree can never be reused.
+      # The lockfile plus the pinned runner image fully determine the tree,
+      # including the platform-specific binaries npm picks per host.
+      - id: web-modules
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: web/node_modules
+          key: web-node-modules-${{ runner.os }}-node22-${{ hashFiles('web/package-lock.json') }}
+      - if: steps.web-modules.outputs.cache-hit != 'true'
+        run: npm ci
         working-directory: web
+
+      # .next/cache carries the compiler and minifier caches across runs, and
+      # tsconfig.tsbuildinfo backs the incremental typecheck. Partial restores
+      # are safe: both are validated against the current sources.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            web/.next/cache
+            web/tsconfig.tsbuildinfo
+          key: web-next-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}-${{ hashFiles('web/src/**', 'web/*.ts', 'web/*.mjs', 'web/*.json') }}
+          restore-keys: |
+            web-next-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}-
+
       - run: npm run typecheck
         working-directory: web
       - run: npm run build
