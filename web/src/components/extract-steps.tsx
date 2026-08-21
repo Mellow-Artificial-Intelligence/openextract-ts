@@ -1,16 +1,14 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Overline } from "@/components/ui/overline";
 import { cn } from "@/lib/utils";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 
 export const FLOW_STEPS = ["describe", "schema", "extract"] as const;
 export type FlowStep = (typeof FLOW_STEPS)[number];
 
 export const STEP_META: Record<FlowStep, { n: number; label: string; hint: string }> = {
   describe: { n: 1, label: "Describe", hint: "What should the table contain?" },
-  schema: { n: 2, label: "Schema", hint: "Edit columns, then continue." },
+  schema: { n: 2, label: "Schema", hint: "Edit the columns, then continue." },
   extract: { n: 3, label: "Extract", hint: "Add a source and fill the rows." },
 };
 
@@ -26,97 +24,60 @@ export function ExtractSteps({
   extractReady: boolean;
 }) {
   const index = FLOW_STEPS.indexOf(step);
-  const meta = STEP_META[step];
-  const canPrev = index > 0;
-  const canNext =
-    (step === "describe" && schemaReady) || (step === "schema" && extractReady);
 
-  const go = (next: FlowStep) => {
-    if (next === "describe") onStep(next);
-    if (next === "schema" && schemaReady) onStep(next);
-    if (next === "extract" && extractReady) onStep(next);
-  };
+  const unlocked = (id: FlowStep) =>
+    id === "describe" || (id === "schema" && schemaReady) || (id === "extract" && extractReady);
 
   return (
-    <nav aria-label="Extraction steps" className="shrink-0 border-b border-border/50">
-      <div className="flex items-center gap-2 px-3 py-2 sm:hidden">
-        <Button
-          aria-label="Previous step"
-          disabled={!canPrev}
-          onClick={() => go(FLOW_STEPS[index - 1]!)}
-          size="icon"
-          type="button"
-          variant="outline"
-        >
-          <ChevronLeftIcon />
-        </Button>
-        <div className="min-w-0 flex-1 text-center">
-          <p className="truncate font-medium text-sm">{meta.label}</p>
-          <Overline>
-            Step {meta.n} of {FLOW_STEPS.length}
-          </Overline>
-          <div className="mx-auto mt-1.5 flex max-w-24 gap-1">
-            {FLOW_STEPS.map((id, i) => (
-              <span
-                className={cn(
-                  "h-1 flex-1 rounded-full",
-                  i < index ? "bg-foreground/35" : i === index ? "bg-foreground" : "bg-muted",
-                )}
-                key={id}
-              />
-            ))}
-          </div>
-        </div>
-        <Button
-          aria-label="Next step"
-          disabled={!canNext}
-          onClick={() => go(FLOW_STEPS[index + 1]!)}
-          size="icon"
-          type="button"
-          variant="outline"
-        >
-          <ChevronRightIcon />
-        </Button>
-      </div>
-
-      <ol className="hidden grid-cols-3 sm:grid">
+    <nav aria-label="Extraction steps" className="shrink-0 border-b border-border bg-background">
+      <ol className="flex items-center gap-1 overflow-x-auto px-2 py-1.5 sm:px-3">
         {FLOW_STEPS.map((id, i) => {
           const item = STEP_META[id];
           const current = id === step;
-          const locked =
-            !current &&
-            ((id === "schema" && !schemaReady) || (id === "extract" && !extractReady));
+          const done = i < index;
+          const locked = !current && !unlocked(id);
           return (
-            <li className="border-border/50 not-last:border-r" key={id}>
+            <li className="flex shrink-0 items-center gap-1" key={id}>
+              {i > 0 ? (
+                <span
+                  aria-hidden
+                  className={cn("h-px w-4 shrink-0", done ? "bg-primary/40" : "bg-border")}
+                />
+              ) : null}
               <button
+                aria-current={current ? "step" : undefined}
                 className={cn(
-                  "flex w-full items-center gap-2 px-4 py-2.5 text-left transition-colors",
-                  current ? "bg-muted/60" : "hover:bg-muted/40",
-                  locked && "pointer-events-none opacity-40",
+                  "flex h-7 items-center gap-1.5 rounded-md px-2 text-sm transition-colors duration-100",
+                  current
+                    ? "bg-hover font-medium text-foreground"
+                    : "text-muted-foreground hover:bg-hover hover:text-foreground",
+                  locked && "pointer-events-none opacity-35",
                 )}
                 disabled={locked}
-                onClick={() => go(id)}
+                onClick={() => unlocked(id) && onStep(id)}
                 type="button"
               >
                 <span
                   className={cn(
-                    "flex size-5 shrink-0 items-center justify-center font-mono text-[10px]",
-                    current ? "bg-foreground text-background" : "border text-muted-foreground",
+                    "flex size-4 shrink-0 items-center justify-center rounded-full border text-[9px] leading-none",
+                    current
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : done
+                        ? "border-primary/40 bg-primary/15 text-primary"
+                        : "border-border text-faint",
                   )}
                 >
-                  {item.n}
+                  {done ? <CheckIcon className="size-2.5" /> : item.n}
                 </span>
-                <span className="min-w-0">
-                  <span className="block font-medium text-sm">{item.label}</span>
-                  <span className="hidden truncate text-muted-foreground text-xs md:block">
-                    {item.hint}
-                  </span>
-                </span>
-                {i < FLOW_STEPS.length - 1 ? <span className="sr-only">then</span> : null}
+                {item.label}
               </button>
             </li>
           );
         })}
+        <li className="ml-3 hidden min-w-0 items-center gap-3 md:flex">
+          <span aria-hidden className="h-3.5 w-px shrink-0 bg-border" />
+          <span className="min-w-0 truncate text-faint text-xs">{STEP_META[step].hint}</span>
+        </li>
       </ol>
     </nav>
   );

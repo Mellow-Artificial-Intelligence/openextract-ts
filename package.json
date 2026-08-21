@@ -74,15 +74,20 @@
     "zod": "^4.0.0"
   },
   "peerDependencies": {
+    "@vercel/sandbox": ">=3.0.0",
     "workflow": ">=4.0.0"
   },
   "peerDependenciesMeta": {
+    "@vercel/sandbox": {
+      "optional": true
+    },
     "workflow": {
       "optional": true
     }
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@vercel/sandbox": "^3.0.0",
     "@vitest/coverage-v8": "^3.2.7",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",

@@ -52,6 +52,9 @@ export type {
   ExtractionResult,
   ExtractionInputLike,
   MediaSource,
+  SandboxClient,
+  SandboxCreateOptions,
+  SandboxOptions,
   Usage,
 } from "./types.js";
 export {

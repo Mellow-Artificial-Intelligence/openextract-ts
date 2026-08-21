@@ -11,7 +11,7 @@ import type { z } from "zod";
 
 export interface ExtractorOptions extends Pick<
   ExtractOptions,
-  "instructions" | "style" | "timeout" | "instrument" | "maxInputBytes"
+  "instructions" | "style" | "timeout" | "instrument" | "maxInputBytes" | "sandbox"
 > {
   retryPolicy?: RetryPolicy;
   urlTimeout?: number;

@@ -125,7 +125,7 @@ export async function runApp(
   });
 
   const styleSelect = tabs(renderer, {
-    tabWidth: 10,
+    tabWidth: 9,
     options: STYLES.map((name) => ({ name, description: "", value: name })),
   });
   styleSelect.setSelectedIndex(Math.max(0, STYLES.indexOf(form.style)));
@@ -138,7 +138,7 @@ export async function runApp(
     alignItems: "flex-start",
   });
   modelInput.flexGrow = 1;
-  styleSelect.width = 34;
+  styleSelect.width = 36;
   settingsRow.add(modelInput);
   settingsRow.add(styleSelect);
 

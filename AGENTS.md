@@ -42,7 +42,8 @@ Node.js 20+. Set `AI_GATEWAY_API_KEY` for live model calls. Tests use `MockLangu
 | `src/workflow.ts` | `openextract/workflow` durable extract |
 | `src/session.ts` | Reusable `Extractor` |
 | `src/pipeline.ts` | Shared media → style → retry → model path |
-| `src/styles.ts` | `direct` / `search` / `code` |
+| `src/styles.ts` | `direct` / `search` / `code` / `sandbox` |
+| `src/sandbox.ts` | Claude Code / Codex in a Vercel Sandbox |
 | `src/model.ts` | AI Gateway routing, `generateText`, `ToolLoopAgent` |
 | `src/media.ts` | Paths, URLs, bytes, streams, SSRF guards |
 | `src/schema.ts` | Zod / JSON Schema / `module:exportName` |
@@ -57,7 +58,7 @@ Node.js 20+. Set `AI_GATEWAY_API_KEY` for live model calls. Tests use `MockLangu
 | `src/cli.ts` | `openextract` bin entry; implementation in `src/cli/` |
 | `src/cli/` | `args` (parsing/help), `run` (main), `runtime` (entry helpers shared with `mcp-cli`) |
 | `src/tui/` | OpenTUI app (`app`, `form`, `widgets`) |
-| `web/` | Next.js cookbook UI (Vercel root = `web/`) |
+| `web/` | Next.js playground: Extract and Agents in one shell (Vercel root = `web/`) |
 | `tests/` | Vitest. Mocks live in `tests/helpers.ts` |
 | `examples/` | Runnable samples |
 | `examples/cookbook/` | OpenTUI recipes with fixtures (start with `npm run cookbook`) |
@@ -77,11 +78,12 @@ Node.js 20+. Set `AI_GATEWAY_API_KEY` for live model calls. Tests use `MockLangu
 
 `style` selects how the model inspects the input:
 
-- `direct` (default) — send resolved media in one shot. Required for PDF, Office, images, audio, video.
+- `direct` (default) — send resolved media in one shot. Required for PDF, Office, images, audio, video unless using `sandbox`.
 - `search` — file tools over a UTF-8 text workspace.
 - `code` — sandboxed JavaScript with the document as `document`.
+- `sandbox` — Claude Code or Codex in a Vercel Sandbox (`model` `claude-code` or `codex`).
 
-`search` and `code` reject binary / non-UTF-8 input. Do not silently fall back to `direct`.
+`search` and `code` reject binary / non-UTF-8 input. Do not silently fall back to `direct`. Coding-agent models default to `sandbox`.
 
 ## Testing
 
@@ -111,9 +113,9 @@ When *using* this library as an agent (not just editing it):
 4. Use `extractSwarm` / `extract_swarm` for several agents on one input (`size`, a model list, or importable `defineAgent` / `defineRemoteAgent` modules; `reduce`: `merge`, `vote`, `first`).
 5. Reuse an `Extractor` / `create_extractor` session when schema, model, and style stay fixed.
 6. For durable Vercel Workflows, call `extractWorkflow` / `extractManyWorkflow` from `openextract/workflow` with JSON Schema (Zod is not serializable).
-7. Choose `style` from the input type; do not invent a fourth style without extending `ExtractionStyle`.
+7. Choose `style` from the input type (`direct`, `search`, `code`, `sandbox`); do not invent another style without extending `ExtractionStyle`.
 
-MCP: `npx openextract-mcp` (stdio) or `--http --port 3000` (loopback). Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`. Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts include `extract-swarm`. Pass `agent` / `agents` as a directory, file, or `module:exportName`. Auth helpers live at `openextract/agents/auth`.
+MCP: `npx openextract-mcp` (stdio) or `--http --port 3000` (loopback). Tools: `extract`, `extract_many`, `extract_swarm`, `create_extractor`, `extractor_extract`, `close_extractor`. Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts include `extract-swarm`. Pass `agent` / `agents` as a directory, file, or `module:exportName`. Models `claude-code` / `codex` use style `sandbox`. Auth helpers live at `openextract/agents/auth`.
 
 ## Issues and pull requests
 

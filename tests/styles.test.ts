@@ -9,12 +9,14 @@ import {
   normalizeStyle,
   stylePrompt,
   withStyleWorkspace,
+  workspaceFilename,
 } from "../src/styles.js";
 
 describe("styles", () => {
   it("normalizes enum values and rejects unknown ones", () => {
     expect(normalizeStyle("search")).toBe(ExtractionStyle.SEARCH);
     expect(normalizeStyle(ExtractionStyle.CODE)).toBe(ExtractionStyle.CODE);
+    expect(normalizeStyle("sandbox")).toBe(ExtractionStyle.SANDBOX);
     expect(() => normalizeStyle("rag")).toThrow(/style must be one of/);
   });
 
@@ -34,6 +36,11 @@ describe("styles", () => {
     expect(documentFilename("text/unknown")).toBe("document.txt");
     expect(documentFilename("plain")).toBe("document.txt");
     expect(documentFilename("")).toBe("document.txt");
+    expect(workspaceFilename("application/pdf")).toBe("document.pdf");
+    expect(workspaceFilename("application/msword")).toBe("document.msword");
+    expect(workspaceFilename("image/+++")).toBe("document.bin");
+    expect(workspaceFilename("application/octet-stream")).toBe("document.txt");
+    expect(workspaceFilename("application/")).toBe("document.txt");
   });
 
   it("rejects binary and non-utf8 input for search/code", () => {

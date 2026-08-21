@@ -31,9 +31,9 @@ const USAGE = `Usage: openextract [<input...>] [--schema <module:export> --model
 Options:
   --tui                 Open the interactive TUI
   --schema              Zod schema export path (module:exportName); optional when --agent has outputSchema
-  --model               AI Gateway model id (e.g. openai/gpt-5.5)
+  --model               AI Gateway model id (e.g. openai/gpt-5.5) or claude-code / codex
   --instructions        Optional natural-language guidance
-  --style               direct | search | code (default: direct)
+  --style               direct | search | code | sandbox (default: direct)
   --media-type          MIME type (required for stdin)
   --usage               Print token usage (single input only)
   --continue-on-error   Batch: keep going and exit 7 on partial failure

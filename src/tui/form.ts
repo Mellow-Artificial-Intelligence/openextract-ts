@@ -117,7 +117,7 @@ export function validateForm(form: TuiForm): string | null {
   } catch (error) {
     return toError(error).message;
   }
-  if (!form.model.trim()) return "Enter an AI Gateway model id (e.g. openai/gpt-5.5).";
+  if (!form.model.trim()) return "Enter an AI Gateway model id, or claude-code / codex.";
   if (!form.schemaSpec.trim()) return "Describe the output shape, or pick a preset.";
   return null;
 }

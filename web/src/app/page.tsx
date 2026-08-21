@@ -1,5 +1,5 @@
-import { CookbookApp } from "@/components/cookbook-app";
+import { WebApp } from "@/components/web-app";
 
 export default function Home() {
-  return <CookbookApp />;
+  return <WebApp />;
 }

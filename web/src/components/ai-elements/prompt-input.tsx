@@ -592,27 +592,39 @@ export const PromptInput = ({
       const withinSize = (f: File) =>
         maxFileSize ? f.size <= maxFileSize : true;
       const sized = accepted.filter(withinSize);
-      if (accepted.length > 0 && sized.length === 0) {
+      // Report every oversized file, not just the all-oversized case, so a
+      // partially-rejected drop is never silent.
+      const oversized = accepted.length - sized.length;
+      if (oversized > 0) {
         onError?.({
           code: "max_file_size",
-          message: "All files exceed the maximum size.",
+          message:
+            sized.length === 0
+              ? "All files exceed the maximum size."
+              : `${oversized} file${oversized === 1 ? "" : "s"} exceeded the maximum size.`,
         });
+      }
+      if (accepted.length > 0 && sized.length === 0) {
+        return;
+      }
+
+      // Capacity is resolved outside the updater: state updaters must stay pure,
+      // and onError reaches into consumer state.
+      const capacity =
+        typeof maxFiles === "number" ? Math.max(0, maxFiles - items.length) : undefined;
+      const capped =
+        typeof capacity === "number" ? sized.slice(0, capacity) : sized;
+      if (typeof capacity === "number" && sized.length > capacity) {
+        onError?.({
+          code: "max_files",
+          message: "Too many files. Some were not added.",
+        });
+      }
+      if (capped.length === 0) {
         return;
       }
 
       setItems((prev) => {
-        const capacity =
-          typeof maxFiles === "number"
-            ? Math.max(0, maxFiles - prev.length)
-            : undefined;
-        const capped =
-          typeof capacity === "number" ? sized.slice(0, capacity) : sized;
-        if (typeof capacity === "number" && sized.length > capacity) {
-          onError?.({
-            code: "max_files",
-            message: "Too many files. Some were not added.",
-          });
-        }
         const next: (FileUIPart & { id: string })[] = [];
         for (const file of capped) {
           next.push({
@@ -626,7 +638,7 @@ export const PromptInput = ({
         return [...prev, ...next];
       });
     },
-    [matchesAccept, maxFiles, maxFileSize, onError]
+    [items.length, matchesAccept, maxFiles, maxFileSize, onError]
   );
 
   const removeLocal = useCallback(
@@ -656,11 +668,19 @@ export const PromptInput = ({
       const withinSize = (f: File) =>
         maxFileSize ? f.size <= maxFileSize : true;
       const sized = accepted.filter(withinSize);
-      if (accepted.length > 0 && sized.length === 0) {
+      // Report every oversized file, not just the all-oversized case, so a
+      // partially-rejected drop is never silent.
+      const oversized = accepted.length - sized.length;
+      if (oversized > 0) {
         onError?.({
           code: "max_file_size",
-          message: "All files exceed the maximum size.",
+          message:
+            sized.length === 0
+              ? "All files exceed the maximum size."
+              : `${oversized} file${oversized === 1 ? "" : "s"} exceeded the maximum size.`,
         });
+      }
+      if (accepted.length > 0 && sized.length === 0) {
         return;
       }
 

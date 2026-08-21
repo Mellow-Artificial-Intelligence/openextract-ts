@@ -1,5 +1,7 @@
-export const STYLES = ["direct", "search", "code"] as const;
+export const STYLES = ["direct", "search", "code", "sandbox"] as const;
 export type StyleName = (typeof STYLES)[number];
+export const GATEWAY_STYLES = ["direct", "search", "code"] as const;
+export type GatewayStyle = (typeof GATEWAY_STYLES)[number];
 
 /** Shared by the style picker and the system prompt so both describe the same behaviour. */
 export const STYLE_DETAILS: Record<StyleName, { label: string; description: string }> = {
@@ -14,6 +16,10 @@ export const STYLE_DETAILS: Record<StyleName, { label: string; description: stri
   code: {
     label: "Code",
     description: "Reason over the text as data (counts, totals, lists) before extracting.",
+  },
+  sandbox: {
+    label: "Sandbox",
+    description: "Run Claude Code or Codex in a Vercel Sandbox and extract from the files there.",
   },
 };
 

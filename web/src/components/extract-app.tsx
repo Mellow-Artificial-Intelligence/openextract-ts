@@ -1,35 +1,30 @@
 "use client";
 
 import { ExtractSettings } from "@/components/extract-settings";
-import { ExtractSteps, type FlowStep } from "@/components/extract-steps";
+import { ExtractSteps, STEP_META, type FlowStep } from "@/components/extract-steps";
 import { ExtractSwarmStatus, type SwarmAgentState } from "@/components/extract-swarm";
 import { ExtractTable } from "@/components/extract-table";
 import {
   Attachment,
+  AttachmentInfo,
   AttachmentPreview,
   AttachmentRemove,
   Attachments,
 } from "@/components/ai-elements/attachments";
 import {
   PromptInput,
-  PromptInputActionAddAttachments,
-  PromptInputActionMenu,
-  PromptInputActionMenuContent,
-  PromptInputActionMenuTrigger,
   PromptInputBody,
   PromptInputFooter,
-  PromptInputHeader,
-  PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
   usePromptInputAttachments,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
-import { AppHeader } from "@/components/app-header";
+import { AppTopbar } from "@/components/app-topbar";
 import { ModelPicker } from "@/components/model-picker";
 import { Button } from "@/components/ui/button";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { Kbd } from "@/components/ui/kbd";
 import { Overline } from "@/components/ui/overline";
 import {
   Sheet,
@@ -38,25 +33,44 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import type { ShellProps } from "@/components/web-app";
 import { useObject } from "@ai-sdk/react";
 import type { FileUIPart } from "ai";
 import {
   ChevronDownIcon,
-  ChevronLeftIcon,
+  FileTextIcon,
+  PaperclipIcon,
   PlusIcon,
   SlidersHorizontalIcon,
+  XIcon,
 } from "lucide-react";
 import { nanoid } from "nanoid";
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { fetchExtractRows } from "@/lib/extract-stream";
 import {
   DEFAULT_MODEL,
+  GATEWAY_MODELS,
   MODELS,
-  resizeAgentModels,
-  setAgentModelAt,
+  isCodingAgentId,
+  isModelId,
   type ModelId,
   type SwarmSize,
 } from "@/lib/models";
+import {
+  composeExtractModel,
+  extractCodingOptions,
+  resizeAgentSpecs,
+  specForModel,
+  type AgentSpec,
+} from "@/lib/harness";
 import { EXAMPLES, type StyleName } from "@/lib/presets";
 import { swarmAgentInstructions } from "@/lib/system-prompt";
 import {
@@ -69,27 +83,63 @@ import {
 } from "@/lib/table-schema";
 import { cn } from "@/lib/utils";
 
+/** Step 3 accepts files only. Both limits are enforced by PromptInput. */
+export const MAX_SOURCE_FILES = 5;
+export const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
+
 function sourceSummary(source: string, files: FileUIPart[]) {
-  const chars = source.trim().length;
-  if (!chars && files.length === 0) return "Paste text or attach a file";
   const parts: string[] = [];
-  if (chars) parts.push(`${chars} chars`);
-  if (files.length) parts.push(`${files.length} file${files.length === 1 ? "" : "s"}`);
+  if (files.length) parts.push(`${files.length} of ${MAX_SOURCE_FILES} files`);
+  if (source.trim()) parts.push("example text");
+  if (parts.length === 0) return `Attach up to ${MAX_SOURCE_FILES} files`;
   return parts.join(" · ");
 }
 
-function PromptAttachments() {
+function styleLabel(style: StyleName) {
+  return style.charAt(0).toUpperCase() + style.slice(1);
+}
+
+function SourceDropzone({ onOpen }: { onOpen: () => void }) {
   const attachments = usePromptInputAttachments();
-  if (attachments.files.length === 0) return null;
+  const full = attachments.files.length >= MAX_SOURCE_FILES;
   return (
-    <Attachments variant="inline">
-      {attachments.files.map((file) => (
-        <Attachment data={file} key={file.id} onRemove={() => attachments.remove(file.id)}>
-          <AttachmentPreview />
-          <AttachmentRemove />
-        </Attachment>
-      ))}
-    </Attachments>
+    <div className="space-y-2">
+      {attachments.files.length > 0 ? (
+        <Attachments variant="list">
+          {attachments.files.map((file) => (
+            <Attachment
+              className="gap-2.5 border-border bg-raised p-2 text-sm"
+              data={file}
+              key={file.id}
+              onRemove={() => attachments.remove(file.id)}
+            >
+              <AttachmentPreview />
+              <AttachmentInfo showMediaType />
+              <AttachmentRemove />
+            </Attachment>
+          ))}
+        </Attachments>
+      ) : null}
+      <button
+        className="flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border border-border border-dashed px-4 py-6 text-center transition-colors duration-100 hover:border-border-strong hover:bg-hover disabled:pointer-events-none disabled:opacity-40"
+        disabled={full}
+        onClick={() => {
+          onOpen();
+          attachments.openFileDialog();
+        }}
+        type="button"
+      >
+        <PaperclipIcon className="size-4 text-faint" />
+        <span className="font-medium text-sm">
+          {full ? `${MAX_SOURCE_FILES} files attached` : "Attach files"}
+        </span>
+        <span className="text-faint text-xs">
+          {full
+            ? "Remove one to add another."
+            : `Drop them here or click to browse · up to ${MAX_SOURCE_FILES} files, 2 MB each`}
+        </span>
+      </button>
+    </div>
   );
 }
 
@@ -123,20 +173,21 @@ async function withDataUrls(files: FileUIPart[]): Promise<FileUIPart[]> {
   );
 }
 
-function StepFooter({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="shrink-0 border-t border-border/50 bg-background px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
-      <div className="mx-auto flex w-full max-w-3xl items-center gap-2">{children}</div>
-    </div>
-  );
+interface PrimaryAction {
+  label: string;
+  onClick: () => void;
+  disabled: boolean;
+  stop?: boolean;
 }
 
-export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
+export function ExtractApp({ shell }: { shell: ShellProps }) {
   const [step, setStep] = useState<FlowStep>("describe");
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [style, setStyle] = useState<StyleName>("direct");
+  const [sandbox, setSandbox] = useState(true);
+  const [workflow, setWorkflow] = useState(true);
   const [agents, setAgents] = useState<SwarmSize>(1);
-  const [agentModels, setAgentModels] = useState<ModelId[]>([DEFAULT_MODEL]);
+  const [team, setTeam] = useState<AgentSpec[]>([{ id: DEFAULT_MODEL }]);
   const [swarmAgents, setSwarmAgents] = useState<SwarmAgentState[]>([]);
   const [swarmError, setSwarmError] = useState<Error | null>(null);
   const swarmAbort = useRef<AbortController | null>(null);
@@ -144,6 +195,7 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("");
   const [sourceFiles, setSourceFiles] = useState<FileUIPart[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sourceKey, setSourceKey] = useState(0);
   const [title, setTitle] = useState("Table");
@@ -182,7 +234,9 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
     setExtractError(null);
   }, []);
 
-  const swarming = swarmAgents.some((agent) => agent.status === "pending" || agent.status === "running");
+  const swarming = swarmAgents.some(
+    (agent) => agent.status === "pending" || agent.status === "running",
+  );
   const busy = schemaLoading || extracting || swarming;
   const error = schemaError ?? extractError ?? swarmError;
   const hasSource = Boolean(source.trim() || sourceFiles.length);
@@ -209,7 +263,9 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
     swarmAbort.current?.abort();
     setSwarmAgents((prev) =>
       prev.map((agent) =>
-        agent.status === "running" || agent.status === "pending" ? { ...agent, status: "done" } : agent,
+        agent.status === "running" || agent.status === "pending"
+          ? { ...agent, status: "done" }
+          : agent,
       ),
     );
   }, []);
@@ -228,7 +284,11 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
       setTitle("Table");
       setTableKey(nanoid());
       setStep("schema");
-      submitSchema({ query: trimmed, source: nextSource, model });
+      submitSchema({
+        query: trimmed,
+        source: nextSource,
+        model: isCodingAgentId(model) ? DEFAULT_MODEL : model,
+      });
     },
     [busy, clearExtract, model, query, source, stopExtract, stopSwarm, submitSchema],
   );
@@ -239,7 +299,7 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
     if (!query.trim() && !source.trim() && files.length === 0) return;
     stopSchema();
     setSourceOpen(false);
-    const models = agentModels.length > 0 ? agentModels : [model];
+    const members = team.length > 0 ? team : [specForModel(model)];
     extractAbort.current?.abort();
     swarmAbort.current?.abort();
     const controller = new AbortController();
@@ -248,7 +308,8 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
     setExtractError(null);
     setSwarmError(null);
     setRows([]);
-    if (models.length === 1) {
+    if (members.length === 1) {
+      const spec = members[0] ?? specForModel(model);
       setSwarmAgents([]);
       setExtracting(true);
       try {
@@ -258,9 +319,12 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
             source,
             files,
             columns: displayColumns,
-            model: models[0],
+            model: composeExtractModel(spec),
             style,
             instructions,
+            sandbox,
+            workflow,
+            coding: extractCodingOptions(spec),
           },
           controller.signal,
         );
@@ -275,29 +339,42 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
       return;
     }
     setExtracting(false);
-    setSwarmAgents(models.map((id) => ({ model: id, status: "running" as const, rows: 0 })));
-    const groups: Array<Array<Record<string, unknown>>> = models.map(() => []);
+    setSwarmAgents(
+      members.map((spec) => ({ model: composeExtractModel(spec), status: "running" as const, rows: 0 })),
+    );
+    const groups: Array<Array<Record<string, unknown>>> = members.map(() => []);
     const publish = () => {
       const merged = unionRows(groups);
       setRows(merged.map((values, index) => ({ id: `swarm-${index}`, values })));
     };
     const outcomes = await Promise.allSettled(
-      models.map(async (agentModel, index) => {
+      members.map(async (spec, index) => {
+        const extractModel = composeExtractModel(spec);
         const extracted = await fetchExtractRows(
           {
             query,
             source,
             files,
             columns: displayColumns,
-            model: agentModel,
+            model: extractModel,
             style,
-            instructions: swarmAgentInstructions(instructions, index, models.length),
+            instructions: swarmAgentInstructions({
+              instructions,
+              index,
+              total: members.length,
+              model: extractModel,
+            }),
+            sandbox,
+            workflow,
+            coding: extractCodingOptions(spec),
           },
           controller.signal,
         );
         groups[index] = extracted;
         setSwarmAgents((prev) =>
-          prev.map((agent, i) => (i === index ? { ...agent, status: "done", rows: extracted.length } : agent)),
+          prev.map((agent, i) =>
+            i === index ? { ...agent, status: "done", rows: extracted.length } : agent,
+          ),
         );
         publish();
       }),
@@ -314,7 +391,20 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
       setSwarmError(new Error("Every swarm agent failed."));
     }
     if (swarmAbort.current === controller) swarmAbort.current = null;
-  }, [agentModels, busy, displayColumns, instructions, model, query, source, sourceFiles, stopSchema, style]);
+  }, [
+    busy,
+    displayColumns,
+    instructions,
+    model,
+    query,
+    sandbox,
+    source,
+    sourceFiles,
+    stopSchema,
+    style,
+    team,
+    workflow,
+  ]);
 
   const submitQuery = useCallback(
     (message: PromptInputMessage) => {
@@ -323,14 +413,16 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
     [generate, source],
   );
 
+  const { onPresetApplied } = shell;
   const loadExample = useCallback(
     (example: (typeof EXAMPLES)[number]) => {
       if (busy) return;
       setQuery(example.query);
       setSource(example.text);
+      onPresetApplied(example.label);
       generate(example.query, example.text);
     },
-    [busy, generate],
+    [busy, generate, onPresetApplied],
   );
 
   const startOver = useCallback(() => {
@@ -345,22 +437,91 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
     setQuery("");
     setSource("");
     setSourceFiles([]);
+    setAttachError(null);
     setColumns([]);
     setRows([]);
     setTitle("Table");
     setTableKey(nanoid());
     setSourceKey((key) => key + 1);
     setAgents(1);
-    setAgentModels([model]);
+    setTeam((prev) => [specForModel(model, prev[0])]);
     setSourceOpen(true);
-  }, [clearExtract, clearSchema, model, stopExtract, stopSchema, stopSwarm]);
+    onPresetApplied(null);
+  }, [clearExtract, clearSchema, model, onPresetApplied, stopExtract, stopSchema, stopSwarm]);
+
+  // Sidebar and command-palette examples land here.
+  const handledPreset = useRef(0);
+  useEffect(() => {
+    const request = shell.preset;
+    if (!request || request.nonce === handledPreset.current) return;
+    handledPreset.current = request.nonce;
+    const example = EXAMPLES.find((item) => item.label === request.id);
+    if (example) loadExample(example);
+  }, [shell.preset, loadExample]);
+
+  /** One control drives the flow forward, in the topbar and on ⌘↵. */
+  const primary: PrimaryAction = useMemo(() => {
+    if (step === "describe") {
+      if (schemaLoading) return { label: "Stop", onClick: stopSchema, disabled: false, stop: true };
+      return {
+        label: "Generate schema",
+        onClick: () => generate(),
+        disabled: !query.trim() || extracting,
+      };
+    }
+    if (step === "schema") {
+      if (schemaLoading) return { label: "Stop", onClick: stopSchema, disabled: false, stop: true };
+      return {
+        label: "Continue",
+        onClick: () => {
+          setSourceOpen(true);
+          setStep("extract");
+        },
+        disabled: !extractReady,
+      };
+    }
+    if (extracting || swarming) {
+      return {
+        label: "Stop",
+        onClick: swarming ? stopSwarm : stopExtract,
+        disabled: false,
+        stop: true,
+      };
+    }
+    return {
+      label: agents > 1 ? `Extract · ${agents}` : "Extract",
+      onClick: () => void extract(),
+      disabled: !hasSource || displayColumns.length === 0,
+    };
+  }, [
+    agents,
+    displayColumns.length,
+    extract,
+    extractReady,
+    extracting,
+    generate,
+    hasSource,
+    query,
+    schemaLoading,
+    step,
+    stopExtract,
+    stopSchema,
+    stopSwarm,
+    swarming,
+  ]);
+
+  const { registerRun } = shell;
+  useEffect(() => {
+    registerRun(primary.disabled ? null : primary.onClick);
+    return () => registerRun(null);
+  }, [primary, registerRun]);
 
   const table = (
     <ExtractTable
       columns={displayColumns}
       emptyHint={
         step === "extract"
-          ? "Paste a source or attach a file, then extract to fill the rows."
+          ? "Attach a file, then extract to fill the rows."
           : "Columns stream in here. Edit them, then continue to add a source."
       }
       extracting={extracting || swarming}
@@ -373,50 +534,52 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
     />
   );
 
-  const modelPicker = (
-    <ModelPicker
-      models={MODELS}
-      onSelect={(id) => {
-        setModel(id);
-        setAgentModels((prev) => (agents === 1 ? [id] : prev));
-      }}
-      trigger="prompt"
-      value={model}
-    />
-  );
-
-  const actions = (
-    <>
-      {step !== "describe" || query || source ? (
-        <Button onClick={startOver} size="sm" type="button" variant="outline">
-          <PlusIcon />
-          <span className="hidden sm:inline">New</span>
-        </Button>
-      ) : null}
-      <Button
-        aria-label="Extraction settings"
-        onClick={() => setSettingsOpen(true)}
-        size="sm"
-        type="button"
-        variant="outline"
-      >
-        <SlidersHorizontalIcon />
-        <span className="hidden capitalize sm:inline">
-          {agents > 1 ? `${agents} agents` : style}
-        </span>
-      </Button>
-    </>
-  );
+  const settingsLabel =
+    agents > 1 ? `${agents} agents` : sandbox && isCodingAgentId(model) ? "Sandbox" : styleLabel(style);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {embedded ? (
-        <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border/50 px-3 py-2 sm:px-4">
-          {actions}
-        </div>
-      ) : (
-        <AppHeader title="openextract">{actions}</AppHeader>
-      )}
+    <>
+      <AppTopbar
+        actions={
+          <>
+            {step !== "describe" || query || source ? (
+              <Button onClick={startOver} size="sm" type="button" variant="ghost">
+                <PlusIcon />
+                <span className="hidden sm:inline">New</span>
+              </Button>
+            ) : null}
+            <Button
+              aria-label="Extraction settings"
+              onClick={() => setSettingsOpen(true)}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <SlidersHorizontalIcon />
+              <span className="hidden sm:inline">{settingsLabel}</span>
+            </Button>
+          </>
+        }
+        crumb={STEP_META[step].label}
+        onCommand={shell.onCommand}
+        onMenu={shell.onMenu}
+        primary={
+          <Button
+            className="gap-2"
+            disabled={primary.disabled}
+            onClick={primary.onClick}
+            size="sm"
+            type="button"
+            variant={primary.stop ? "outline" : "default"}
+          >
+            {primary.label}
+            {primary.stop ? null : (
+              <Kbd className="text-primary-foreground/60" keys={["⌘", "↵"]} />
+            )}
+          </Button>
+        }
+        title="Extract"
+      />
 
       <ExtractSteps
         extractReady={extractReady}
@@ -428,22 +591,45 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
       <Sheet onOpenChange={setSettingsOpen} open={settingsOpen}>
         <SheetContent className="w-full gap-0 data-[side=right]:w-full sm:max-w-sm" side="right">
           <SheetHeader>
-            <SheetTitle>Extraction</SheetTitle>
-            <SheetDescription>Agents, style, and instructions for this run.</SheetDescription>
+            <SheetTitle>Team</SheetTitle>
+            <SheetDescription>
+              Orchestrate gateway models and coding agents on one source.
+            </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <ExtractSettings
-              agentModels={agentModels}
               agents={agents}
               instructions={instructions}
-              onAgentModel={(index, id) => setAgentModels((prev) => setAgentModelAt(prev, index, id))}
               onAgents={(count) => {
                 setAgents(count);
-                setAgentModels((prev) => resizeAgentModels(prev, count, model));
+                setTeam((prev) =>
+                  resizeAgentSpecs(
+                    prev,
+                    count,
+                    specForModel(model, prev[0]),
+                    sandbox ? MODELS : GATEWAY_MODELS,
+                  ),
+                );
               }}
               onInstructions={setInstructions}
+              onMember={(index, spec) => {
+                setTeam((prev) => prev.map((item, i) => (i === index ? spec : item)));
+                if (agents === 1 && isModelId(spec.id)) setModel(spec.id);
+              }}
+              onSandbox={(next) => {
+                setSandbox(next);
+                if (next) return;
+                setModel((current) => (isCodingAgentId(current) ? DEFAULT_MODEL : current));
+                setTeam((current) =>
+                  current.map((spec) => (isCodingAgentId(spec.id) ? { id: DEFAULT_MODEL } : spec)),
+                );
+              }}
               onStyle={setStyle}
+              onWorkflow={setWorkflow}
+              sandbox={sandbox}
               style={style}
+              team={team}
+              workflow={workflow}
             />
           </div>
         </SheetContent>
@@ -451,50 +637,66 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
 
       {step === "describe" ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto flex min-h-full w-full max-w-lg flex-col gap-4 p-4 sm:justify-center sm:p-6">
-            <div className="space-y-1">
-              <Overline>Step 1</Overline>
-              <h1 className="font-medium text-lg sm:text-xl">What should the table contain?</h1>
-              <p className="text-muted-foreground text-sm">
-                Describe the columns you want. We&apos;ll generate a schema you can edit before extracting.
+          <div className="mx-auto flex min-h-full w-full max-w-xl flex-col justify-center gap-5 p-4 sm:p-8">
+            <div className="space-y-1.5">
+              <Overline>Step 1 · Describe</Overline>
+              <h1 className="font-semibold text-xl tracking-[-0.02em]">
+                What should the table contain?
+              </h1>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Name the columns you want. openextract generates a schema you can edit before it
+                touches a source.
               </p>
             </div>
             <PromptInput clearOnSubmit={false} onSubmit={submitQuery}>
               <PromptInputBody>
                 <PromptInputTextarea
-                  className="min-h-24 max-h-40 text-sm sm:min-h-28"
+                  className="min-h-24 max-h-40 text-sm"
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="e.g. invoice line items with quantity, unit price, and amount"
                   submitOnEnter={false}
                   value={query}
                 />
               </PromptInputBody>
-              <PromptInputFooter className="gap-2 border-t border-border/50">
+              <PromptInputFooter className="gap-2 border-t border-border">
                 <PromptInputTools className="min-w-0 flex-1 overflow-hidden">
-                  {modelPicker}
+                  <ModelPicker
+                    models={sandbox ? MODELS : GATEWAY_MODELS}
+                    onSelect={(id) => {
+                      setModel(id);
+                      setTeam((prev) => (agents === 1 ? [specForModel(id, prev[0])] : prev));
+                    }}
+                    trigger="prompt"
+                    value={model}
+                  />
                 </PromptInputTools>
-                <PromptInputSubmit
-                  className="h-9 px-3"
-                  disabled={(!query.trim() && !schemaLoading) || extracting}
-                  onStop={stopSchema}
-                  size="sm"
-                  status={schemaLoading ? "streaming" : "ready"}
-                >
-                  {schemaLoading ? undefined : "Generate"}
-                </PromptInputSubmit>
+                <span className="flex items-center gap-1.5 pr-1 text-faint text-xs">
+                  <Kbd keys={["⌘", "↵"]} /> to generate
+                </span>
               </PromptInputFooter>
             </PromptInput>
             <div className="space-y-2">
-              <Overline>Try an example</Overline>
-              <Suggestions>
+              <Overline>Start from an example</Overline>
+              <div className="grid gap-1.5">
                 {EXAMPLES.map((example) => (
-                  <Suggestion
+                  <button
+                    className="group flex items-center gap-3 rounded-lg border border-border bg-raised px-3 py-2 text-left transition-colors duration-100 hover:border-border-strong hover:bg-hover"
                     key={example.label}
                     onClick={() => loadExample(example)}
-                    suggestion={example.label}
-                  />
+                    type="button"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-sm">{example.label}</span>
+                      <span className="mt-0.5 block truncate text-faint text-xs">
+                        {example.query}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-faint text-xs opacity-0 transition-opacity group-hover:opacity-100">
+                      Load
+                    </span>
+                  </button>
                 ))}
-              </Suggestions>
+              </div>
             </div>
             {error ? <ErrorBanner>That run failed. Try again in a moment.</ErrorBanner> : null}
           </div>
@@ -502,145 +704,84 @@ export function ExtractApp({ embedded = false }: { embedded?: boolean } = {}) {
       ) : null}
 
       {step === "schema" ? (
-        <>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">{table}</div>
-          <StepFooter>
-            <Button
-              className="h-11 sm:h-9"
-              onClick={() => setStep("describe")}
-              type="button"
-              variant="outline"
-            >
-              <ChevronLeftIcon />
-              Back
-            </Button>
-            {schemaLoading ? (
-              <Button className="h-11 flex-1 sm:h-9 sm:flex-none" onClick={stopSchema} type="button" variant="outline">
-                Stop
-              </Button>
-            ) : (
-              <Button
-                className="h-11 flex-1 sm:h-9 sm:flex-none sm:px-5"
-                disabled={!extractReady}
-                onClick={() => {
-                  setSourceOpen(true);
-                  setStep("extract");
-                }}
-                type="button"
-              >
-                Continue
-              </Button>
-            )}
-          </StepFooter>
-        </>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">{table}</div>
       ) : null}
 
       {step === "extract" ? (
-        <>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="shrink-0 border-b border-border/50">
-              <div className="mx-auto w-full max-w-3xl">
-                <button
-                  aria-expanded={sourceOpen}
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left sm:pointer-events-none sm:cursor-default sm:px-4 sm:pt-4 sm:pb-2"
-                  onClick={() => setSourceOpen((open) => !open)}
-                  type="button"
-                >
-                  <span className="min-w-0 flex-1">
-                    <Overline as="span" className="block">
-                      Source
-                    </Overline>
-                    <span className="block truncate text-muted-foreground text-xs">
-                      {sourceSummary(source, sourceFiles)}
-                    </span>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="max-h-[42vh] shrink-0 overflow-y-auto border-b border-border bg-panel/60">
+            <div className="mx-auto w-full max-w-3xl px-3 py-3 sm:px-4">
+              <button
+                aria-expanded={sourceOpen}
+                className="flex w-full items-center gap-2 pb-2 text-left sm:pointer-events-none sm:cursor-default"
+                onClick={() => setSourceOpen((open) => !open)}
+                type="button"
+              >
+                <span className="min-w-0 flex-1">
+                  <Overline as="span" className="block">
+                    Source
+                  </Overline>
+                  <span className="mt-1 block truncate text-muted-foreground text-xs">
+                    {sourceSummary(source, sourceFiles)}
                   </span>
-                  <ChevronDownIcon
-                    className={cn(
-                      "size-4 shrink-0 text-muted-foreground transition-transform sm:hidden",
-                      sourceOpen && "rotate-180",
-                    )}
-                  />
-                </button>
-                <div className={cn("px-3 pb-3 sm:px-4 sm:pb-4", !sourceOpen && "max-sm:hidden")}>
-                  <PromptInput
-                    clearOnSubmit={false}
-                    globalDrop
-                    key={sourceKey}
-                    multiple
-                    onSubmit={() => {
-                      void extract();
-                    }}
-                  >
-                    <PromptInputHeader className="border-b border-border/50">
-                      <PromptAttachments />
-                      <SourceFiles onFiles={setSourceFiles} />
-                    </PromptInputHeader>
-                    <PromptInputBody>
-                      <PromptInputTextarea
-                        className="min-h-16 max-h-32 font-mono text-sm sm:min-h-20 sm:max-h-40"
-                        onChange={(event) => setSource(event.target.value)}
-                        placeholder="Paste text or attach a file to extract from…"
-                        submitOnEnter={false}
-                        value={source}
-                      />
-                    </PromptInputBody>
-                    <PromptInputFooter className="gap-2 border-t border-border/50">
-                      <PromptInputTools>
-                        <PromptInputActionMenu>
-                          <PromptInputActionMenuTrigger />
-                          <PromptInputActionMenuContent>
-                            <PromptInputActionAddAttachments />
-                          </PromptInputActionMenuContent>
-                        </PromptInputActionMenu>
-                      </PromptInputTools>
-                    </PromptInputFooter>
-                  </PromptInput>
-                </div>
-                {error ? (
-                  <ErrorBanner className="mx-3 mb-3 sm:mx-4">
-                    That run failed. Try again in a moment.
-                  </ErrorBanner>
+                </span>
+                <ChevronDownIcon
+                  className={cn(
+                    "size-4 shrink-0 text-faint transition-transform sm:hidden",
+                    sourceOpen && "rotate-180",
+                  )}
+                />
+              </button>
+              <div className={cn("space-y-2", !sourceOpen && "max-sm:hidden")}>
+                {source.trim() ? (
+                  <div className="flex items-center gap-3 rounded-lg border border-border bg-raised p-3">
+                    <FileTextIcon className="size-4 shrink-0 text-faint" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm">Example text</span>
+                      <span className="block truncate text-faint text-xs">
+                        {source.trim().slice(0, 60)}…
+                      </span>
+                    </span>
+                    <Button
+                      aria-label="Remove example text"
+                      onClick={() => setSource("")}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <XIcon />
+                    </Button>
+                  </div>
                 ) : null}
-                <ExtractSwarmStatus agents={swarmAgents} />
+                <PromptInput
+                  className="[&>[data-slot=input-group]]:h-auto [&>[data-slot=input-group]]:flex-col [&>[data-slot=input-group]]:items-stretch [&>[data-slot=input-group]]:overflow-visible [&>[data-slot=input-group]]:border-0 [&>[data-slot=input-group]]:bg-transparent"
+                  clearOnSubmit={false}
+                  globalDrop
+                  key={sourceKey}
+                  maxFileSize={MAX_SOURCE_BYTES}
+                  maxFiles={MAX_SOURCE_FILES}
+                  multiple
+                  onError={(err) => setAttachError(err.message)}
+                  onSubmit={() => {
+                    void extract();
+                  }}
+                >
+                  <SourceFiles onFiles={setSourceFiles} />
+                  <SourceDropzone onOpen={() => setAttachError(null)} />
+                </PromptInput>
               </div>
+              {attachError ? (
+                <ErrorBanner className="mt-3">{attachError}</ErrorBanner>
+              ) : null}
+              {error ? (
+                <ErrorBanner className="mt-3">That run failed. Try again in a moment.</ErrorBanner>
+              ) : null}
+              <ExtractSwarmStatus agents={swarmAgents} />
             </div>
-            {table}
           </div>
-          <StepFooter>
-            <Button
-              className="h-11 sm:h-9"
-              disabled={busy}
-              onClick={() => setStep("schema")}
-              type="button"
-              variant="outline"
-            >
-              <ChevronLeftIcon />
-              Back
-            </Button>
-            {extracting || swarming ? (
-              <Button
-                className="h-11 flex-1 sm:h-9 sm:flex-none"
-                onClick={swarming ? stopSwarm : stopExtract}
-                type="button"
-                variant="outline"
-              >
-                Stop
-              </Button>
-            ) : (
-              <Button
-                className="h-11 flex-1 sm:h-9 sm:flex-none sm:px-5"
-                disabled={!hasSource || displayColumns.length === 0}
-                onClick={() => {
-                  void extract();
-                }}
-                type="button"
-              >
-                {agents > 1 ? `Extract · ${agents}` : "Extract"}
-              </Button>
-            )}
-          </StepFooter>
-        </>
+          {table}
+        </div>
       ) : null}
-    </div>
+    </>
   );
 }

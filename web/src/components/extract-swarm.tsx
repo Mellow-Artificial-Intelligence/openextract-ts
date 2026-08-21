@@ -1,6 +1,6 @@
 import { Overline } from "@/components/ui/overline";
 import { StatusDot, type StatusDotStatus } from "@/components/ui/status-dot";
-import { modelLabel } from "@/lib/models";
+import { isCodingAgentId, modelLabel } from "@/lib/models";
 import { cn } from "@/lib/utils";
 
 export type SwarmAgentStatus = "pending" | "running" | "done" | "error";
@@ -22,7 +22,7 @@ export function ExtractSwarmStatus({ agents }: { agents: SwarmAgentState[] }) {
   return (
     <div className="space-y-2 px-3 pb-3 sm:px-4">
       <Overline>
-        Swarm · {finished}/{agents.length} agents
+        Swarm · {finished}/{agents.length} specialists
         {failed ? ` · ${failed} failed` : ""}
       </Overline>
       <ul className="flex flex-wrap gap-1.5">
@@ -38,6 +38,9 @@ export function ExtractSwarmStatus({ agents }: { agents: SwarmAgentState[] }) {
           >
             <StatusDot status={dotStatus(agent.status)} />
             <span>{modelLabel(agent.model)}</span>
+            {isCodingAgentId(agent.model) ? (
+              <span className="text-muted-foreground/70">Sandbox</span>
+            ) : null}
             <span className="text-muted-foreground/70">{agent.rows}</span>
           </li>
         ))}

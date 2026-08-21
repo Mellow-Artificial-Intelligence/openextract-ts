@@ -11,6 +11,8 @@ import {
   validateRetryOptions,
   validateSwarmSize,
   validateTimeout,
+  resolveSandboxTimeoutSeconds,
+  DEFAULT_SANDBOX_TIMEOUT,
 } from "../src/config.js";
 
 const ENV = [
@@ -18,6 +20,7 @@ const ENV = [
   "OPENEXTRACT_URL_TIMEOUT",
   "OPENEXTRACT_MAX_REDIRECTS",
   "OPENEXTRACT_ALLOW_PRIVATE_URLS",
+  "OPENEXTRACT_SANDBOX_TIMEOUT",
 ];
 
 afterEach(() => {
@@ -80,5 +83,14 @@ describe("environment helpers", () => {
     expect(urlFetchTimeout()).toBe(12.5);
     expect(maxRedirects()).toBe(3);
     expect(allowPrivateUrls()).toBe(true);
+  });
+
+  it("reads sandbox timeout from the environment", () => {
+    expect(resolveSandboxTimeoutSeconds()).toBe(DEFAULT_SANDBOX_TIMEOUT);
+    expect(resolveSandboxTimeoutSeconds(12)).toBe(12);
+    process.env.OPENEXTRACT_SANDBOX_TIMEOUT = "45";
+    expect(resolveSandboxTimeoutSeconds()).toBe(45);
+    process.env.OPENEXTRACT_SANDBOX_TIMEOUT = "nope";
+    expect(resolveSandboxTimeoutSeconds()).toBe(DEFAULT_SANDBOX_TIMEOUT);
   });
 });
