@@ -2,10 +2,16 @@ import type { StyleName } from "@/lib/presets";
 
 export const DEFAULT_MODEL = "openai/gpt-5.6-luna";
 
+/** Suggested models, in the order they are offered and auto-assigned. */
 export const MODELS = [
   { id: "openai/gpt-5.6-luna", name: "GPT-5.6 Luna", provider: "openai" },
-  { id: "xai/grok-4.6", name: "Grok 4.6", provider: "xai" },
+  { id: "openai/gpt-5.6-sol", name: "GPT-5.6 Sol", provider: "openai" },
+  { id: "openai/gpt-5.6-terra", name: "GPT-5.6 Terra", provider: "openai" },
   { id: "google/gemini-3.7-flash", name: "Gemini 3.7 Flash", provider: "google" },
+  { id: "google/gemini-3.6-flash", name: "Gemini 3.6 Flash", provider: "google" },
+  { id: "anthropic/claude-haiku-4.5", name: "Claude Haiku 4.5", provider: "anthropic" },
+  { id: "anthropic/claude-sonnet-5", name: "Claude Sonnet 5", provider: "anthropic" },
+  { id: "anthropic/claude-opus-5", name: "Claude Opus 5", provider: "anthropic" },
   { id: "claude-code", name: "Claude Code", provider: "anthropic" },
   { id: "codex", name: "Codex", provider: "openai" },
 ] as const;
