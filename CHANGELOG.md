@@ -22,7 +22,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The web UI is one shell instead of two separate products: a persistent sidebar (Extract / Agents, static examples, theme), a shared topbar whose single primary action drives the active section, and a `⌘K` command palette. `⌘↵` runs, `1` / `2` switch sections. Dark is the default theme and light is a working alternative; the previous `.dark` block was unreachable because `color-scheme` was pinned to light.
+- Web design tokens follow a layered neutral scale (`background` → `panel` → `raised` → `elevated`) with a 6px radius and one accent reserved for primary actions, selection, and running state. Inter carries the UI at 13px; mono is kept for data and code.
+- Extract step 3 takes files only: up to 5 attachments at 2 MB each, replacing the paste-text box. Attachment limits and errors are surfaced inline.
+
 - Cookbook TUI loads language models from AI Gateway (`gateway.getAvailableModels()`), keeps the output pane and footer status empty until extract, and updates per-agent invoice cards in place as work starts and finishes.
+
+### Fixed
+
+- Prompt input attachment validation reports every oversized file, not only the case where all files are too large, so a partially rejected drop is never silent.
+- Prompt input no longer calls `onError` from inside a `setState` updater, which triggered a React "cannot update a component while rendering a different component" warning.
 
 ## [0.2.0] - 2026-08-15
 

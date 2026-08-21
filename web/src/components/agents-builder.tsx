@@ -3,7 +3,7 @@
 import { SystemAgentCard } from "@/components/system-agent-card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Overline } from "@/components/ui/overline";
+import { PanelSection } from "@/components/ui/panel";
 import {
   Select,
   SelectContent,
@@ -23,19 +23,6 @@ import { COOKBOOK_DOCS, type CookbookModel } from "@/lib/cookbook-catalog";
 import { MAX_SWARM_AGENTS } from "@/lib/models";
 import { cn } from "@/lib/utils";
 import { PlusIcon } from "lucide-react";
-import type { ReactNode } from "react";
-
-function Module({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
-  return (
-    <section className="space-y-2">
-      <div className="flex h-5 items-center justify-between gap-2">
-        <Overline>{title}</Overline>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
 
 export function AgentsBuilder({
   system,
@@ -57,7 +44,7 @@ export function AgentsBuilder({
   const starter = SYSTEM_STARTERS.find((item) => item.id === system.starterId) ?? SYSTEM_STARTERS[4];
   return (
     <div className="space-y-5 p-3">
-      <Module title="System">
+      <PanelSection title="System">
         <Select disabled={busy} onValueChange={onStarter} value={system.starterId}>
           <SelectTrigger className="w-full" size="sm">
             <SelectValue />
@@ -71,9 +58,9 @@ export function AgentsBuilder({
           </SelectContent>
         </Select>
         <p className="text-muted-foreground text-xs">{starter?.blurb}</p>
-      </Module>
+      </PanelSection>
 
-      <Module title="Setup">
+      <PanelSection title="Setup">
         <div className="grid grid-cols-2 gap-2">
           <Select
             disabled={busy}
@@ -126,9 +113,9 @@ export function AgentsBuilder({
           />
           <span className="font-mono text-xs">Sandboxes</span>
         </label>
-      </Module>
+      </PanelSection>
 
-      <Module
+      <PanelSection
         action={
           <Button
             disabled={busy || system.agents.length >= MAX_SWARM_AGENTS}
@@ -157,9 +144,9 @@ export function AgentsBuilder({
             />
           ))}
         </ol>
-      </Module>
+      </PanelSection>
 
-      <Module title="Documents">
+      <PanelSection title="Documents">
         <ul className="space-y-0.5">
           {COOKBOOK_DOCS.map((name) => {
             const checked = system.docs.includes(name);
@@ -198,7 +185,7 @@ export function AgentsBuilder({
             );
           })}
         </ul>
-      </Module>
+      </PanelSection>
     </div>
   );
 }

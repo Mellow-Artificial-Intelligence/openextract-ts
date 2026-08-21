@@ -1,6 +1,7 @@
 "use client";
 
-import { AgentsPane } from "@/components/agents-pane";
+import { Panel, PanelEmpty } from "@/components/ui/panel";
+import { FileTextIcon, FileWarningIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const cache = new Map<string, string>();
@@ -41,27 +42,29 @@ export function DocumentPane({ name }: { name: string | null }) {
   }, [name]);
 
   return (
-    <AgentsPane
-      className="hidden min-w-0 flex-1 border-r border-border/50 md:flex"
+    <Panel
+      className="hidden min-w-0 flex-1 border-r border-border md:flex"
       extra={
-        <span className="max-w-[12rem] truncate font-mono text-[10px] text-muted-foreground">{name ?? "—"}</span>
+        <span className="max-w-[12rem] truncate font-mono text-[10px] text-muted-foreground">
+          {name ?? "—"}
+        </span>
       }
       title="Source"
     >
-      <div className="px-3 py-3">
-        {error ? <p className="text-muted-foreground text-sm">{error}</p> : null}
-        {!error && name && text == null ? (
-          <p className="font-mono text-muted-foreground text-xs">Loading…</p>
-        ) : null}
-        {text != null ? (
-          <pre className="whitespace-pre-wrap font-mono text-[12px] leading-[1.65] text-foreground/80">
-            {text}
-          </pre>
-        ) : null}
-        {!name && !error ? (
-          <p className="text-muted-foreground text-sm">Select a document to read it here.</p>
-        ) : null}
-      </div>
-    </AgentsPane>
+      {error ? <PanelEmpty icon={<FileWarningIcon />}>{error}</PanelEmpty> : null}
+      {!error && name && text == null ? (
+        <PanelEmpty>Loading {name}…</PanelEmpty>
+      ) : null}
+      {!error && text != null ? (
+        <pre className="whitespace-pre-wrap px-3 py-3 font-mono text-[11.5px] leading-[1.7] text-muted-foreground">
+          {text}
+        </pre>
+      ) : null}
+      {!name && !error ? (
+        <PanelEmpty icon={<FileTextIcon />}>
+          Pick a document in the builder to read its source here.
+        </PanelEmpty>
+      ) : null}
+    </Panel>
   );
 }

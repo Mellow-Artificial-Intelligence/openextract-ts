@@ -7,9 +7,19 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* Layered surfaces: background -> panel -> card -> elevated */
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-elevated: var(--elevated);
+  --color-hover: var(--hover);
+  --color-border-strong: var(--border-strong);
+  --color-faint: var(--faint);
+
   --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;
   --font-heading: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -27,6 +37,8 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -39,6 +51,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -46,102 +59,196 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  --text-xs: 0.6875rem; /* 11px — overlines, meta */
+  --text-sm: 0.8125rem; /* 13px — the UI baseline */
+  --text-base: 0.875rem; /* 14px */
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/*
+ * Light is derived from the dark reference design. Both are verified.
+ * Surfaces step background -> panel -> raised -> elevated so nesting reads
+ * without relying on shadows.
+ */
 :root {
-  --background: #fafafa;
-  --foreground: #000000;
-  --card: #ffffff;
-  --card-foreground: #000000;
-  --popover: #ffffff;
-  --popover-foreground: #000000;
-  --primary: #000000;
+  --background: #fcfcfc;
+  --panel: #f7f7f8;
+  --raised: #ffffff;
+  --elevated: #ffffff;
+  --hover: rgb(0 0 0 / 4%);
+
+  --foreground: #1c1d21;
+  --muted-foreground: #6b6f76;
+  --faint: #91959c;
+
+  --card: var(--raised);
+  --card-foreground: var(--foreground);
+  --popover: var(--elevated);
+  --popover-foreground: var(--foreground);
+
+  --primary: #5e6ad2;
   --primary-foreground: #ffffff;
   --secondary: #ffffff;
-  --secondary-foreground: #000000;
-  --muted: rgb(0 0 0 / 5%);
-  --muted-foreground: rgb(0 0 0 / 40%);
+  --secondary-foreground: var(--foreground);
+  --muted: rgb(0 0 0 / 4%);
   --accent: rgb(0 0 0 / 5%);
-  --accent-foreground: #000000;
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: rgb(0 0 0 / 10%);
-  --input: rgb(0 0 0 / 10%);
-  --ring: rgb(0 0 0 / 20%);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0;
-  --sidebar: #fafafa;
-  --sidebar-foreground: #000000;
-  --sidebar-primary: #000000;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgb(0 0 0 / 5%);
-  --sidebar-accent-foreground: #000000;
-  --sidebar-border: rgb(0 0 0 / 5%);
-  --sidebar-ring: rgb(0 0 0 / 20%);
+  --accent-foreground: var(--foreground);
+
+  --destructive: #d93036;
+  --success: #3d9a50;
+  --warning: #b4761b;
+
+  --border: rgb(0 0 0 / 9%);
+  --border-strong: rgb(0 0 0 / 16%);
+  --input: rgb(0 0 0 / 11%);
+  --ring: #5e6ad2;
+
+  --chart-1: #5e6ad2;
+  --chart-2: #3d9a50;
+  --chart-3: #b4761b;
+  --chart-4: #7a52c9;
+  --chart-5: #2f8ba8;
+
+  --radius: 6px;
+
+  --sidebar: var(--panel);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--hover);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --selection: rgb(94 106 210 / 22%);
 }
 
 .dark {
-  --background: #0d0d0d;
-  --foreground: #fafafa;
-  --card: #161616;
-  --card-foreground: #fafafa;
-  --popover: #161616;
-  --popover-foreground: #fafafa;
-  --primary: #fafafa;
-  --primary-foreground: #0d0d0d;
-  --secondary: #161616;
-  --secondary-foreground: #fafafa;
-  --muted: rgb(255 255 255 / 6%);
-  --muted-foreground: rgb(255 255 255 / 40%);
+  --background: #08090a;
+  --panel: #0d0e10;
+  --raised: #131417;
+  --elevated: #1a1b1e;
+  --hover: rgb(255 255 255 / 5%);
+
+  --foreground: #f7f8f8;
+  --muted-foreground: #8a8f98;
+  --faint: #62666d;
+
+  --card: var(--raised);
+  --card-foreground: var(--foreground);
+  --popover: var(--elevated);
+  --popover-foreground: var(--foreground);
+
+  --primary: #5e6ad2;
+  --primary-foreground: #ffffff;
+  --secondary: var(--raised);
+  --secondary-foreground: var(--foreground);
+  --muted: rgb(255 255 255 / 5%);
   --accent: rgb(255 255 255 / 6%);
-  --accent-foreground: #fafafa;
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: rgb(255 255 255 / 10%);
-  --input: rgb(255 255 255 / 12%);
-  --ring: rgb(255 255 255 / 25%);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: #0d0d0d;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #fafafa;
-  --sidebar-primary-foreground: #0d0d0d;
-  --sidebar-accent: rgb(255 255 255 / 6%);
-  --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: rgb(255 255 255 / 8%);
-  --sidebar-ring: rgb(255 255 255 / 25%);
+  --accent-foreground: var(--foreground);
+
+  --destructive: #f2555a;
+  --success: #4cc26a;
+  --warning: #e0a338;
+
+  --border: rgb(255 255 255 / 8%);
+  --border-strong: rgb(255 255 255 / 14%);
+  --input: rgb(255 255 255 / 10%);
+  --ring: #6e79d6;
+
+  --chart-1: #7c86dd;
+  --chart-2: #4cc26a;
+  --chart-3: #e0a338;
+  --chart-4: #a98ae8;
+  --chart-5: #4bb4d4;
+
+  --sidebar: var(--panel);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--hover);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --selection: rgb(94 106 210 / 35%);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
     color-scheme: light;
+    /* Linear's type is tight and optically even. */
+    font-feature-settings: "cv11", "ss01";
+    font-variation-settings: "opsz" 32;
+    text-rendering: optimizeLegibility;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    letter-spacing: -0.008em;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.018em;
   }
   ::selection {
-    background: rgb(0 0 0 / 10%);
-    color: black;
+    background: var(--selection);
+  }
+  /* Numeric data should never jitter as it streams in. */
+  .tabular,
+  input[type="number"],
+  [data-slot="table"] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* One consistent focus treatment across every interactive surface. */
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-ring/55 focus-visible:ring-offset-1 focus-visible:ring-offset-background;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--background);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
+  background: transparent;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+  box-shadow: inset 0 0 0 10px var(--border-strong);
+}
+:hover::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 0 10px var(--border-strong);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
 }

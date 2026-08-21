@@ -6,13 +6,13 @@ export function ErrorBanner({ className, children }: { className?: string; child
   return (
     <div
       className={cn(
-        "flex items-start gap-2 border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm",
+        "flex items-start gap-2 rounded-md border border-destructive/25 bg-destructive/8 px-2.5 py-2 text-destructive text-sm",
         className,
       )}
       role="alert"
     >
-      <TriangleAlertIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
-      <span className="min-w-0 flex-1">{children}</span>
+      <TriangleAlertIcon aria-hidden className="mt-px size-3.5 shrink-0" />
+      <span className="min-w-0 flex-1 leading-snug">{children}</span>
     </div>
   );
 }
