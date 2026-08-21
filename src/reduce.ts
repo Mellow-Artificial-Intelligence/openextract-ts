@@ -1,11 +1,10 @@
+import { normalizeChoice } from "./config.js";
+
 export const SWARM_REDUCES = ["merge", "vote", "first"] as const;
 export type SwarmReduce = (typeof SWARM_REDUCES)[number];
 
 export function normalizeReduce(reduce: SwarmReduce | string = "merge"): SwarmReduce {
-  if ((SWARM_REDUCES as readonly string[]).includes(reduce)) return reduce as SwarmReduce;
-  throw new Error(
-    `reduce must be one of ${SWARM_REDUCES.map((value) => `'${value}'`).join(", ")}; got '${reduce}'.`,
-  );
+  return normalizeChoice("reduce", SWARM_REDUCES, reduce);
 }
 
 export function reduceOutputs<T>(values: readonly T[], reduce: SwarmReduce): T {
@@ -15,38 +14,36 @@ export function reduceOutputs<T>(values: readonly T[], reduce: SwarmReduce): T {
 }
 
 export function mergeValues(values: readonly unknown[]): unknown {
+  return combine(values, firstFilled);
+}
+
+export function voteValues(values: readonly unknown[]): unknown {
+  return combine(values, majority);
+}
+
+/**
+ * Walks arrays and objects the same way for every reduce; only the leaf strategy differs.
+ * Arrays union their items, records merge key by key, leaves go to `leaf`.
+ */
+function combine(values: readonly unknown[], leaf: (values: readonly unknown[]) => unknown): unknown {
   if (values.length === 0) return null;
   if (values.length === 1) return values[0];
   if (values.every(Array.isArray)) return unionJson(values.flat());
   if (values.every(isRecord)) {
-    const keys = new Set<string>();
-    for (const value of values) {
-      for (const key of Object.keys(value as Record<string, unknown>)) keys.add(key);
-    }
     const out: Record<string, unknown> = {};
-    for (const key of keys) {
-      out[key] = mergeValues(values.map((value) => (value as Record<string, unknown>)[key]));
+    for (const key of new Set(values.flatMap((value) => Object.keys(value)))) {
+      out[key] = combine(values.map((value) => value[key]), leaf);
     }
     return out;
   }
+  return leaf(values);
+}
+
+function firstFilled(values: readonly unknown[]): unknown {
   return values.find((value) => !isEmpty(value)) ?? values[0];
 }
 
-export function voteValues(values: readonly unknown[]): unknown {
-  if (values.length === 0) return null;
-  if (values.length === 1) return values[0];
-  if (values.every(Array.isArray)) return mergeValues(values);
-  if (values.every(isRecord)) {
-    const keys = new Set<string>();
-    for (const value of values) {
-      for (const key of Object.keys(value as Record<string, unknown>)) keys.add(key);
-    }
-    const out: Record<string, unknown> = {};
-    for (const key of keys) {
-      out[key] = voteValues(values.map((value) => (value as Record<string, unknown>)[key]));
-    }
-    return out;
-  }
+function majority(values: readonly unknown[]): unknown {
   const counts = new Map<string, { count: number; value: unknown }>();
   let best: { count: number; value: unknown } | undefined;
   for (const value of values) {
@@ -57,7 +54,7 @@ export function voteValues(values: readonly unknown[]): unknown {
     counts.set(key, entry);
     if (!best || entry.count > best.count) best = entry;
   }
-  return best?.value ?? values.find((value) => !isEmpty(value)) ?? values[0];
+  return best?.value ?? firstFilled(values);
 }
 
 function isEmpty(value: unknown): boolean {

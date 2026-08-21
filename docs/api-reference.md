@@ -1,12 +1,45 @@
+---
+layout: docs
+title: API reference
+description: Function catalog for extract, batch, swarms, agents, MCP, and workflows.
+permalink: /api-reference.html
+---
+
 # API reference
 
 ## Terminal UI
 
 `openextract` and `openextract --tui [input]` launch an OpenTUI app. The TUI calls `extractWithUsage` with a schema from a preset, field list, JSON example, JSON Schema, or `module:export`. It requires Bun or Node.js 26.4+ with `--experimental-ffi`.
 
+`npm run cookbook` is a separate OpenTUI app for the AP inbox, file audit, disputed payable, and invoice math recipes in `examples/cookbook`.
+
 ## Local web UI
 
 `npm run web` starts the Next.js UI in `web/`. **Extract** describes columns, streams a schema, then runs a team of specialists on one source (`POST /api/extract`). Team size, per-member models, **Workflows**, and **Sandboxes** live in the Team sheet. Gateway models use `direct` / `search` / `code`; Claude Code and Codex join as independent sandbox members when Sandboxes is on. Each coding agent has harness settings: inner model id, Claude Code max turns, or Codex reasoning effort (`POST` `model` like `claude-code/claude-sonnet-4-6` plus optional `coding`). Workflows on starts `extractTableWorkflow`; off runs in-process. **Agents** (`POST /api/cookbook`) is a system builder: a named system or a blank roster of specialists (gateway models, Claude Code, Codex) with per-agent style, instructions, and reduce (`merge` / `vote` / `first`). Send `{ system: { schema, reduce, sandbox, docs, agents } }`. Set `AI_GATEWAY_API_KEY` in `web/.env.local`. On Vercel, set the Git root directory to `web/` (see `web/vercel.json`); AI Gateway authenticates with OIDC. Pull-request preview deploys are skipped. Inspect durable table runs with `npx workflow web`. CLI `--models` assigns one model per agent.
+
+## Command line
+
+```bash
+npx openextract [<input...>] --schema <module:export> --model <provider/model>
+```
+
+| Flag | Purpose |
+| --- | --- |
+| `--tui` | OpenTUI app |
+| `--schema` | Zod `module:exportName` (optional when `--agent` has `outputSchema`) |
+| `--model` | AI Gateway id |
+| `--instructions` | Natural-language guidance |
+| `--style` | `direct` (default), `search`, or `code` |
+| `--media-type` | Required for stdin (`-`) |
+| `--usage` | Print token usage (single input) |
+| `--continue-on-error` | Batch: keep going, exit `7` on partial failure |
+| `--output` | `json` (default) or `repr` |
+| `--max-retries` / `--retry-backoff` / `--retry-max-backoff` | Transient `ModelError` retries |
+| `--max-input-bytes` | Per-input cap |
+| `--swarm` / `--models` / `--reduce` | Parallel agents on one input (`merge` \| `vote` \| `first`) |
+| `--agent` / `--agents` | Directory, file, or `module:exportName` |
+
+Exit codes: `0` success, `2` URL fetch, `3` schema validation, `4` model, `5` other extraction, `6` missing credentials, `7` partial batch.
 
 ## Extraction
 
@@ -14,7 +47,7 @@
 
 Extract one input and return a value matching `schema`. `model` may be an AI Gateway id, a `LanguageModel`, or a `defineAgent` / `defineRemoteAgent` export. `extract(agent, input)` uses the agent's `outputSchema`.
 
-### `extractWithUsage(schema, model, inputFile, options?)`
+### `extractWithUsage(schema, model, inputFile, options?)` / `extractWithUsage(agent, inputFile, options?)`
 
 Same as `extract`, returning `{ output, usage }`.
 
@@ -32,7 +65,7 @@ Async generator of `[index, result]` pairs in completion order.
 
 ### `defineAgent(config)` / `defineRemoteAgent(config)`
 
-Eve-shaped extract workers. Default-export them; there is no `name` field. `defineAgent` takes `description` (required), `model`, `outputSchema`, plus openextract knobs `style` / `instructions`. `defineRemoteAgent` takes `url` (string or lazy function), `description`, optional `auth` / `headers` / `path` (default `/extract`) / `outputSchema`. `loadAgent` accepts a directory (`agent.ts` + `subagents/` + optional `instructions.md`), a file default export, or `module:exportName`. Auth from `openextract/agents/auth`: `bearer`, `basic`, `vercelOidc`.
+Eve-shaped extract workers. Default-export them; there is no `name` field. `defineAgent` takes `description` (required), `model`, `outputSchema`, plus openextract knobs `style` / `instructions`. `defineRemoteAgent` takes `url` (string or lazy function), `description`, optional `auth` / `headers` / `path` (default `/extract`) / `outputSchema`. `loadAgent` / `loadAgents` accept a directory (`agent.ts` + `subagents/` + optional `instructions.md`), a file default export, or `module:exportName`. Auth from `openextract/agents/auth`: `bearer`, `basic`, `vercelOidc`. Remote failures raise `RemoteAgentError`.
 
 ### `extractSwarm(schema, agents, inputFile, options?)`
 
@@ -63,6 +96,19 @@ Reusable session that stores schema, model, style, retry policy, and timeout.
 
 `model` is an AI Gateway id (`openai/gpt-5.5`), a `LanguageModel` instance, or a coding agent (`claude-code`, `codex`). Colon-prefixed ids (`openai:gpt-5.5`) are accepted. Coding-agent models run in a Vercel Sandbox.
 
+## Environment
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `AI_GATEWAY_API_KEY` | — | AI Gateway authentication |
+| `OPENEXTRACT_MODEL` | — | Default model id (CLI, TUI, MCP, cookbook) |
+| `OPENEXTRACT_URL_TIMEOUT` | `30` | URL fetch timeout (seconds) |
+| `OPENEXTRACT_MAX_REDIRECTS` | `10` | Maximum redirect hops |
+| `OPENEXTRACT_ALLOW_PRIVATE_URLS` | unset | Set `1` / `true` / `yes` to allow private hosts |
+| `OPENEXTRACT_MAX_INPUT_BYTES` | `52428800` | Per-input byte cap |
+
+URL fetch is a privileged operation. See [SECURITY.md](https://github.com/Mellow-Artificial-Intelligence/openextract-ts/blob/main/SECURITY.md).
+
 ## MCP
 
 `npx openextract-mcp` starts a stdio MCP server. `--http --port 3000` serves Streamable HTTP on loopback.
@@ -77,7 +123,7 @@ import { createOpenExtractMcpServer } from "openextract/mcp";
 const server = createOpenExtractMcpServer({ model: "openai/gpt-5.5" });
 ```
 
-Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts: `extract-document`, `extract-batch`, `extract-swarm`.
+Resources: `openextract://capabilities`, `openextract://docs/api`. Prompts: `extract-document`, `extract-batch`, `extract-swarm`. Agent-oriented contract: [MCP for agents](mcp.html).
 
 ## Vercel Workflows
 

@@ -14,7 +14,7 @@ This file is the Claude-specific companion to [AGENTS.md](AGENTS.md). Follow tho
 
 ## Extracting as Claude
 
-Prefer the shipped MCP server over ad-hoc `generateText` calls:
+Prefer the shipped MCP server over ad-hoc `generateText` calls. How-to: [MCP for agents](https://mellow-artificial-intelligence.github.io/openextract-ts/mcp.html).
 
 ```bash
 npx openextract-mcp

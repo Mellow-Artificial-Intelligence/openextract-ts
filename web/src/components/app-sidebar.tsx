@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 
-export const GITHUB_URL = "https://github.com/Mellow-Artificial-Intelligence/openextract";
+export const GITHUB_URL = "https://github.com/Mellow-Artificial-Intelligence/openextract-ts";
 export const DOCS_URL = `${GITHUB_URL}/blob/main/docs/api-reference.md`;
 
 const SECTION_ICONS: Record<SectionId, ComponentType<{ className?: string }>> = {

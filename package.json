@@ -19,11 +19,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Mellow-Artificial-Intelligence/openextract.git"
+    "url": "git+https://github.com/Mellow-Artificial-Intelligence/openextract-ts.git"
   },
-  "homepage": "https://mellow-artificial-intelligence.github.io/openextract/",
+  "homepage": "https://mellow-artificial-intelligence.github.io/openextract-ts/",
   "bugs": {
-    "url": "https://github.com/Mellow-Artificial-Intelligence/openextract/issues"
+    "url": "https://github.com/Mellow-Artificial-Intelligence/openextract-ts/issues"
   },
   "engines": {
     "node": ">=20"

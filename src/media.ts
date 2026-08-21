@@ -55,13 +55,17 @@ const EXTENSION_TYPES: Record<string, string> = {
   ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 };
 
+export function isHttpUrl(value: string): boolean {
+  return value.startsWith("http://") || value.startsWith("https://");
+}
+
 export function getMediaType(filePath: string): string {
   return EXTENSION_TYPES[extname(new URL(filePath, "file://").pathname).toLowerCase()]
     ?? DEFAULT_MEDIA_TYPE;
 }
 
 export function safeSourceContext(source: string): string {
-  if (source.startsWith("http://") || source.startsWith("https://")) {
+  if (isHttpUrl(source)) {
     const parsed = new URL(source);
     const port = parsed.port ? `:${parsed.port}` : "";
     return `URL ${parsed.protocol}//${parsed.hostname}${port}${parsed.pathname || /* v8 ignore next */ "/"}`;
@@ -238,7 +242,7 @@ async function readFromPath(
   filePath: string,
   maxInputBytes: number,
 ): Promise<{ data: Uint8Array; mediaType: string }> {
-  if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+  if (isHttpUrl(filePath)) {
     const { data, headers } = await readUrl(filePath, maxInputBytes);
     return mediaFromContent(filePath, data, headers);
   }

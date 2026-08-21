@@ -22,11 +22,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Internal reorganization for DRY: `src/mcp.ts`, `src/cli.ts`, and the TUI split into `src/mcp/`, `src/cli/`, and `src/tui/widgets.ts`; shared helpers moved to `src/concurrency.ts` (one bounded worker pool for batch and swarm), `src/serialized.ts` (input/options shared by MCP, workflow, and CLI), `src/types.ts` (`toUsage`, `toExtractionResult`), `src/config.ts` (`normalizeChoice`, `hasGatewayCredentials`), and `src/exceptions.ts` (`RetryableExtractionError` base for `ModelError` / `RemoteAgentError`). Public exports, CLI flags, MCP tools, and exit codes are unchanged.
+
 - The web UI is one shell instead of two separate products: a persistent sidebar (Extract / Agents, static examples, theme), a shared topbar whose single primary action drives the active section, and a `⌘K` command palette. `⌘↵` runs, `1` / `2` switch sections. Dark is the default theme and light is a working alternative; the previous `.dark` block was unreachable because `color-scheme` was pinned to light.
 - Web design tokens follow a layered neutral scale (`background` → `panel` → `raised` → `elevated`) with a 6px radius and one accent reserved for primary actions, selection, and running state. Inter carries the UI at 13px; mono is kept for data and code.
 - Extract step 3 takes files only: up to 5 attachments at 2 MB each, replacing the paste-text box. Attachment limits and errors are surfaced inline.
 
 - Cookbook TUI loads language models from AI Gateway (`gateway.getAvailableModels()`), keeps the output pane and footer status empty until extract, and updates per-agent invoice cards in place as work starts and finishes.
+- GitHub Pages is a usage guide: [Guide](https://mellow-artificial-intelligence.github.io/openextract-ts/guide.html) (library, styles, swarms, CLI), [MCP for agents](https://mellow-artificial-intelligence.github.io/openextract-ts/mcp.html), [API reference](https://mellow-artificial-intelligence.github.io/openextract-ts/api-reference.html), and `llms.txt`.
 
 ### Fixed
 

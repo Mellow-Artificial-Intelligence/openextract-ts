@@ -4,9 +4,8 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.8.x   | :white_check_mark: |
-| 0.7.x   | :white_check_mark: |
-| < 0.7   | :x:                |
+| 0.2.x   | :white_check_mark: |
+| < 0.2   | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -22,7 +21,7 @@ We will acknowledge receipt within 48 hours and aim to provide a fix within 7 da
 
 ## URL input security model
 
-When `input_file` is an `http://` or `https://` URL, openextract fetches it over
+When `input` is an `http://` or `https://` URL, openextract fetches it over
 HTTP. Callers that pass untrusted URLs should treat this as a privileged
 operation. The fetcher applies best-effort SSRF defenses; it does **not** make
 arbitrary URL fetching safe in every environment.
@@ -50,9 +49,9 @@ Implementation and tests: `src/media.ts` (`isSafeHost`, `readUrl`) and
 
 ### Redirect handling
 
-Redirects are followed manually with `follow_redirects=False` at the HTTP
-client layer. The host is re-validated on **every** hop so a public URL cannot
-redirect to an internal target.
+Redirects are followed manually with `fetch(..., { redirect: "manual" })`. The
+host is re-validated on **every** hop so a public URL cannot redirect to an
+internal target.
 
 Default maximum hops: `10` (`OPENEXTRACT_MAX_REDIRECTS`).
 
@@ -66,11 +65,14 @@ Default maximum hops: `10` (`OPENEXTRACT_MAX_REDIRECTS`).
 | `OPENEXTRACT_MAX_INPUT_BYTES` | `52428800` | Maximum bytes loaded per input |
 
 Invalid or non-positive timeout/redirect values fall back to the defaults. An
-invalid or non-positive input-size limit raises `ValueError` so a bad
-configuration cannot silently disable the cap.
+invalid or non-positive input-size limit raises `Error` so a bad configuration
+cannot silently disable the cap.
 
 `OPENEXTRACT_ALLOW_PRIVATE_URLS` is intended for trusted environments (local
 tests, on-prem services). Enabling it removes the private-host guardrail.
+
+Remote `defineRemoteAgent` URLs are trusted configuration (`http`/`https` only)
+and are **not** subject to document SSRF private-host blocking.
 
 ### What is protected / not guaranteed
 
@@ -79,7 +81,7 @@ tests, on-prem services). Enabling it removes the private-host guardrail.
 - Direct requests to private/loopback/link-local/metadata IPs
 - Redirect chains that land on non-public hosts
 - Basic timeout and redirect-count limits
-- A per-input 50 MiB default cap for paths, URLs, bytes, and binary streams
+- A per-input 50 MiB default cap for paths, URLs, bytes, and streams
 - URL response streaming that enforces the cap when `Content-Length` is absent or incorrect
 
 **Not guaranteed:**
@@ -90,4 +92,4 @@ tests, on-prem services). Enabling it removes the private-host guardrail.
 
 If you need a one-off internal fetch without disabling validation globally,
 download the bytes with your own HTTP client and pass them to `extract()` as
-`bytes` or a file-like object with an explicit `media_type`.
+`Uint8Array` or a readable stream with an explicit `mediaType`.

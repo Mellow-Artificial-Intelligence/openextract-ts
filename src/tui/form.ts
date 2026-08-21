@@ -1,14 +1,15 @@
 import { toError } from "../errors.js";
 import { extractWithUsage, type ExtractOptions } from "../extract.js";
 import { resolveSchemaSpec } from "../schema-spec.js";
+import { EXTRACTION_STYLES, type ExtractionStyle } from "../styles.js";
 import type { ExtractionInputLike, Usage } from "../types.js";
 import type { z } from "zod";
 
 export const SOURCE_KINDS = ["path", "paste"] as const;
 export type SourceKind = (typeof SOURCE_KINDS)[number];
 
-export const STYLES = ["direct", "search", "code", "sandbox"] as const;
-export type StyleName = (typeof STYLES)[number];
+export const STYLES = EXTRACTION_STYLES;
+export type StyleName = ExtractionStyle;
 
 export const PRESETS = {
   document: {

@@ -1,20 +1,21 @@
 #!/usr/bin/env node
-import { pathToFileURL } from "node:url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { toError } from "./errors.js";
+import { fail, isMainModule, printError, printUsage } from "./cli/runtime.js";
 import { createOpenExtractMcpServer, startOpenExtractMcpHttpServer } from "./mcp.js";
 
-function usage(code = 0): never {
-  const stream = code === 0 ? console.log : console.error;
-  stream(`Usage: openextract-mcp [--http] [--host 127.0.0.1] [--port 3000]
+export { isMainModule };
+
+const USAGE = `Usage: openextract-mcp [--http] [--host 127.0.0.1] [--port 3000]
 
 Start an MCP server that exposes extract, extract_many, and extractor sessions.
 
   (default)   stdio transport for Cursor, Claude Desktop, and other MCP hosts
   --http      Streamable HTTP on --host/--port (POST /)
 
-Environment: AI_GATEWAY_API_KEY, OPENEXTRACT_MODEL`);
-  process.exit(code);
+Environment: AI_GATEWAY_API_KEY, OPENEXTRACT_MODEL`;
+
+function usage(code = 0): never {
+  return printUsage(USAGE, code);
 }
 
 function parseArgs(argv: string[]) {
@@ -27,14 +28,10 @@ function parseArgs(argv: string[]) {
     else if (arg === "--host") host = argv[++i] ?? usage(1);
     else if (arg === "--port") port = Number(argv[++i] ?? usage(1));
     else if (arg === "--help" || arg === "-h") usage(0);
-    else {
-      console.error(`error: unknown option ${arg}`);
-      usage(1);
-    }
+    else fail(`unknown option ${arg}`);
   }
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    console.error("error: --port must be an integer from 1 to 65535");
-    process.exit(1);
+    fail("--port must be an integer from 1 to 65535");
   }
   return { http, host, port };
 }
@@ -50,14 +47,10 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   await server.connect(new StdioServerTransport());
 }
 
-export function isMainModule(url: string, argv1?: string): boolean {
-  return url === pathToFileURL(argv1 ?? "").href;
-}
-
 /* v8 ignore next 6 -- process entry */
 if (isMainModule(import.meta.url, process.argv[1])) {
   void main().catch((error) => {
-    console.error(toError(error).message);
+    printError(error);
     process.exit(1);
   });
 }

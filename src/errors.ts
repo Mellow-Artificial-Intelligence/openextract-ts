@@ -18,6 +18,12 @@ export function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
+/** The serializable error shape shared by MCP tool results and workflow items. */
+export function errorPayload(error: unknown): { error: string; errorType: string } {
+  const err = toError(error);
+  return { error: err.message, errorType: err.name };
+}
+
 export function parseRetryAfter(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
     return value;

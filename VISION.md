@@ -34,7 +34,7 @@ If extraction stays ad hoc, every agent reinvents it. openextract is that shared
 
 ## What “easy for agents” means
 
-- Discoverable: MCP resources (`openextract://capabilities`, `openextract://docs/api`) and this repo’s agent files explain the contract.
+- Discoverable: MCP resources (`openextract://capabilities`, `openextract://docs/api`), the GitHub Pages guide, and this repo’s agent files explain the contract.
 - Minimal: schema + source (+ optional style/instructions) is enough.
 - Typed: success is a validated object; failure is `UrlFetchError`, `InputTooLargeError`, `SchemaValidationError`, `ModelError`, or `ProviderNotInstalledError`.
 - Reusable: an `Extractor` holds schema, model, style, and retry policy so a swarm worker does not re-specify them per file.
@@ -72,7 +72,7 @@ The caller should be able to change any of these without rewriting I/O, retries,
 
 - Shared pipeline: media → style workspace → retries → structured model output (`runDocumentExtraction` / `runLoadedExtraction`).
 - Styles: `direct`, `search`, `code`, `sandbox`.
-- Surfaces: library, CLI, OpenTUI, Next.js UI, MCP, Vercel Workflows.
+- Surfaces: library, CLI, OpenTUI, web playground (`npm run cookbook` / `npm run web`), MCP, Vercel Workflows.
 - Batch (`extractMany`) for many inputs; `extractSwarm` for many agents on one input (`merge` / `vote` / `first`).
 - Importable extract agents in the eve pattern: `defineAgent` / `defineRemoteAgent`, `outputSchema`, and `subagents/` discovery.
 - `Extractor` sessions and `openextract/workflow` for reused or durable runs.

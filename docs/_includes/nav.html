@@ -1,0 +1,16 @@
+<header class="fixed top-0 w-full z-50 bg-[#fafafa]/80 backdrop-blur-lg border-b border-black/5">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+    <a href="{{ '/' | relative_url }}" class="flex items-center gap-2">
+      <div class="w-8 h-8 bg-black flex items-center justify-center">
+        <span class="text-white font-mono font-bold text-xs">OE</span>
+      </div>
+      <span class="font-mono text-sm text-black/60 hidden sm:inline">openextract</span>
+    </a>
+    <nav class="flex items-center gap-4 sm:gap-6">
+      <a href="{{ '/guide.html' | relative_url }}" class="font-mono text-xs {% if page.url == '/guide.html' %}text-black{% else %}text-black/40 hover:text-black{% endif %} transition-colors">Guide</a>
+      <a href="{{ '/mcp.html' | relative_url }}" class="font-mono text-xs {% if page.url == '/mcp.html' %}text-black{% else %}text-black/40 hover:text-black{% endif %} transition-colors">MCP</a>
+      <a href="{{ '/api-reference.html' | relative_url }}" class="font-mono text-xs {% if page.url == '/api-reference.html' %}text-black{% else %}text-black/40 hover:text-black{% endif %} transition-colors">API</a>
+      <a href="https://github.com/Mellow-Artificial-Intelligence/openextract-ts" class="font-mono text-xs text-black/40 hover:text-black transition-colors">GitHub</a>
+    </nav>
+  </div>
+</header>

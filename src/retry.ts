@@ -1,5 +1,5 @@
 import { validateRetryOptions } from "./config.js";
-import { ModelError, RemoteAgentError } from "./exceptions.js";
+import { RetryableExtractionError } from "./exceptions.js";
 
 export function retryDelay(
   retryBackoff: number,
@@ -26,8 +26,7 @@ export async function runWithRetries<R>(
     try {
       return await fn();
     } catch (error) {
-      const retryable =
-        (error instanceof ModelError || error instanceof RemoteAgentError) && error.retryable;
+      const retryable = error instanceof RetryableExtractionError && error.retryable;
       if (!retryable || attempt >= options.maxRetries) throw error;
       await new Promise((resolve) =>
         setTimeout(
@@ -36,7 +35,7 @@ export async function runWithRetries<R>(
             options.retryBackoff,
             options.retryMaxBackoff,
             attempt,
-            error instanceof ModelError ? error.retryAfter : null,
+            error.retryAfter,
           ) * 1000,
         ),
       );
