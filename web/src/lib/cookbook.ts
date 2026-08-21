@@ -127,6 +127,21 @@ function majority<T>(values: T[]): T {
   return (best?.value ?? values[0]) as T;
 }
 
+/** Flattens lists and keeps the first item for each key. */
+function dedupeBy<T>(lists: readonly T[][], keyOf: (item: T) => string): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const list of lists) {
+    for (const item of list) {
+      const key = keyOf(item);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(item);
+    }
+  }
+  return out;
+}
+
 function reduceInvoices(invoices: Invoice[], mode: CookbookReduce): Invoice {
   const first = invoices[0];
   if (!first) throw new Error("Swarm produced no results.");
@@ -134,16 +149,10 @@ function reduceInvoices(invoices: Invoice[], mode: CookbookReduce): Invoice {
   const field = <K extends keyof Invoice>(key: K): Invoice[K] => {
     const values = invoices.map((invoice) => invoice[key]);
     if (key === "lineItems" && mode === "merge") {
-      const seen = new Set<string>();
-      const items: Invoice["lineItems"] = [];
-      for (const list of values as Invoice["lineItems"][]) {
-        for (const item of list) {
-          const id = `${item.description}:${item.amount}`;
-          if (seen.has(id)) continue;
-          seen.add(id);
-          items.push(item);
-        }
-      }
+      const items = dedupeBy(
+        values as Invoice["lineItems"][],
+        (item) => `${item.description}:${item.amount}`,
+      );
       return items as Invoice[K];
     }
     return majority(values);
@@ -166,16 +175,10 @@ function reduceAudits(audits: Audit[]): Audit {
   for (const audit of audits) {
     if (rank[audit.verdict] > rank[verdict]) verdict = audit.verdict;
   }
-  const seen = new Set<string>();
-  const findings: Audit["findings"] = [];
-  for (const audit of audits) {
-    for (const finding of audit.findings) {
-      const id = `${finding.perspective}:${finding.note}`;
-      if (seen.has(id)) continue;
-      seen.add(id);
-      findings.push(finding);
-    }
-  }
+  const findings = dedupeBy(
+    audits.map((audit) => audit.findings),
+    (finding) => `${finding.note.trim().toLowerCase()}:${finding.severity}`,
+  );
   return {
     subject: majority(audits.map((item) => item.subject)),
     verdict,

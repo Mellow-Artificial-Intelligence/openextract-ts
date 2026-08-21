@@ -145,22 +145,22 @@ describe("unionRows", () => {
 
 describe("resizeAgentModels", () => {
   it("keeps existing assignments and fills unused models", () => {
-    expect(resizeAgentModels(["xai/grok-4.6"], 3, "xai/grok-4.6")).toEqual([
-      "xai/grok-4.6",
-      "openai/gpt-5.6-luna",
+    expect(resizeAgentModels(["google/gemini-3.7-flash"], 3, "google/gemini-3.7-flash")).toEqual([
       "google/gemini-3.7-flash",
+      "openai/gpt-5.6-luna",
+      "openai/gpt-5.6-sol",
     ]);
   });
 
   it("trims and replaces one slot", () => {
-    const three: Array<"openai/gpt-5.6-luna" | "xai/grok-4.6" | "google/gemini-3.7-flash"> = [
+    const three: Array<"openai/gpt-5.6-luna" | "openai/gpt-5.6-sol" | "google/gemini-3.7-flash"> = [
       "openai/gpt-5.6-luna",
-      "xai/grok-4.6",
+      "openai/gpt-5.6-sol",
       "google/gemini-3.7-flash",
     ];
-    expect(resizeAgentModels(three, 2, "xai/grok-4.6")).toEqual([
+    expect(resizeAgentModels(three, 2, "openai/gpt-5.6-sol")).toEqual([
       "openai/gpt-5.6-luna",
-      "xai/grok-4.6",
+      "openai/gpt-5.6-sol",
     ]);
     expect(setAgentModelAt(three, 1, "openai/gpt-5.6-luna")).toEqual([
       "openai/gpt-5.6-luna",

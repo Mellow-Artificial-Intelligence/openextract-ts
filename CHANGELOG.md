@@ -27,12 +27,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The web UI is one shell instead of two separate products: a persistent sidebar (Extract / Agents, static examples, theme), a shared topbar whose single primary action drives the active section, and a `⌘K` command palette. `⌘↵` runs, `1` / `2` switch sections. Dark is the default theme and light is a working alternative; the previous `.dark` block was unreachable because `color-scheme` was pinned to light.
 - Web design tokens follow a layered neutral scale (`background` → `panel` → `raised` → `elevated`) with a 6px radius and one accent reserved for primary actions, selection, and running state. Inter carries the UI at 13px; mono is kept for data and code.
 - Extract step 3 takes files only: up to 5 attachments at 2 MB each, replacing the paste-text box. Attachment limits and errors are surfaced inline.
+- The web model pickers lead with a **Suggested** group: GPT-5.6 (Luna, Sol, Terra), Gemini 3.7 / 3.6 Flash, and Claude Haiku 4.5 / Sonnet 5 / Opus 5. The rest of AI Gateway stays available below it, and the same list orders the model assigned to a new agent.
 
 - Cookbook TUI loads language models from AI Gateway (`gateway.getAvailableModels()`), keeps the output pane and footer status empty until extract, and updates per-agent invoice cards in place as work starts and finishes.
 - GitHub Pages is a usage guide: [Guide](https://mellow-artificial-intelligence.github.io/openextract-ts/guide.html) (library, styles, swarms, CLI), [MCP for agents](https://mellow-artificial-intelligence.github.io/openextract-ts/mcp.html), [API reference](https://mellow-artificial-intelligence.github.io/openextract-ts/api-reference.html), and `llms.txt`.
 
 ### Fixed
 
+- The web cookbook picked its default model by looking for `xai/grok-4.6`, which AI Gateway serves as `spacexai/*`. The lookup missed and fell through to the first model in the gateway list, whose context window is too small for the request, so every agent failed with `max_tokens=65536 cannot be greater than max_model_len=40960`. The default is now the first suggested model the gateway serves.
+- Audit findings deduped on perspective and note, so two auditors reporting the same issue produced list rows identical in everything the UI renders, which also triggered a duplicate React key warning. Findings now dedupe on note and severity.
 - Prompt input attachment validation reports every oversized file, not only the case where all files are too large, so a partially rejected drop is never silent.
 - Prompt input no longer calls `onError` from inside a `setState` updater, which triggered a React "cannot update a component while rendering a different component" warning.
 

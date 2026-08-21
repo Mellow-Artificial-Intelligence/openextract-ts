@@ -13,7 +13,7 @@ import {
   type AgentSpec,
   type CodingOptions,
 } from "./harness";
-import { DEFAULT_MODEL, MAX_SWARM_AGENTS, MODELS, isCodingAgentId, isExtractModel } from "./models";
+import { DEFAULT_MODEL, MAX_SWARM_AGENTS, MODELS, isCodingAgentId, isExtractModel, isModelId } from "./models";
 import { GATEWAY_STYLES, type GatewayStyle } from "./presets";
 
 const PAYABLE =
@@ -159,9 +159,10 @@ export function agentModelPool(gateway: readonly CookbookModel[], sandbox: boole
     provider: model.provider,
   }));
   const rest = gateway.filter((model) => !isCodingAgentId(model.id));
+  const suggested = rest.filter((model) => isModelId(model.id));
   const seen = new Set<string>();
   const out: CookbookModel[] = [];
-  for (const model of sandbox ? [...rest, ...harness] : rest) {
+  for (const model of sandbox ? [...suggested, ...rest, ...harness] : [...suggested, ...rest]) {
     if (seen.has(model.id)) continue;
     seen.add(model.id);
     out.push(model);

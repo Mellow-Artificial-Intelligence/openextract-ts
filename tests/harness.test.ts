@@ -38,6 +38,6 @@ describe("coding agent harness", () => {
     expect(team[0]?.id).toBe("claude-code");
     expect(team[0]?.coding?.model).toBe("claude-sonnet-4-6");
     expect(team[1]?.id).toBe("openai/gpt-5.6-luna");
-    expect(team[2]?.id).toBe("xai/grok-4.6");
+    expect(team[2]?.id).toBe("openai/gpt-5.6-sol");
   });
 });

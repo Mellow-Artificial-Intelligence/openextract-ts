@@ -15,7 +15,7 @@ import {
 import { PromptInputButton } from "@/components/ai-elements/prompt-input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { isCodingAgentId } from "@/lib/models";
+import { isCodingAgentId, isModelId } from "@/lib/models";
 import { CheckIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -47,12 +47,11 @@ export function ModelPicker<Id extends string>({
   if (!selected) return null;
   const gateway = models.filter((item) => !isCodingAgentId(item.id));
   const sandbox = models.filter((item) => isCodingAgentId(item.id));
-  const groups = sandbox.length
-    ? [
-        { heading: "AI Gateway", items: gateway },
-        { heading: "Sandbox", items: sandbox },
-      ]
-    : [{ heading: "AI Gateway", items: models }];
+  const groups = [
+    { heading: "Suggested", items: gateway.filter((item) => isModelId(item.id)) },
+    { heading: "AI Gateway", items: gateway.filter((item) => !isModelId(item.id)) },
+    { heading: "Sandbox", items: sandbox },
+  ].filter((group) => group.items.length > 0);
   return (
     <ModelSelector onOpenChange={setOpen} open={open}>
       <ModelSelectorTrigger asChild>

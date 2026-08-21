@@ -1,4 +1,4 @@
-import { DEFAULT_MODEL, MODELS } from "./models";
+import { DEFAULT_MODEL, GATEWAY_MODELS, MODELS } from "./models";
 
 export interface Invoice {
   vendor: string;
@@ -128,7 +128,8 @@ export function clampCookbookSize(recipe: CookbookRecipeMeta, value: number): nu
 
 export function pickCookbookModel(models: readonly CookbookModel[], preferred?: string): string {
   if (preferred && models.some((model) => model.id === preferred)) return preferred;
-  return models.find((model) => model.id === "xai/grok-4.6")?.id ?? models[0]?.id ?? DEFAULT_MODEL;
+  const served = new Set(models.map((model) => model.id));
+  return GATEWAY_MODELS.find((model) => served.has(model.id))?.id ?? DEFAULT_MODEL;
 }
 
 export function formatCookbookElapsed(ms: number): string {

@@ -78,8 +78,8 @@ export function AgentsResultCard({
       <ArtifactContent className="space-y-3 p-3">
         {lines.length ? (
           <ul className="space-y-1 font-mono text-xs">
-            {lines.map((item) => (
-              <li className="flex justify-between gap-4" key={`${item.left}:${item.right}`}>
+            {lines.map((item, index) => (
+              <li className="flex justify-between gap-4" key={`${item.left}:${item.right}:${index}`}>
                 <span className="min-w-0 truncate">{item.left}</span>
                 <span className="shrink-0 text-muted-foreground">{item.right}</span>
               </li>
